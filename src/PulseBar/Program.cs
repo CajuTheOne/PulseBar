@@ -140,7 +140,7 @@ internal static class Program
 		Thread.Sleep(1000);
 		Readings readings = sensors.Read();
 		string value = string.Join("; ", sensors.Gpu.Adapters.Select((GpuSensor.Adapter a) => $"{a.Name} [{a.Key}, {a.DedicatedMemory >> 20} MB]"));
-		File.WriteAllText(Path.Combine(Path.GetTempPath(), "PulseBar-dump.txt"), $"admin: {Environment.IsPrivilegedProcess}\nCPU temp source: {sensors.CpuTemp.Status}\nGPU: {sensors.Gpu.Current?.Name} | all: {value}\nCPU {readings.CpuLoad:0.0}% {readings.CpuTemp:0.0}°C | GPU {readings.GpuLoad:0.0}% {readings.GpuTemp:0.0}°C asleep={readings.GpuAsleep} | VRAM {readings.VramLoad:0.0}% {readings.VramUsedGb:0.0} GB | RAM {readings.RamLoad:0.0}% {readings.RamUsedGb:0.0} GB\n");
+		File.WriteAllText(Path.Combine(Path.GetTempPath(), "PulseBar-dump.txt"), $"version: {Updater.Current}\nadmin: {Environment.IsPrivilegedProcess}\nCPU temp source: {sensors.CpuTemp.Status}\nGPU: {sensors.Gpu.Current?.Name} | all: {value}\nCPU {readings.CpuLoad:0.0}% {readings.CpuTemp:0.0}°C | GPU {readings.GpuLoad:0.0}% {readings.GpuTemp:0.0}°C asleep={readings.GpuAsleep} | VRAM {readings.VramLoad:0.0}% {readings.VramUsedGb:0.0} GB | RAM {readings.RamLoad:0.0}% {readings.RamUsedGb:0.0} GB\n");
 		return 0;
 	}
 }
