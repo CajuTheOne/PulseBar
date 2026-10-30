@@ -1,0 +1,9 @@
+# NAS-only folders (builds, old releases, per-PC settings and logs)
+/publish/
+/releases/
+/config/
+/artifacts/
+bin/
+obj/
+.vs/
+*.user
