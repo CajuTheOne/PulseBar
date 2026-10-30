@@ -45,8 +45,12 @@ internal sealed class ClaudeUsage : IDisposable
 
 	public event Action? Changed;
 
-	public ClaudeUsage(int intervalMin)
+	private readonly bool _api;
+
+	// api = false — только история приложения Claude (для снимков окна настроек: не тратить запросы к claude.ai).
+	public ClaudeUsage(int intervalMin, bool api = true)
 	{
+		_api = api;
 		_intervalMin = Math.Clamp(intervalMin, 1, 15);
 		_timer = new Timer(_ => Poll(), null, TimeSpan.FromSeconds(3), TimeSpan.FromMinutes(1));
 	}
@@ -74,7 +78,7 @@ internal sealed class ClaudeUsage : IDisposable
 			}
 			else
 			{
-				if (token != null && DateTimeOffset.Now >= _nextApi)
+				if (_api && token != null && DateTimeOffset.Now >= _nextApi)
 				{
 					next = Newer(next, FromApi(token)) ?? next;
 				}

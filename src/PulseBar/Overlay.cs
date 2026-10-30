@@ -19,7 +19,7 @@ internal sealed class Overlay : Form
 
 	private const int WM_DPICHANGED = 736;
 
-	private readonly Settings _s;
+	private Settings _s;
 
 	private readonly Sensors _sensors;
 
@@ -100,6 +100,8 @@ internal sealed class Overlay : Form
 	private readonly History _hRam = new History();
 
 	private TooltipForm? _tip;
+
+	private Process? _settingsProcess;
 
 	private int _hoverX = -1;
 
@@ -211,6 +213,16 @@ internal sealed class Overlay : Form
 			}
 			break;
 		}
+		if (m.Msg == SettingsProcess.MsgSettingsChanged)
+		{
+			ReloadSettings();
+			return;
+		}
+		if (m.Msg == SettingsProcess.MsgOpenLogitech)
+		{
+			OpenLogi();
+			return;
+		}
 		if (_msgTaskbarCreated != 0 && m.Msg == _msgTaskbarCreated)
 		{
 			_tray = IntPtr.Zero;
@@ -240,6 +252,10 @@ internal sealed class Overlay : Form
 		FillBattery();
 		FillClaude();
 		RecordHistory();
+		if (SettingsOpen)
+		{
+			SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters);
+		}
 		long tickCount = Environment.TickCount64;
 		if (tickCount >= _updateCheckAt)
 		{
@@ -586,6 +602,10 @@ internal sealed class Overlay : Form
 			});
 			items.Add(new ToolStripSeparator());
 		}
+		Item(items, L.T("Settings…"), delegate
+		{
+			OpenSettings();
+		});
 		if (_logi.Config.Enabled && _logi.Config.Profiles.Count > 1)
 		{
 			ToolStripMenuItem toolStripMenuItem = Sub(items, L.T("Profile"));
@@ -598,150 +618,8 @@ internal sealed class Overlay : Form
 				});
 			}
 		}
-		Item(items, L.T("Keyboard and mouse…"), OpenLogi);
-		items.Add(new ToolStripSeparator());
-		Radio(items, L.T("One line"), _s.Layout == 0, delegate
-		{
-			_s.Layout = 0;
-		});
-		Radio(items, L.T("Two lines, vertical labels"), _s.Layout == 1, delegate
-		{
-			_s.Layout = 1;
-		});
-		items.Add(new ToolStripSeparator());
-		ToolStripMenuItem toolStripMenuItem2 = Sub(items, L.T("Normal color"));
-		Radio(toolStripMenuItem2.DropDownItems, L.T("Green"), !_s.BlueNormal, delegate
-		{
-			_s.BlueNormal = false;
-		});
-		Radio(toolStripMenuItem2.DropDownItems, L.T("Blue"), _s.BlueNormal, delegate
-		{
-			_s.BlueNormal = true;
-		});
-		ToolStripMenuItem toolStripMenuItem3 = Sub(items, L.T("Text size"));
-		string[] array = new string[3]
-		{
-			L.T("Small"),
-			L.T("Normal"),
-			L.T("Large")
-		};
-		for (int num = 0; num < array.Length; num++)
-		{
-			int v = num;
-			Radio(toolStripMenuItem3.DropDownItems, array[num], _s.TextSize == v, delegate
-			{
-				_s.TextSize = v;
-			});
-		}
-		ToolStripMenuItem toolStripMenuItem4 = Sub(items, L.T("Spacing between blocks"));
-		toolStripMenuItem4.Enabled = _s.Layout != 0;
-		int[] array2 = new int[7] { 6, 10, 14, 20, 26, 32, 40 };
-		foreach (int px in array2)
-		{
-			Radio(toolStripMenuItem4.DropDownItems, $"{px} px", _s.GroupGap == px, delegate
-			{
-				_s.GroupGap = px;
-			});
-		}
-		ToolStripMenuItem toolStripMenuItem5 = Sub(items, L.T("Spacing from tray"));
-		for (int num3 = 0; num3 <= 100; num3 += 10)
-		{
-			int px2 = num3;
-			Radio(toolStripMenuItem5.DropDownItems, $"{px2} px", _s.TrayGap == px2, delegate
-			{
-				_s.TrayGap = px2;
-			});
-		}
-		ToolStripMenuItem toolStripMenuItem6 = Sub(items, L.T("Update interval"));
-		array2 = new int[4] { 500, 1000, 2000, 5000 };
-		foreach (int ms in array2)
-		{
-			Radio(toolStripMenuItem6.DropDownItems, (ms < 1000) ? L.T("0.5 s") : L.F("{0} s", ms / 1000), _s.IntervalMs == ms, delegate
-			{
-				_s.IntervalMs = ms;
-				StartTimer();
-			});
-		}
-		if (_sensors.Gpu.Adapters.Count > 1)
-		{
-			ToolStripMenuItem toolStripMenuItem7 = Sub(items, L.T("Graphics card"));
-			Radio(toolStripMenuItem7.DropDownItems, L.T("Auto (discrete)"), _s.Gpu == "", delegate
-			{
-				SelectGpu("");
-			});
-			foreach (GpuSensor.Adapter a in _sensors.Gpu.Adapters)
-			{
-				Radio(toolStripMenuItem7.DropDownItems, a.Name, _s.Gpu == a.Key, delegate
-				{
-					SelectGpu(a.Key);
-				});
-			}
-		}
-		Check(items, L.T("Show VRAM"), _s.ShowVram, delegate(bool showVram)
-		{
-			_s.ShowVram = showVram;
-		});
-		Check(items, L.T("Show memory amount (GB)"), _s.ShowRamGb, delegate(bool showRamGb)
-		{
-			_s.ShowRamGb = showRamGb;
-		});
-		Item(items, L.T("Thresholds…"), ShowThresholds);
-		ToolStripMenuItem toolStripMenuItem8 = Sub(items, (L.Code == "en") ? "Language" : (L.T("Language") + " (Language)"));
-		(string, string)[] languages = L.Languages;
-		for (int num4 = 0; num4 < languages.Length; num4++)
-		{
-			var (code, text) = languages[num4];
-			Radio(toolStripMenuItem8.DropDownItems, text, L.Code == code, delegate
-			{
-				_s.Language = code;
-				L.Set(code);
-			});
-		}
-		items.Add(new ToolStripSeparator());
-		Check(items, L.T("Hide in full-screen apps"), _s.HideFullscreen, delegate(bool hideFullscreen)
-		{
-			_s.HideFullscreen = hideFullscreen;
-		});
-		Check(items, L.T("Show keyboard and mouse battery"), _s.ShowBattery, delegate(bool showBattery)
-		{
-			_s.ShowBattery = showBattery;
-		});
-		Check(items, L.T("Show Claude limits"), _s.ShowClaude, delegate(bool showClaude)
-		{
-			_s.ShowClaude = showClaude;
-			FillClaude();
-		});
-		Check(items, L.T("Show tray icon"), _s.TrayIcon, delegate(bool trayIcon)
-		{
-			_s.TrayIcon = trayIcon;
-			UpdateTrayIcon();
-		});
-		Check(items, L.T("Embed in the taskbar"), _s.Embed, delegate(bool embed)
-		{
-			_s.Embed = embed;
-			_bar.Destroy();
-			_visible = false;
-			_dirty = true;
-		});
-		Check(items, L.T("Start with Windows"), Autostart.IsEnabled(), SetAutostart, save: false);
-		Check(items, L.T("Get beta versions"), _s.Beta, delegate(bool beta)
-		{
-			_s.Beta = beta;
-			Native.PostMessageW(base.Handle, 1024u, IntPtr.Zero, IntPtr.Zero);
-		});
-		if (!_sensors.CpuTemp.Available)
-		{
-			items.Add(new ToolStripMenuItem(L.F("CPU temperature: {0}", _sensors.CpuTemp.Status))
-			{
-				Enabled = false
-			});
-		}
 		Item(items, L.T("Task Manager"), OpenTaskManager);
 		items.Add(new ToolStripSeparator());
-		items.Add(new ToolStripMenuItem("PulseBar " + Updater.Current)
-		{
-			Enabled = false
-		});
 		Item(items, L.T("Exit"), delegate
 		{
 			BeginInvoke(base.Close);
@@ -945,6 +823,73 @@ internal sealed class Overlay : Form
 		(string, float, bool, bool) currentMouse = _logi.CurrentMouse;
 		_r.MouseBattery = currentMouse.Item2;
 		_r.MouseCharging = currentMouse.Item3;
+	}
+
+	// Окно настроек — отдельный процесс (см. SettingsProcess): строка не загружает WPF.
+	private void OpenSettings(int page = 0)
+	{
+		if (_settingsProcess != null && !_settingsProcess.HasExited)
+		{
+			_settingsProcess.Refresh();
+			nint window = _settingsProcess.MainWindowHandle;
+			if (window != IntPtr.Zero)
+			{
+				Native.ShowWindow(window, 9);
+				Native.SetForegroundWindow(window);
+			}
+			return;
+		}
+		SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters);
+		try
+		{
+			_settingsProcess = Process.Start(new ProcessStartInfo(Environment.ProcessPath, $"--settings {page} {base.Handle.ToInt64()}")
+			{
+				UseShellExecute = false
+			});
+		}
+		catch (Exception ex)
+		{
+			Log.Write("settings: " + ex.Message);
+		}
+	}
+
+	private bool SettingsOpen
+	{
+		get
+		{
+			Process settingsProcess = _settingsProcess;
+			if (settingsProcess != null)
+			{
+				return !settingsProcess.HasExited;
+			}
+			return false;
+		}
+	}
+
+	// Окно настроек сохранило settings.json: перечитать и применить.
+	private void ReloadSettings()
+	{
+		Settings settings = Settings.Load();
+		Log.Write("settings: reloaded after the settings window");
+		string gpu = _s.Gpu;
+		_s = settings;
+		if (gpu != _s.Gpu)
+		{
+			SelectGpu(_s.Gpu);
+		}
+		L.Set(_s.Language);
+		StartTimer();
+		_claude.IntervalMin = _s.ClaudeIntervalMin;
+		UpdateTrayIcon();
+		if (_bar.Exists && _bar.Embedded != _s.Embed)
+		{
+			_bar.Destroy();
+			_visible = false;
+		}
+		FillClaude();
+		_palette = Palette.Create(_lightTaskbar, _s.BlueNormal);
+		_dirty = true;
+		UpdateOverlay();
 	}
 
 	private void RecordHistory()

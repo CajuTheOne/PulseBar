@@ -38,6 +38,14 @@ internal static class Program
 			bitmap.Save(args[1]);
 			return 0;
 		}
+		if (args != null && args.Length >= 1 && args[0] == "--settings")
+		{
+			return SettingsProcess.Run((args.Length > 1 && int.TryParse(args[1], out var page)) ? page : 0, (args.Length > 2 && long.TryParse(args[2], out var bar)) ? new IntPtr(bar) : IntPtr.Zero, args.Length > 3 && args[3] == "test");
+		}
+		if (args != null && args.Length >= 3 && args[0] == "--shot-settings")
+		{
+			return SettingsShot.Run(args[1], int.Parse(args[2]), args.Length > 3 && args[3] == "expand", (args.Length > 4) ? args[4] : null);
+		}
 		if (args != null && args.Length == 3 && args[0] == "--shot-logi")
 		{
 			return ShotLogi(args[1], args[2] == "mouse");

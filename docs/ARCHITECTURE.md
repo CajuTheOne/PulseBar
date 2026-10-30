@@ -37,6 +37,20 @@
 - **Установщик** — Inno Setup (`installer\PulseBar.iss`), сборка — `build.ps1`, релизы — GitHub Actions
   (`.github\workflowselease.yml`).
 
+## Версия 2.1 (31.10.2026)
+
+- **Блоки по списку.** `Settings.Blocks()` — видимые блоки в заданном порядке (`blocks`, `show*`); `BarRenderer`
+  считает ширину и рисует блоки циклом и запоминает их границы (`Blocks`) для подсказки.
+- **Claude** (`ClaudeUsage.cs`): таймер раз в минуту на пуле потоков; берёт более свежее из истории приложения Claude и
+  ответа `api/oauth/usage` (поддержаны оба формата ответа: `five_hour`/`seven_day` и массив `limits`); запросы к API —
+  не чаще настройки и с `Retry-After`. Событие `Changed` → строка перерисовывается в своём потоке.
+- **Подсказка** (`TooltipForm.cs`): окно без фокуса и прозрачное для мыши; `BarWindow` следит за мышью
+  (`TrackMouseEvent`), `Overlay` через 0,45 с показывает подсказку над блоком; история — последние 60 с замеров.
+- **Окно настроек** (`SettingsWindow.cs`, WPF) — в отдельном процессе (`SettingsProcess.cs`), см. SETTINGS.md.
+  Строка общается с ним через `settings.json`, `status.json` и сообщения `PulseBar.SettingsChanged` / `PulseBar.OpenLogitech`,
+  отправленные прямо в её скрытое окно (дескриптор — аргумент запуска).
+- **Переводы**: `L.T` ищет в таблице 1.x, затем в `L.Strings2.cs` (строки 2.x), затем в дополнительных ru/uk, иначе English.
+
 ## Общая схема
 
 Один процесс .NET 9 (WinForms), без сторонних библиотек: всё остальное — прямые вызовы Windows API.

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -61,6 +62,17 @@ internal sealed class Settings
 
 	public bool ShowClaude = true;
 
+	public bool ShowCpu = true;
+
+	public bool ShowGpu = true;
+
+	public bool ShowRam = true;
+
+	public static readonly string[] AllBlocks = new string[6] { "cpu", "gpu", "vram", "ram", "claude", "battery" };
+
+	// Порядок блоков на строке (через запятую); неизвестные ключи пропускаются, недостающие добавляются в конец.
+	public string BlockOrder = string.Join(",", AllBlocks);
+
 	public int ClaudeIntervalMin = 5;
 
 	public Limit CpuLoad = Defaults.CpuLoad;
@@ -89,6 +101,65 @@ internal sealed class Settings
 	};
 
 	public int Version { get; private set; }
+
+	public string[] Order()
+	{
+		List<string> list = new List<string>();
+		foreach (string item in BlockOrder.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+		{
+			if (AllBlocks.Contains(item) && !list.Contains(item))
+			{
+				list.Add(item);
+			}
+		}
+		list.AddRange(AllBlocks.Where((string b) => !list.Contains(b)));
+		return list.ToArray();
+	}
+
+	public bool IsShown(string block)
+	{
+		return block switch
+		{
+			"cpu" => ShowCpu,
+			"gpu" => ShowGpu,
+			"vram" => ShowVram,
+			"ram" => ShowRam,
+			"claude" => ShowClaude,
+			"battery" => ShowBattery,
+			_ => false,
+		};
+	}
+
+	public void SetShown(string block, bool shown)
+	{
+		switch (block)
+		{
+		case "cpu":
+			ShowCpu = shown;
+			break;
+		case "gpu":
+			ShowGpu = shown;
+			break;
+		case "vram":
+			ShowVram = shown;
+			break;
+		case "ram":
+			ShowRam = shown;
+			break;
+		case "claude":
+			ShowClaude = shown;
+			break;
+		case "battery":
+			ShowBattery = shown;
+			break;
+		}
+	}
+
+	// Видимые блоки в порядке отрисовки.
+	public string[] Blocks()
+	{
+		return Order().Where(IsShown).ToArray();
+	}
 
 	private static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PulseBar");
 
@@ -197,6 +268,18 @@ internal sealed class Settings
 		case "showClaude":
 			this.ShowClaude = result != 0;
 			break;
+		case "showCpu":
+			this.ShowCpu = result != 0;
+			break;
+		case "showGpu":
+			this.ShowGpu = result != 0;
+			break;
+		case "showRam":
+			this.ShowRam = result != 0;
+			break;
+		case "blocks":
+			this.BlockOrder = text4;
+			break;
 		case "claudeInterval":
 			this.ClaudeIntervalMin = Math.Clamp(result, 1, 15);
 			break;
@@ -262,6 +345,10 @@ internal sealed class Settings
 				w.WriteBoolean("embed", Embed);
 				w.WriteBoolean("beta", Beta);
 				w.WriteBoolean("showClaude", ShowClaude);
+				w.WriteBoolean("showCpu", ShowCpu);
+				w.WriteBoolean("showGpu", ShowGpu);
+				w.WriteBoolean("showRam", ShowRam);
+				w.WriteString("blocks", string.Join(",", Order()));
 				w.WriteNumber("claudeInterval", ClaudeIntervalMin);
 				w.WriteString("language", Language);
 				WriteLimit(w, "cpuLoad", CpuLoad);

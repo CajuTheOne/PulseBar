@@ -4,6 +4,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- WPF — только для окна настроек (тема Fluent); строка рисуется GDI+. -->
+    <UseWPF>true</UseWPF>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Nullable>enable</Nullable>
@@ -23,7 +25,7 @@
     <UseSystemResourceKeys>false</UseSystemResourceKeys>
     <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
     <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
-    <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8625;CS0649;CS0169</NoWarn>
+    <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8625;CS0649;CS0169;WPF0001</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <RuntimeHostConfigurationOption Include="System.Globalization.UseNls" Value="true" />

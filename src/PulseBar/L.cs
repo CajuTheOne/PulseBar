@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace PulseBar;
 
-internal static class L
+internal static partial class L
 {
 	public static readonly (string Code, string Name)[] Languages = new(string, string)[11]
 	{
@@ -521,11 +521,15 @@ internal static class L
 
 	public static string T(string en)
 	{
-		if (_map == null || !_map.TryGetValue(en, out string value))
+		if (_map != null && _map.TryGetValue(en, out string value))
 		{
-			return Extra(en);
+			return value;
 		}
-		return value;
+		if (Strings2.TryGetValue(Code, out Dictionary<string, string> strings) && strings.TryGetValue(en, out value))
+		{
+			return value;
+		}
+		return Extra(en);
 	}
 
 	public static string F(string en, object arg)
@@ -638,56 +642,12 @@ internal static class L
 		dictionary["none"] = "нет";
 		dictionary["These Windows settings apply to every mouse. DPI and lighting of a Razer mouse stay in its own memory / Razer software."] = "Эти настройки Windows действуют на все мыши. DPI и подсветка мыши Razer хранятся в её памяти и в программе Razer.";
 		dictionary["Show keyboard and mouse battery"] = "Заряд клавиатуры и мыши на панели";
-		dictionary["Update to {0}"] = "Обновить до {0}";
-		dictionary["Downloading {0}…"] = "Загрузка {0}…";
-		dictionary["Get beta versions"] = "Получать бета-версии";
-		dictionary["Embed in the taskbar"] = "Встраивать в панель задач";
-		dictionary["Could not install the update (details in %LOCALAPPDATA%\\PulseBar\\pulsebar.log)."] = "Не удалось установить обновление (подробности в %LOCALAPPDATA%\\PulseBar\\pulsebar.log).";
-		dictionary["PulseBarSensor service is not running"] = "служба PulseBarSensor не запущена";
-		dictionary["PawnIO is not installed"] = "PawnIO не установлен";
-		dictionary["unsupported CPU"] = "процессор не поддерживается";
-		dictionary["Show Claude limits"] = "Лимиты Claude на строке";
-		dictionary["Load"] = "Загрузка";
-		dictionary["Temperature"] = "Температура";
-		dictionary["Used"] = "Занято";
-		dictionary["5 hours"] = "5 часов";
-		dictionary["7 days"] = "7 дней";
-		dictionary["Updated"] = "Обновлено";
-		dictionary["{0} min ago"] = "{0} мин назад";
-		dictionary["Claude app"] = "приложение Claude";
-		dictionary["reset in {0}"] = "сброс через {0}";
-		dictionary["{0} d"] = "{0} д";
-		dictionary["{0} h"] = "{0} ч";
-		dictionary["{0} min"] = "{0} мин";
-		dictionary["60 s"] = "60 с";
 		Ru = dictionary;
 		Uk = new Dictionary<string, string>
 		{
 			["Keyboard and mouse…"] = "Клавіатура і миша…",
 			["Profile"] = "Профіль",
-			["Show tray icon"] = "Значок у треї",
-			["Update to {0}"] = "Оновити до {0}",
-			["Downloading {0}…"] = "Завантаження {0}…",
-			["Get beta versions"] = "Отримувати бета-версії",
-			["Embed in the taskbar"] = "Вбудовувати в панель завдань",
-			["Could not install the update (details in %LOCALAPPDATA%\\PulseBar\\pulsebar.log)."] = "Не вдалося встановити оновлення (подробиці в %LOCALAPPDATA%\\PulseBar\\pulsebar.log).",
-			["PulseBarSensor service is not running"] = "служба PulseBarSensor не запущена",
-			["PawnIO is not installed"] = "PawnIO не встановлено",
-			["unsupported CPU"] = "процесор не підтримується",
-			["Show Claude limits"] = "Ліміти Claude на рядку",
-			["Load"] = "Навантаження",
-			["Temperature"] = "Температура",
-			["Used"] = "Зайнято",
-			["5 hours"] = "5 годин",
-			["7 days"] = "7 днів",
-			["Updated"] = "Оновлено",
-			["{0} min ago"] = "{0} хв тому",
-			["Claude app"] = "застосунок Claude",
-			["reset in {0}"] = "скидання через {0}",
-			["{0} d"] = "{0} д",
-			["{0} h"] = "{0} год",
-			["{0} min"] = "{0} хв",
-			["60 s"] = "60 с"
+			["Show tray icon"] = "Значок у треї"
 		};
 	}
 }
