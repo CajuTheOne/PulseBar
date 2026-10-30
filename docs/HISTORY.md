@@ -145,8 +145,10 @@ RTX 4090 Laptop + Radeon 610M, 64 ГБ, внешний монитор 3440×1440
 ## 30.10.2026 — версия 2.0.0-beta.1 (собрана и установлена на ZEFIRKA)
 
 - **Репозиторий.** `N:\AI\Tools\PulseBar` — рабочая копия git (`publish\`, `releases\`, `config\` в git не входят),
-  удалённый — https://github.com/CajuTheOne/PulseBar (публичный, MIT). Коммиты — от `CajuTheOne` с адресом
-  GitHub noreply (не рабочая почта). Из публичных документов убраны имена пользователей ELLE.
+  удалённый — https://github.com/CajuTheOne/PulseBar (публичный, MIT). Коммиты — от `CajuTheOne`
+  (первые четыре — с адресом GitHub noreply, с 31.10.2026 — `cajutheone@gmail.com`, почта аккаунта; в git этого ПК
+  глобально прописана рабочая почта, поэтому адрес задан в настройках репозитория). Из публичных документов убраны
+  имена пользователей ELLE.
 - **Структура:** `src\PulseBar` (строка), `src\PulseBar.Sensor` (служба), `src\Shared` (протокол канала),
   `installer\PulseBar.iss`, `build.ps1`, `.github\workflows\release.yml`. Сборка пишет промежуточные файлы в
   `%LOCALAPPDATA%\PulseBar-build` (`ArtifactsPath` в `Directory.Build.props`), не на NAS. `install.ps1` удалён.
