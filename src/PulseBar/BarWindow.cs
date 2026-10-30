@@ -30,6 +30,13 @@ internal sealed class BarWindow : NativeWindow
 
 	public event Action? DoubleClick;
 
+	// x в пикселях окна строки; Leave — мышь ушла со строки.
+	public event Action<int>? Hover;
+
+	public event Action? Leave;
+
+	private bool _tracking;
+
 	public bool Embedded { get; private set; }
 
 	public bool Exists => Handle != IntPtr.Zero && Native.IsWindow(Handle) != 0;
@@ -106,10 +113,41 @@ internal sealed class BarWindow : NativeWindow
 		case 0x205: // WM_RBUTTONUP
 			RightClick?.Invoke();
 			return;
+		case 0x200: // WM_MOUSEMOVE
+			if (!_tracking)
+			{
+				TRACKMOUSEEVENT t = new TRACKMOUSEEVENT
+				{
+					Size = Marshal.SizeOf<TRACKMOUSEEVENT>(),
+					Flags = 2, // TME_LEAVE
+					Hwnd = Handle
+				};
+				_tracking = TrackMouseEvent(ref t);
+			}
+			Hover?.Invoke((short)(m.LParam.ToInt64() & 0xFFFF));
+			return;
+		case 0x2A3: // WM_MOUSELEAVE
+			_tracking = false;
+			Leave?.Invoke();
+			return;
 		}
 		base.WndProc(ref m);
 	}
 
 	[DllImport("user32.dll")]
 	private static extern uint GetDoubleClickTime();
+
+	private struct TRACKMOUSEEVENT
+	{
+		public int Size;
+
+		public uint Flags;
+
+		public nint Hwnd;
+
+		public uint HoverTime;
+	}
+
+	[DllImport("user32.dll")]
+	private static extern bool TrackMouseEvent(ref TRACKMOUSEEVENT e);
 }

@@ -20,9 +20,15 @@ internal sealed class BarRenderer : IDisposable
 
 	private readonly Graphics _mg;
 
-	private (float, int, int, int, bool, int, string, bool, bool) _key = (-1f, -1, -1, -1, false, -1, "", false, false);
+	private (float, int, int, int, bool, int, string, bool, bool, bool) _key = (-1f, -1, -1, -1, false, -1, "", false, false, false);
 
 	private bool _showBat;
+
+	private bool _showClaude;
+
+	private float _wClaude;
+
+	private float _wTag;
 
 	private float _wIcon;
 
@@ -92,6 +98,9 @@ internal sealed class BarRenderer : IDisposable
 
 	public int Width { get; private set; }
 
+	// Блоки последней отрисовки по горизонтали (для подсказки при наведении): cpu, gpu, vram, ram, claude, battery.
+	public readonly List<(string Key, float Left, float Right)> Blocks = new List<(string, float, float)>();
+
 	public BarRenderer()
 	{
 		_mg = Graphics.FromImage(_measureBmp);
@@ -107,12 +116,11 @@ internal sealed class BarRenderer : IDisposable
 		return obj;
 	}
 
-	public bool Configure(float dpiScale, int height, Settings s)
+	// claude — показывать блок лимитов Claude (включён и есть данные).
+	public bool Configure(float dpiScale, int height, Settings s, bool claude)
 	{
-		(float, int, int, int, bool, int, string, bool, bool) tuple = (dpiScale, height, s.Layout, s.TextSize, s.ShowRamGb, s.GroupGap, L.Code, s.ShowVram, s.ShowBattery);
-		(float, int, int, int, bool, int, string, bool, bool) tuple2 = tuple;
-		(float, int, int, int, bool, int, string, bool, bool) key = _key;
-		if (tuple2.Item1 == key.Item1 && tuple2.Item2 == key.Item2 && tuple2.Item3 == key.Item3 && tuple2.Item4 == key.Item4 && tuple2.Item5 == key.Item5 && tuple2.Item6 == key.Item6 && tuple2.Item7 == key.Item7 && tuple2.Rest.Item1 == key.Rest.Item1 && tuple2.Rest.Item2 == key.Rest.Item2)
+		(float, int, int, int, bool, int, string, bool, bool, bool) tuple = (dpiScale, height, s.Layout, s.TextSize, s.ShowRamGb, s.GroupGap, L.Code, s.ShowVram, s.ShowBattery, claude);
+		if (tuple == _key)
 		{
 			return false;
 		}
@@ -121,6 +129,7 @@ internal sealed class BarRenderer : IDisposable
 		_style = s.Layout;
 		_showVram = s.ShowVram;
 		_showBat = s.ShowBattery;
+		_showClaude = claude;
 		bool flag = _style != 0;
 		float num = (_k = dpiScale * s.TextScale);
 		_h = height;
@@ -151,6 +160,8 @@ internal sealed class BarRenderer : IDisposable
 		_wIcon = MathF.Ceiling(16f * num);
 		_wBatPct = W("100%", _value);
 		_wBatSmall = W("100%", _small);
+		_wClaude = W("CLAUDE", _label);
+		_wTag = Math.Max(W("5h", _label), W("7d", _label));
 		if (!flag)
 		{
 			float num4 = _wLabel + _gap1 + _wPct + _gap2 + _wTemp;
@@ -160,6 +171,10 @@ internal sealed class BarRenderer : IDisposable
 			{
 				num3 += 2f * _sepPad + _sepW + (_wIcon + _gap1 + _wBatPct) * 2f + _gap2 * 2f;
 			}
+			if (_showClaude)
+			{
+				num3 += 2f * _sepPad + _sepW + _wClaude + (_gap2 + _wTag + 3f * num + _wPct) * 2f;
+			}
 		}
 		else
 		{
@@ -167,6 +182,10 @@ internal sealed class BarRenderer : IDisposable
 			if (_showBat)
 			{
 				num3 += _groupGap + _wIcon + _gap1 + _wBatSmall;
+			}
+			if (_showClaude)
+			{
+				num3 += _groupGap + _wVLabelVram + 4f * num + _wTag + 3f * num + _wPct;
 			}
 		}
 		Width = (int)MathF.Ceiling(num3);
@@ -185,7 +204,7 @@ internal sealed class BarRenderer : IDisposable
 
 	public static int Signature(in Readings r, Settings s, bool light)
 	{
-		int value = HashCode.Combine(Round(r.KbBattery), Round(r.MouseBattery), r.KbCharging, r.MouseCharging);
+		int value = HashCode.Combine(Round(r.KbBattery), Round(r.MouseBattery), r.KbCharging, r.MouseCharging, Round(r.ClaudeFiveHour), Round(r.ClaudeSevenDay), r.ClaudeStale, r.ClaudeShown);
 		return HashCode.Combine(HashCode.Combine(Round(r.CpuLoad), Round(r.CpuTemp), Round(r.GpuLoad), Round(r.GpuTemp), r.GpuAsleep), Round(r.VramLoad), Round(r.VramUsedGb * 10f), Round(r.RamLoad), Round(r.RamUsedGb * 10f), s.Version, light, value);
 	}
 
@@ -203,44 +222,87 @@ internal sealed class BarRenderer : IDisposable
 		g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 		_batKb = s.KbBattery;
 		_batMouse = s.MouseBattery;
+		Blocks.Clear();
 		string text = (r.GpuAsleep ? L.T("sleep") : Temp(r.GpuTemp));
 		Color color = (r.GpuAsleep ? p.NoData : p.Level(r.GpuTemp, s.GpuTemp));
 		if (_style == 0)
 		{
 			float pad = _pad;
+			float x0 = pad;
 			pad = Block(g, pad, "CPU", r.CpuLoad, s.CpuLoad, Temp(r.CpuTemp), p.Level(r.CpuTemp, s.CpuTemp), p);
+			Blocks.Add(("cpu", x0, pad + _sepPad));
 			pad = Separator(g, pad, p);
+			x0 = pad - _sepPad;
 			pad = Block(g, pad, "GPU", r.GpuLoad, s.GpuLoad, text, color, p);
+			Blocks.Add(("gpu", x0, pad + _sepPad));
 			pad = Separator(g, pad, p);
 			if (_showVram)
 			{
+				x0 = pad - _sepPad;
 				pad = MemBlock(g, pad, "VRAM", _label, _wVram, r.VramLoad, s.Vram, r.VramUsedGb, s, p);
+				Blocks.Add(("vram", x0, pad + _sepPad));
 				pad = Separator(g, pad, p);
 			}
+			x0 = pad - _sepPad;
 			pad = MemBlock(g, pad, "RAM", _label, _wRam, r.RamLoad, s.Ram, r.RamUsedGb, s, p);
+			Blocks.Add(("ram", x0, pad + _sepPad));
+			if (_showClaude)
+			{
+				pad = Separator(g, pad, p);
+				x0 = pad - _sepPad;
+				Text(g, "CLAUDE", _label, p.Label, pad, _wClaude, _near);
+				pad += _wClaude + _gap2;
+				pad = ClaudeValue(g, pad, "5h", r.ClaudeFiveHour, r.ClaudeStale, s, p, _h / 2f) + _gap2;
+				pad = ClaudeValue(g, pad, "7d", r.ClaudeSevenDay, r.ClaudeStale, s, p, _h / 2f);
+				Blocks.Add(("claude", x0, pad + _sepPad));
+			}
 			if (_showBat)
 			{
 				pad = Separator(g, pad, p);
+				x0 = pad - _sepPad;
 				pad = Battery(g, pad, keyboard: true, r.KbBattery, r.KbCharging, _value, _wBatPct, _h / 2f, p) + _gap2 * 2f;
-				Battery(g, pad, keyboard: false, r.MouseBattery, r.MouseCharging, _value, _wBatPct, _h / 2f, p);
+				pad = Battery(g, pad, keyboard: false, r.MouseBattery, r.MouseCharging, _value, _wBatPct, _h / 2f, p);
+				Blocks.Add(("battery", x0, pad + _pad));
 			}
 		}
 		else
 		{
 			float pad2 = _pad;
+			float half = _groupGap / 2f;
+			float x1 = 0f;
 			pad2 = Group(g, pad2, "CPU", _vlabel, _wVLabel, r.CpuLoad, s.CpuLoad, Temp(r.CpuTemp), p.Level(r.CpuTemp, s.CpuTemp), _value, _colCg, p) + _groupGap;
+			Blocks.Add(("cpu", x1, pad2 - half));
+			x1 = pad2 - half;
 			pad2 = Group(g, pad2, "GPU", _vlabel, _wVLabel, r.GpuLoad, s.GpuLoad, text, color, _value, _colCg, p) + _groupGap;
+			Blocks.Add(("gpu", x1, pad2 - half));
+			x1 = pad2 - half;
 			if (_showVram)
 			{
 				pad2 = Group(g, pad2, "VRAM", _vlabelVram, _wVLabelVram, r.VramLoad, s.Vram, s.ShowRamGb ? Gb(r.VramUsedGb) : null, p.Dim, _small, _colMem, p) + _groupGap;
+				Blocks.Add(("vram", x1, pad2 - half));
+				x1 = pad2 - half;
 			}
 			pad2 = Group(g, pad2, "RAM", _vlabel, _wVLabel, r.RamLoad, s.Ram, s.ShowRamGb ? Gb(r.RamUsedGb) : null, p.Dim, _small, _colMem, p);
+			Blocks.Add(("ram", x1, pad2 + half));
+			x1 = pad2 + half;
+			if (_showClaude)
+			{
+				pad2 += _groupGap;
+				VerticalText(g, "CLAUDE", _vlabelVram, p.Label, pad2, _wVLabelVram);
+				pad2 += _wVLabelVram + 4f * _k;
+				float num2 = 8f * _k;
+				ClaudeValue(g, pad2, "5h", r.ClaudeFiveHour, r.ClaudeStale, s, p, _h / 2f - num2);
+				pad2 = ClaudeValue(g, pad2, "7d", r.ClaudeSevenDay, r.ClaudeStale, s, p, _h / 2f + num2);
+				Blocks.Add(("claude", x1, pad2 + half));
+				x1 = pad2 + half;
+			}
 			if (_showBat)
 			{
 				float num = 8f * _k;
 				pad2 += _groupGap;
 				Battery(g, pad2, keyboard: true, r.KbBattery, r.KbCharging, _small, _wBatSmall, _h / 2f - num, p);
-				Battery(g, pad2, keyboard: false, r.MouseBattery, r.MouseCharging, _small, _wBatSmall, _h / 2f + num, p);
+				pad2 = Battery(g, pad2, keyboard: false, r.MouseBattery, r.MouseCharging, _small, _wBatSmall, _h / 2f + num, p);
+				Blocks.Add(("battery", x1, pad2 + _pad));
 			}
 		}
 	}
@@ -292,6 +354,15 @@ internal sealed class BarRenderer : IDisposable
 		x += _wIcon + _gap1;
 		Text(g, Pct(pct), font, c, x, col, _far, cy);
 		return x + col;
+	}
+
+	// «5h 23%»: процент лимита Claude, цвет по порогам; устаревшие данные — серым.
+	private float ClaudeValue(Graphics g, float x, string tag, float v, bool stale, Settings s, Palette p, float cy)
+	{
+		Text(g, tag, _label, p.Label, x, _wTag, _near, cy);
+		x += _wTag + 3f * _k;
+		Text(g, Pct(v), _value, stale ? p.NoData : p.Level(v, s.Claude), x, _wPct, _far, cy);
+		return x + _wPct;
 	}
 
 	private static GraphicsPath RoundRect(float x, float y, float w, float h, float r)

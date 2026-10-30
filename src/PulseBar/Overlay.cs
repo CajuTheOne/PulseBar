@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -82,6 +83,26 @@ internal sealed class Overlay : Form
 
 	private readonly Updater _updater = new Updater();
 
+	private readonly ClaudeUsage _claude;
+
+	private const int TipTimerId = 3;
+
+	private readonly History _hCpuLoad = new History();
+
+	private readonly History _hCpuTemp = new History();
+
+	private readonly History _hGpuLoad = new History();
+
+	private readonly History _hGpuTemp = new History();
+
+	private readonly History _hVram = new History();
+
+	private readonly History _hRam = new History();
+
+	private TooltipForm? _tip;
+
+	private int _hoverX = -1;
+
 	private long _updateCheckAt = Environment.TickCount64 + 60000;
 
 	// Сама форма — невидимое окно для сообщений, таймеров и меню; строку рисует _bar.
@@ -112,6 +133,8 @@ internal sealed class Overlay : Form
 		_s = s;
 		L.Set(s.Language);
 		_sensors = new Sensors(s.Gpu);
+		_claude = new ClaudeUsage(s.ClaudeIntervalMin);
+		_claude.Changed += OnClaudeChanged;
 		_lightTaskbar = ReadLightTaskbar();
 		_palette = Palette.Create(_lightTaskbar, s.BlueNormal);
 		_foregroundProc = OnForegroundChanged;
@@ -135,6 +158,8 @@ internal sealed class Overlay : Form
 		_hook = Native.SetWinEventHook(3u, 3u, IntPtr.Zero, _foregroundProc, 0u, 0u, 2u);
 		_bar.RightClick += ShowMenu;
 		_bar.DoubleClick += OpenTaskManager;
+		_bar.Hover += OnBarHover;
+		_bar.Leave += HideTip;
 		StartTimer();
 		BeginInvoke(Tick);
 		UpdateTrayIcon();
@@ -161,6 +186,12 @@ internal sealed class Overlay : Form
 			{
 				Native.KillTimer(base.Handle, 2);
 				EnsureAboveTaskbar();
+				return;
+			}
+			if (m.WParam == TipTimerId)
+			{
+				Native.KillTimer(base.Handle, TipTimerId);
+				ShowTip();
 				return;
 			}
 			break;
@@ -207,6 +238,8 @@ internal sealed class Overlay : Form
 		}
 		_r = _sensors.Read();
 		FillBattery();
+		FillClaude();
+		RecordHistory();
 		long tickCount = Environment.TickCount64;
 		if (tickCount >= _updateCheckAt)
 		{
@@ -230,6 +263,10 @@ internal sealed class Overlay : Form
 			}
 		}
 		UpdateOverlay();
+		if (_tip != null && _tip.Visible)
+		{
+			ShowTip();
+		}
 	}
 
 	private void OnForegroundChanged(nint hook, uint ev, nint hwnd, int idObject, int idChild, uint thread, uint time)
@@ -325,7 +362,7 @@ internal sealed class Overlay : Form
 		{
 			num2 = 1f;
 		}
-		if (_renderer.Configure(num2, r.Height, _s))
+		if (_renderer.Configure(num2, r.Height, _s, ClaudeVisible))
 		{
 			_dirty = true;
 		}
@@ -402,9 +439,20 @@ internal sealed class Overlay : Form
 		}
 		if (_bar.Embedded)
 		{
-			if (Native.GetWindow(_tray, 5u) != _bar.Handle)
+			// Поднимать строку, только если над ней оказалось окно самого Проводника (содержимое панели).
+			// Соседей из других программ (виджет Claude Code Usage Monitor) не перекрывать: они тоже держатся наверху,
+			// и поочерёдный подъём заставлял оба окна перерисовываться — моргание при Win и переключении окон.
+			Native.GetWindowThreadProcessId(_tray, out uint explorer);
+			nint above = Native.GetWindow(_tray, 5u);
+			for (int i = 0; above != IntPtr.Zero && above != _bar.Handle && i < 64; i++)
 			{
-				Native.SetWindowPos(_bar.Handle, IntPtr.Zero, 0, 0, 0, 0, 19u);
+				Native.GetWindowThreadProcessId(above, out uint pid);
+				if (pid == explorer && Native.IsWindowVisible(above) != 0)
+				{
+					Native.SetWindowPos(_bar.Handle, IntPtr.Zero, 0, 0, 0, 0, 19u);
+					break;
+				}
+				above = Native.GetWindow(above, 2u);
 			}
 			return;
 		}
@@ -512,6 +560,7 @@ internal sealed class Overlay : Form
 
 	private void ShowMenu()
 	{
+		HideTip();
 		_menu?.Dispose();
 		_menu = BuildMenu();
 		_prevForeground = Native.GetForegroundWindow();
@@ -656,6 +705,11 @@ internal sealed class Overlay : Form
 		Check(items, L.T("Show keyboard and mouse battery"), _s.ShowBattery, delegate(bool showBattery)
 		{
 			_s.ShowBattery = showBattery;
+		});
+		Check(items, L.T("Show Claude limits"), _s.ShowClaude, delegate(bool showClaude)
+		{
+			_s.ShowClaude = showClaude;
+			FillClaude();
 		});
 		Check(items, L.T("Show tray icon"), _s.TrayIcon, delegate(bool trayIcon)
 		{
@@ -874,6 +928,9 @@ internal sealed class Overlay : Form
 		}
 		_trayIco?.Dispose();
 		_logi.Dispose();
+		_tip?.Dispose();
+		_claude.Changed -= OnClaudeChanged;
+		_claude.Dispose();
 		_bar.Destroy();
 		_sensors.Dispose();
 		_renderer.Dispose();
@@ -888,6 +945,210 @@ internal sealed class Overlay : Form
 		(string, float, bool, bool) currentMouse = _logi.CurrentMouse;
 		_r.MouseBattery = currentMouse.Item2;
 		_r.MouseCharging = currentMouse.Item3;
+	}
+
+	private void RecordHistory()
+	{
+		long t = Environment.TickCount64;
+		_hCpuLoad.Add(t, _r.CpuLoad);
+		_hCpuTemp.Add(t, _r.CpuTemp);
+		_hGpuLoad.Add(t, _r.GpuLoad);
+		_hGpuTemp.Add(t, _r.GpuAsleep ? float.NaN : _r.GpuTemp);
+		_hVram.Add(t, _r.VramLoad);
+		_hRam.Add(t, _r.RamLoad);
+	}
+
+	// Подсказка: через 0,45 с после наведения; дальше обновляется вместе со строкой и следует за мышью по блокам.
+	private void OnBarHover(int x)
+	{
+		_hoverX = x;
+		if (_tip != null && _tip.Visible)
+		{
+			ShowTip();
+		}
+		else
+		{
+			Native.SetCoalescableTimer(base.Handle, TipTimerId, 450u, IntPtr.Zero, 0u);
+		}
+	}
+
+	private void HideTip()
+	{
+		Native.KillTimer(base.Handle, TipTimerId);
+		_hoverX = -1;
+		if (_tip != null && _tip.Visible)
+		{
+			_tip.Hide();
+		}
+	}
+
+	private void ShowTip()
+	{
+		ContextMenuStrip menu = _menu;
+		if (_hoverX < 0 || !_visible || (menu != null && menu.Visible))
+		{
+			return;
+		}
+		string key = null;
+		float left = 0f;
+		float right = 0f;
+		foreach (var (k, l, r) in _renderer.Blocks)
+		{
+			if (_hoverX >= l && _hoverX < r)
+			{
+				key = k;
+				left = l;
+				right = r;
+				break;
+			}
+		}
+		if (key == null)
+		{
+			if (_tip != null && _tip.Visible)
+			{
+				_tip.Hide();
+			}
+			return;
+		}
+		if (_tip == null)
+		{
+			_tip = new TooltipForm();
+		}
+		List<(string, string, Color?)> rows = new List<(string, string, Color?)>();
+		List<TooltipForm.Series> series = new List<TooltipForm.Series>();
+		string title = TipContent(key, rows, series);
+		_tip.SetContent(title, rows, series, !_lightTaskbar);
+		Native.GetWindowRect(_bar.Handle, out var bar);
+		Screen screen = Screen.FromHandle(_bar.Handle);
+		int x = Math.Clamp(bar.Left + (int)((left + right) / 2f) - _tip.Width / 2, screen.Bounds.Left + 4, screen.Bounds.Right - _tip.Width - 4);
+		int y = bar.Top - _tip.Height - 8;
+		_tip.Location = new Point(x, y);
+		if (!_tip.Visible)
+		{
+			_tip.Show();
+		}
+		Native.SetWindowPos(_tip.Handle, Native.HWND_TOPMOST, 0, 0, 0, 0, 19u);
+	}
+
+	private string TipContent(string key, List<(string, string, Color?)> rows, List<TooltipForm.Series> series)
+	{
+		Color loadColor = Color.FromArgb(76, 194, 255);
+		Color tempColor = Color.FromArgb(255, 160, 64);
+		switch (key)
+		{
+		case "cpu":
+			rows.Add((L.T("Load"), Pct(_r.CpuLoad), _palette.Level(_r.CpuLoad, _s.CpuLoad)));
+			rows.Add((L.T("Temperature"), float.IsNaN(_r.CpuTemp) ? _sensors.CpuTemp.Status : $"{_r.CpuTemp:0}°C", _palette.Level(_r.CpuTemp, _s.CpuTemp)));
+			series.Add(new TooltipForm.Series(_hCpuLoad, loadColor, L.T("Load"), 100f));
+			series.Add(new TooltipForm.Series(_hCpuTemp, tempColor, "°C", 100f));
+			return "CPU";
+		case "gpu":
+			rows.Add((L.T("Load"), Pct(_r.GpuLoad), _palette.Level(_r.GpuLoad, _s.GpuLoad)));
+			rows.Add((L.T("Temperature"), _r.GpuAsleep ? L.T("sleep") : (float.IsNaN(_r.GpuTemp) ? "—" : $"{_r.GpuTemp:0}°C"), _r.GpuAsleep ? null : _palette.Level(_r.GpuTemp, _s.GpuTemp)));
+			series.Add(new TooltipForm.Series(_hGpuLoad, loadColor, L.T("Load"), 100f));
+			series.Add(new TooltipForm.Series(_hGpuTemp, tempColor, "°C", 100f));
+			return _sensors.Gpu.Current?.Name ?? "GPU";
+		case "vram":
+		{
+			float total = (float)(_sensors.Gpu.Current?.DedicatedMemory ?? 0) / 1073741824f;
+			rows.Add((L.T("Used"), Gb(_r.VramUsedGb) + ((total > 0f) ? (" / " + Gb(total)) : ""), null));
+			rows.Add((L.T("Load"), Pct(_r.VramLoad), _palette.Level(_r.VramLoad, _s.Vram)));
+			series.Add(new TooltipForm.Series(_hVram, loadColor, L.T("Load"), 100f));
+			return "VRAM";
+		}
+		case "ram":
+			rows.Add((L.T("Used"), Gb(_r.RamUsedGb) + ((_r.RamLoad > 0f) ? (" / " + Gb(_r.RamUsedGb * 100f / _r.RamLoad)) : ""), null));
+			rows.Add((L.T("Load"), Pct(_r.RamLoad), _palette.Level(_r.RamLoad, _s.Ram)));
+			series.Add(new TooltipForm.Series(_hRam, loadColor, L.T("Load"), 100f));
+			return "RAM";
+		case "claude":
+		{
+			ClaudeUsage.Snapshot c = _claude.Current;
+			if (c != null)
+			{
+				rows.Add((L.T("5 hours"), Pct(c.FiveHour) + Resets(c.FiveHourReset), c.Stale ? _palette.NoData : _palette.Level(c.FiveHour, _s.Claude)));
+				rows.Add((L.T("7 days"), Pct(c.SevenDay) + Resets(c.SevenDayReset), c.Stale ? _palette.NoData : _palette.Level(c.SevenDay, _s.Claude)));
+				int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - c.Updated).TotalMinutes);
+				rows.Add((L.T("Updated"), L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")", c.Stale ? _palette.Warn : null));
+			}
+			if (_claude.ApiStatus.Length > 0)
+			{
+				rows.Add(("API", _claude.ApiStatus, _palette.NoData));
+			}
+			return "Claude";
+		}
+		default:
+			foreach (string part in _logi.ShortStatus().Split(", "))
+			{
+				int sp = part.LastIndexOf(' ');
+				if (sp > 0)
+				{
+					rows.Add((part.Substring(0, sp), part.Substring(sp + 1), null));
+				}
+			}
+			if (rows.Count == 0)
+			{
+				rows.Add((L.T("Keyboard and mouse…"), "—", null));
+			}
+			return L.T("Battery");
+		}
+	}
+
+	private static string Pct(float v)
+	{
+		if (!float.IsNaN(v))
+		{
+			return $"{v:0}%";
+		}
+		return "—";
+	}
+
+	private static string Gb(float v)
+	{
+		if (!float.IsNaN(v))
+		{
+			return v.ToString("0.0 'GB'", System.Globalization.CultureInfo.InvariantCulture);
+		}
+		return "—";
+	}
+
+	private static string Resets(DateTimeOffset? at)
+	{
+		if (!at.HasValue)
+		{
+			return "";
+		}
+		TimeSpan d = at.Value - DateTimeOffset.Now;
+		if (d <= TimeSpan.Zero)
+		{
+			return "";
+		}
+		string left = (d.TotalHours >= 24.0) ? (L.F("{0} d", (int)d.TotalDays) + " " + L.F("{0} h", d.Hours)) : ((d.TotalMinutes >= 60.0) ? (L.F("{0} h", (int)d.TotalHours) + " " + L.F("{0} min", d.Minutes)) : L.F("{0} min", (int)Math.Ceiling(d.TotalMinutes)));
+		return " · " + L.F("reset in {0}", left);
+	}
+
+	private bool ClaudeVisible => _s.ShowClaude && _claude.Available;
+
+	private void FillClaude()
+	{
+		ClaudeUsage.Snapshot current = _claude.Current;
+		_r.ClaudeShown = _s.ShowClaude && current != null;
+		_r.ClaudeFiveHour = current?.FiveHour ?? float.NaN;
+		_r.ClaudeSevenDay = current?.SevenDay ?? float.NaN;
+		_r.ClaudeStale = current?.Stale ?? false;
+	}
+
+	private void OnClaudeChanged()
+	{
+		if (base.IsHandleCreated && !base.IsDisposed)
+		{
+			BeginInvoke(delegate
+			{
+				FillClaude();
+				_dirty = true;
+				UpdateOverlay();
+			});
+		}
 	}
 
 	private void OnLogiChanged()

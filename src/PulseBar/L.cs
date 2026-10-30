@@ -646,6 +646,20 @@ internal static class L
 		dictionary["PulseBarSensor service is not running"] = "служба PulseBarSensor не запущена";
 		dictionary["PawnIO is not installed"] = "PawnIO не установлен";
 		dictionary["unsupported CPU"] = "процессор не поддерживается";
+		dictionary["Show Claude limits"] = "Лимиты Claude на строке";
+		dictionary["Load"] = "Загрузка";
+		dictionary["Temperature"] = "Температура";
+		dictionary["Used"] = "Занято";
+		dictionary["5 hours"] = "5 часов";
+		dictionary["7 days"] = "7 дней";
+		dictionary["Updated"] = "Обновлено";
+		dictionary["{0} min ago"] = "{0} мин назад";
+		dictionary["Claude app"] = "приложение Claude";
+		dictionary["reset in {0}"] = "сброс через {0}";
+		dictionary["{0} d"] = "{0} д";
+		dictionary["{0} h"] = "{0} ч";
+		dictionary["{0} min"] = "{0} мин";
+		dictionary["60 s"] = "60 с";
 		Ru = dictionary;
 		Uk = new Dictionary<string, string>
 		{
@@ -659,7 +673,21 @@ internal static class L
 			["Could not install the update (details in %LOCALAPPDATA%\\PulseBar\\pulsebar.log)."] = "Не вдалося встановити оновлення (подробиці в %LOCALAPPDATA%\\PulseBar\\pulsebar.log).",
 			["PulseBarSensor service is not running"] = "служба PulseBarSensor не запущена",
 			["PawnIO is not installed"] = "PawnIO не встановлено",
-			["unsupported CPU"] = "процесор не підтримується"
+			["unsupported CPU"] = "процесор не підтримується",
+			["Show Claude limits"] = "Ліміти Claude на рядку",
+			["Load"] = "Навантаження",
+			["Temperature"] = "Температура",
+			["Used"] = "Зайнято",
+			["5 hours"] = "5 годин",
+			["7 days"] = "7 днів",
+			["Updated"] = "Оновлено",
+			["{0} min ago"] = "{0} хв тому",
+			["Claude app"] = "застосунок Claude",
+			["reset in {0}"] = "скидання через {0}",
+			["{0} d"] = "{0} д",
+			["{0} h"] = "{0} год",
+			["{0} min"] = "{0} хв",
+			["60 s"] = "60 с"
 		};
 	}
 }

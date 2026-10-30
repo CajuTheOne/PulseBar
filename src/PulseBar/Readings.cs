@@ -27,4 +27,12 @@ internal struct Readings
 	public bool KbCharging;
 
 	public bool MouseCharging;
+
+	public bool ClaudeShown;
+
+	public float ClaudeFiveHour;
+
+	public float ClaudeSevenDay;
+
+	public bool ClaudeStale;
 }

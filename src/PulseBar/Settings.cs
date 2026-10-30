@@ -1,7 +1,8 @@
 using System;
 using System.Globalization;
 using System.IO;
-using System.Text;
+using System.Linq;
+using System.Text.Json;
 
 namespace PulseBar;
 
@@ -24,6 +25,8 @@ internal sealed class Settings
 		public static readonly Limit KbBattery = new Limit(20, 10);
 
 		public static readonly Limit MouseBattery = new Limit(20, 10);
+
+		public static readonly Limit Claude = new Limit(70, 90);
 	}
 
 	public int Layout;
@@ -56,6 +59,10 @@ internal sealed class Settings
 
 	public bool Beta;
 
+	public bool ShowClaude = true;
+
+	public int ClaudeIntervalMin = 5;
+
 	public Limit CpuLoad = Defaults.CpuLoad;
 
 	public Limit CpuTemp = Defaults.CpuTemp;
@@ -72,6 +79,8 @@ internal sealed class Settings
 
 	public Limit MouseBattery = Defaults.MouseBattery;
 
+	public Limit Claude = Defaults.Claude;
+
 	public float TextScale => TextSize switch
 	{
 		0 => 0.88f, 
@@ -83,100 +92,38 @@ internal sealed class Settings
 
 	private static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PulseBar");
 
-	private static string FilePath => Path.Combine(Dir, "settings.ini");
+	private static string JsonPath => Path.Combine(Dir, "settings.json");
 
+	private static string IniPath => Path.Combine(Dir, "settings.ini");
+
+	// С 2.1 настройки хранятся в settings.json. settings.ini из 1.x/2.0 переносится один раз и остаётся как settings.ini.bak.
 	public static Settings Load()
 	{
 		Settings settings = new Settings();
 		try
 		{
-			if (!File.Exists(FilePath))
+			if (File.Exists(JsonPath))
 			{
-				return settings;
-			}
-			string[] array = File.ReadAllLines(FilePath);
-			foreach (string text in array)
-			{
-				int num = text.IndexOf('=');
-				if (num > 0)
+				using JsonDocument jsonDocument = JsonDocument.Parse(File.ReadAllText(JsonPath));
+				foreach (JsonProperty item in jsonDocument.RootElement.EnumerateObject())
 				{
-					string text2 = text.Substring(0, num).Trim();
-					string text3 = text;
-					int num2 = num + 1;
-					string text4 = text3.Substring(num2, text3.Length - num2).Trim();
-					int.TryParse(text4, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result);
-					switch (text2)
+					settings.Apply(item.Name, JsonText(item.Value));
+				}
+			}
+			else if (File.Exists(IniPath))
+			{
+				foreach (string text in File.ReadAllLines(IniPath))
+				{
+					int num = text.IndexOf('=');
+					if (num > 0)
 					{
-					case "layout":
-						settings.Layout = ((result != 0) ? 1 : 0);
-						break;
-					case "blueNormal":
-						settings.BlueNormal = result != 0;
-						break;
-					case "textSize":
-						settings.TextSize = Math.Clamp(result, 0, 2);
-						break;
-					case "intervalMs":
-						settings.IntervalMs = Math.Clamp(result, 250, 10000);
-						break;
-					case "hideFullscreen":
-						settings.HideFullscreen = result != 0;
-						break;
-					case "showRamGb":
-						settings.ShowRamGb = result != 0;
-						break;
-					case "showVram":
-						settings.ShowVram = result != 0;
-						break;
-					case "groupGap":
-						settings.GroupGap = Math.Clamp(result, 0, 80);
-						break;
-					case "trayGap":
-						settings.TrayGap = Math.Clamp((int)Math.Round((double)result / 10.0) * 10, 0, 100);
-						break;
-					case "gpu":
-						settings.Gpu = text4;
-						break;
-					case "trayIcon":
-						settings.TrayIcon = result != 0;
-						break;
-					case "showBattery":
-						settings.ShowBattery = result != 0;
-						break;
-					case "embed":
-						settings.Embed = result != 0;
-						break;
-					case "beta":
-						settings.Beta = result != 0;
-						break;
-					case "language":
-						settings.Language = text4;
-						break;
-					case "cpuLoad":
-						settings.CpuLoad = ParseLimit(text4, settings.CpuLoad);
-						break;
-					case "cpuTemp":
-						settings.CpuTemp = ParseLimit(text4, settings.CpuTemp);
-						break;
-					case "gpuLoad":
-						settings.GpuLoad = ParseLimit(text4, settings.GpuLoad);
-						break;
-					case "gpuTemp":
-						settings.GpuTemp = ParseLimit(text4, settings.GpuTemp);
-						break;
-					case "vram":
-						settings.Vram = ParseLimit(text4, settings.Vram);
-						break;
-					case "ram":
-						settings.Ram = ParseLimit(text4, settings.Ram);
-						break;
-					case "kbBattery":
-						settings.KbBattery = ParseLow(text4, settings.KbBattery);
-						break;
-					case "mouseBattery":
-						settings.MouseBattery = ParseLow(text4, settings.MouseBattery);
-						break;
+						settings.Apply(text.Substring(0, num).Trim(), text.Substring(num + 1).Trim());
 					}
+				}
+				if (settings.Save())
+				{
+					File.Move(IniPath, IniPath + ".bak", overwrite: true);
+					Log.Write("settings: settings.ini moved to settings.json");
 				}
 			}
 		}
@@ -187,42 +134,163 @@ internal sealed class Settings
 		return settings;
 	}
 
-	public void Save()
+	// Значение JSON в том же виде, что в settings.ini: true → 1, [60, 85] → 60,85.
+	private static string JsonText(JsonElement v)
+	{
+		return v.ValueKind switch
+		{
+			JsonValueKind.True => "1",
+			JsonValueKind.False => "0",
+			JsonValueKind.String => v.GetString() ?? "",
+			JsonValueKind.Array => string.Join(",", v.EnumerateArray().Select((JsonElement x) => x.GetRawText())),
+			_ => v.GetRawText()
+		};
+	}
+
+	private void Apply(string text2, string text4)
+	{
+		int.TryParse(text4, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result);
+		switch (text2)
+		{
+		case "layout":
+			this.Layout = ((result != 0) ? 1 : 0);
+			break;
+		case "blueNormal":
+			this.BlueNormal = result != 0;
+			break;
+		case "textSize":
+			this.TextSize = Math.Clamp(result, 0, 2);
+			break;
+		case "intervalMs":
+			this.IntervalMs = Math.Clamp(result, 250, 10000);
+			break;
+		case "hideFullscreen":
+			this.HideFullscreen = result != 0;
+			break;
+		case "showRamGb":
+			this.ShowRamGb = result != 0;
+			break;
+		case "showVram":
+			this.ShowVram = result != 0;
+			break;
+		case "groupGap":
+			this.GroupGap = Math.Clamp(result, 0, 80);
+			break;
+		case "trayGap":
+			this.TrayGap = Math.Clamp((int)Math.Round((double)result / 10.0) * 10, 0, 100);
+			break;
+		case "gpu":
+			this.Gpu = text4;
+			break;
+		case "trayIcon":
+			this.TrayIcon = result != 0;
+			break;
+		case "showBattery":
+			this.ShowBattery = result != 0;
+			break;
+		case "embed":
+			this.Embed = result != 0;
+			break;
+		case "beta":
+			this.Beta = result != 0;
+			break;
+		case "showClaude":
+			this.ShowClaude = result != 0;
+			break;
+		case "claudeInterval":
+			this.ClaudeIntervalMin = Math.Clamp(result, 1, 15);
+			break;
+		case "claude":
+			this.Claude = ParseLimit(text4, this.Claude);
+			break;
+		case "language":
+			this.Language = text4;
+			break;
+		case "cpuLoad":
+			this.CpuLoad = ParseLimit(text4, this.CpuLoad);
+			break;
+		case "cpuTemp":
+			this.CpuTemp = ParseLimit(text4, this.CpuTemp);
+			break;
+		case "gpuLoad":
+			this.GpuLoad = ParseLimit(text4, this.GpuLoad);
+			break;
+		case "gpuTemp":
+			this.GpuTemp = ParseLimit(text4, this.GpuTemp);
+			break;
+		case "vram":
+			this.Vram = ParseLimit(text4, this.Vram);
+			break;
+		case "ram":
+			this.Ram = ParseLimit(text4, this.Ram);
+			break;
+		case "kbBattery":
+			this.KbBattery = ParseLow(text4, this.KbBattery);
+			break;
+		case "mouseBattery":
+			this.MouseBattery = ParseLow(text4, this.MouseBattery);
+			break;
+		}
+	}
+
+	public bool Save()
 	{
 		Version++;
 		try
 		{
 			Directory.CreateDirectory(Dir);
-			StringBuilder stringBuilder = new StringBuilder();
-			stringBuilder.Append("layout=").Append(Layout).AppendLine();
-			stringBuilder.Append("blueNormal=").Append(BlueNormal ? 1 : 0).AppendLine();
-			stringBuilder.Append("textSize=").Append(TextSize).AppendLine();
-			stringBuilder.Append("intervalMs=").Append(IntervalMs).AppendLine();
-			stringBuilder.Append("hideFullscreen=").Append(HideFullscreen ? 1 : 0).AppendLine();
-			stringBuilder.Append("showRamGb=").Append(ShowRamGb ? 1 : 0).AppendLine();
-			stringBuilder.Append("showVram=").Append(ShowVram ? 1 : 0).AppendLine();
-			stringBuilder.Append("groupGap=").Append(GroupGap).AppendLine();
-			stringBuilder.Append("trayGap=").Append(TrayGap).AppendLine();
-			stringBuilder.Append("gpu=").Append(Gpu).AppendLine();
-			stringBuilder.Append("trayIcon=").Append(TrayIcon ? 1 : 0).AppendLine();
-			stringBuilder.Append("showBattery=").Append(ShowBattery ? 1 : 0).AppendLine();
-			stringBuilder.Append("embed=").Append(Embed ? 1 : 0).AppendLine();
-			stringBuilder.Append("beta=").Append(Beta ? 1 : 0).AppendLine();
-			stringBuilder.Append("language=").Append(Language).AppendLine();
-			stringBuilder.Append("cpuLoad=").Append(Format(CpuLoad)).AppendLine();
-			stringBuilder.Append("cpuTemp=").Append(Format(CpuTemp)).AppendLine();
-			stringBuilder.Append("gpuLoad=").Append(Format(GpuLoad)).AppendLine();
-			stringBuilder.Append("gpuTemp=").Append(Format(GpuTemp)).AppendLine();
-			stringBuilder.Append("vram=").Append(Format(Vram)).AppendLine();
-			stringBuilder.Append("ram=").Append(Format(Ram)).AppendLine();
-			stringBuilder.Append("kbBattery=").Append(Format(KbBattery)).AppendLine();
-			stringBuilder.Append("mouseBattery=").Append(Format(MouseBattery)).AppendLine();
-			File.WriteAllText(FilePath, stringBuilder.ToString());
+			using MemoryStream memoryStream = new MemoryStream();
+			using (Utf8JsonWriter w = new Utf8JsonWriter(memoryStream, new JsonWriterOptions
+			{
+				Indented = true,
+				Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+			}))
+			{
+				w.WriteStartObject();
+				w.WriteNumber("layout", Layout);
+				w.WriteBoolean("blueNormal", BlueNormal);
+				w.WriteNumber("textSize", TextSize);
+				w.WriteNumber("intervalMs", IntervalMs);
+				w.WriteBoolean("hideFullscreen", HideFullscreen);
+				w.WriteBoolean("showRamGb", ShowRamGb);
+				w.WriteBoolean("showVram", ShowVram);
+				w.WriteNumber("groupGap", GroupGap);
+				w.WriteNumber("trayGap", TrayGap);
+				w.WriteString("gpu", Gpu);
+				w.WriteBoolean("trayIcon", TrayIcon);
+				w.WriteBoolean("showBattery", ShowBattery);
+				w.WriteBoolean("embed", Embed);
+				w.WriteBoolean("beta", Beta);
+				w.WriteBoolean("showClaude", ShowClaude);
+				w.WriteNumber("claudeInterval", ClaudeIntervalMin);
+				w.WriteString("language", Language);
+				WriteLimit(w, "cpuLoad", CpuLoad);
+				WriteLimit(w, "cpuTemp", CpuTemp);
+				WriteLimit(w, "gpuLoad", GpuLoad);
+				WriteLimit(w, "gpuTemp", GpuTemp);
+				WriteLimit(w, "vram", Vram);
+				WriteLimit(w, "ram", Ram);
+				WriteLimit(w, "kbBattery", KbBattery);
+				WriteLimit(w, "mouseBattery", MouseBattery);
+				WriteLimit(w, "claude", Claude);
+				w.WriteEndObject();
+			}
+			File.WriteAllBytes(JsonPath, memoryStream.ToArray());
+			return true;
 		}
 		catch (Exception ex)
 		{
 			Log.Write("settings save: " + ex.Message);
+			return false;
 		}
+	}
+
+	private static void WriteLimit(Utf8JsonWriter w, string name, Limit l)
+	{
+		w.WriteStartArray(name);
+		w.WriteNumberValue(l.Warn);
+		w.WriteNumberValue(l.Hot);
+		w.WriteEndArray();
 	}
 
 	private static string Format(Limit l)
