@@ -4,11 +4,12 @@
 
 | Что | Где |
 |---|---|
-| Программа | `C:\Program Files\AI Tools\PulseBar\` (`PulseBar.exe`, `PulseBar.dll`, документация в `docs\`) |
-| Исходники | `D:\Work\PulseBar\` |
+| Программа | `C:\Program Files\PulseBar\` (`PulseBar.exe` — строка, `PulseBar.Sensor.exe` — служба) |
+| Исходники | https://github.com/CajuTheOne/PulseBar, рабочая копия `N:\AI\Tools\PulseBar` |
 | Настройки | `%APPDATA%\PulseBar\settings.ini` |
-| Журнал | `%LOCALAPPDATA%\PulseBar\pulsebar.log` (очищается при достижении 64 КБ) |
-| Автозапуск | Планировщик заданий → папка `AI Tools` → задача `PulseBar` |
+| Журналы | строка — `%LOCALAPPDATA%\PulseBar\pulsebar.log`, служба — `%ProgramData%\PulseBar\sensor.log` (очищаются при 64 КБ) |
+| Автозапуск | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, значение `PulseBar` |
+| Служба | `PulseBarSensor` (LocalSystem, автоматически), канал `\\.\pipe\PulseBar.Sensor` |
 
 ## Меню (правый клик по строке)
 
@@ -26,8 +27,11 @@
 | Thresholds… | окно порогов |
 | Language | язык интерфейса (11 языков) |
 | Hide in full-screen apps | прятать строку, когда открыто полноэкранное приложение |
-| Start with Windows | создать/удалить задачу автозапуска (без прав администратора — через UAC) |
-| Restart as administrator | появляется, если нет температуры CPU из-за прав |
+| Update to x.y | появляется, когда на GitHub есть новая версия: скачать и установить (UAC) |
+| Embed in the taskbar | строка — дочернее окно панели задач (по умолчанию); выкл — окно поверх панели, как в 1.x |
+| Start with Windows | автозапуск при входе (ключ Run текущего пользователя) |
+| Get beta versions | предлагать и бета-версии (пре-релизы GitHub) |
+| CPU temperature: … | появляется, если температуры CPU нет, — причина (служба не запущена, нет PawnIO, процессор не поддерживается) |
 | Task Manager | открыть Диспетчер задач (то же — двойной клик по строке) |
 | Exit | выход |
 
@@ -50,6 +54,10 @@
 | `showVram` | `1` | блок VRAM |
 | `groupGap` | `20` | 0…80, px при 100 % |
 | `trayGap` | `0` | 0…100, округляется до десятков |
+| `embed` | `1` | `1` — внутри панели задач, `0` — поверх панели |
+| `beta` | `0` | `1` — получать бета-версии |
+| `trayIcon` | `1` | значок в трее |
+| `showBattery` | `1` | заряд клавиатуры и мыши на строке |
 | `gpu` | пусто | `VEN_xxxx&DEV_xxxx` выбранной видеокарты; пусто — автоматически дискретная |
 | `cpuLoad` | `60,85` | пороги «жёлтый от,красный от», % |
 | `cpuTemp` | `75,90` | °C |
@@ -66,19 +74,21 @@
 |---|---|
 | `PulseBar.exe` | обычный запуск (второй экземпляр ждёт до 3 с и выходит, если первый не закрылся) |
 | `PulseBar.exe --dump` | одно измерение всех датчиков в `%TEMP%\PulseBar-dump.txt` (диагностика) |
-| `PulseBar.exe --autostart on` / `off` | создать/удалить задачу Планировщика (нужны права администратора) |
+| `PulseBar.exe --autostart on` / `off` | включить/выключить автозапуск текущего пользователя |
+| `PulseBar.Sensor.exe --dump` | температура CPU напрямую через PawnIO (от администратора) |
+| `PulseBar.Sensor.exe --console` | служба в окне консоли (отладка, от администратора; саму службу перед этим остановить) |
 
 ## Сборка, установка, удаление
 
-```powershell
-cd D:\Work\PulseBar
-dotnet publish -c Release -o publish
-powershell -ExecutionPolicy Bypass -File install.ps1              # установка/обновление (окно UAC)
-powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall   # удаление (настройки в %APPDATA% остаются)
-```
+См. [README](../README.md#сборка): `build.ps1` собирает программу и установщик Inno Setup
+(`installer\PulseBar.iss`), GitHub Actions публикует его по тегу `v*`.
 
-Установщик останавливает работающий PulseBar, копирует сборку, README и `docs` в `C:\Program Files\AI Tools\PulseBar`,
-создаёт задачу автозапуска и запускает её.
+Установщик (`PulseBar-Setup-<версия>.exe`, права администратора): закрывает PulseBar и службу, удаляет PulseBar 1.x
+(задачу `\AI Tools\PulseBar` и папку `C:\Program Files\AI Tools\PulseBar`), при необходимости ставит .NET 9 Desktop
+Runtime и PawnIO, копирует файлы в `C:\Program Files\PulseBar`, создаёт/обновляет службу `PulseBarSensor`,
+включает автозапуск и запускает строку. Ключи для тихой установки: `/SILENT` или `/VERYSILENT`, `/SUPPRESSMSGBOXES`,
+`/NORESTART`; так же его запускает обновление из программы. Удаление — «Параметры → Приложения» (настройки в
+`%APPDATA%\PulseBar` остаются).
 
-Требования: Windows 10/11, .NET 9 Desktop Runtime; для температуры CPU — AMD Ryzen (Zen) и драйвер PawnIO.
-Для сборки — .NET SDK 9.
+Требования: Windows 10/11 x64, .NET 9 Desktop Runtime; для температуры CPU — AMD Ryzen (Zen) или Intel Core
+и драйвер PawnIO. Для сборки — .NET SDK 9 и Inno Setup 6.

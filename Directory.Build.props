@@ -1,0 +1,11 @@
+<Project>
+  <!-- Общее для всех проектов. Версию в релизах задаёт GitHub Actions из тега (-p:Version=...). -->
+  <PropertyGroup>
+    <Version>2.0.0-dev</Version>
+    <Product>PulseBar</Product>
+    <Company>PulseBar</Company>
+    <Copyright>© 2026 CajuTheOne, MIT License</Copyright>
+    <!-- Сборка вне NAS: исходники лежат на сетевом диске, bin/obj туда не пишем. -->
+    <ArtifactsPath>$(LOCALAPPDATA)\PulseBar-build</ArtifactsPath>
+  </PropertyGroup>
+</Project>

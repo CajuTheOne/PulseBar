@@ -638,12 +638,28 @@ internal static class L
 		dictionary["none"] = "нет";
 		dictionary["These Windows settings apply to every mouse. DPI and lighting of a Razer mouse stay in its own memory / Razer software."] = "Эти настройки Windows действуют на все мыши. DPI и подсветка мыши Razer хранятся в её памяти и в программе Razer.";
 		dictionary["Show keyboard and mouse battery"] = "Заряд клавиатуры и мыши на панели";
+		dictionary["Update to {0}"] = "Обновить до {0}";
+		dictionary["Downloading {0}…"] = "Загрузка {0}…";
+		dictionary["Get beta versions"] = "Получать бета-версии";
+		dictionary["Embed in the taskbar"] = "Встраивать в панель задач";
+		dictionary["Could not install the update (details in %LOCALAPPDATA%\\PulseBar\\pulsebar.log)."] = "Не удалось установить обновление (подробности в %LOCALAPPDATA%\\PulseBar\\pulsebar.log).";
+		dictionary["PulseBarSensor service is not running"] = "служба PulseBarSensor не запущена";
+		dictionary["PawnIO is not installed"] = "PawnIO не установлен";
+		dictionary["unsupported CPU"] = "процессор не поддерживается";
 		Ru = dictionary;
 		Uk = new Dictionary<string, string>
 		{
 			["Keyboard and mouse…"] = "Клавіатура і миша…",
 			["Profile"] = "Профіль",
-			["Show tray icon"] = "Значок у треї"
+			["Show tray icon"] = "Значок у треї",
+			["Update to {0}"] = "Оновити до {0}",
+			["Downloading {0}…"] = "Завантаження {0}…",
+			["Get beta versions"] = "Отримувати бета-версії",
+			["Embed in the taskbar"] = "Вбудовувати в панель завдань",
+			["Could not install the update (details in %LOCALAPPDATA%\\PulseBar\\pulsebar.log)."] = "Не вдалося встановити оновлення (подробиці в %LOCALAPPDATA%\\PulseBar\\pulsebar.log).",
+			["PulseBarSensor service is not running"] = "служба PulseBarSensor не запущена",
+			["PawnIO is not installed"] = "PawnIO не встановлено",
+			["unsupported CPU"] = "процесор не підтримується"
 		};
 	}
 }

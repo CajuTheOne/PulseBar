@@ -1,0 +1,40 @@
+# Релиз по тегу: v2.0.0 — стабильный, v2.0.0-beta.1 (с дефисом) — пре-релиз (бета-канал).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Build
+        shell: pwsh
+        run: ./build.ps1 -Version ("${{ github.ref_name }}".TrimStart("v"))
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart("v")
+          $pre = if ($version.Contains("-")) { "--prerelease" } else { "--latest" }
+          gh release create $tag "artifacts/installer/PulseBar-Setup-$version.exe" --title "PulseBar $version" --generate-notes $pre

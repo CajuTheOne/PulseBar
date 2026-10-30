@@ -52,6 +52,10 @@ internal sealed class Settings
 
 	public bool ShowBattery = true;
 
+	public bool Embed = true;
+
+	public bool Beta;
+
 	public Limit CpuLoad = Defaults.CpuLoad;
 
 	public Limit CpuTemp = Defaults.CpuTemp;
@@ -139,6 +143,12 @@ internal sealed class Settings
 					case "showBattery":
 						settings.ShowBattery = result != 0;
 						break;
+					case "embed":
+						settings.Embed = result != 0;
+						break;
+					case "beta":
+						settings.Beta = result != 0;
+						break;
 					case "language":
 						settings.Language = text4;
 						break;
@@ -196,6 +206,8 @@ internal sealed class Settings
 			stringBuilder.Append("gpu=").Append(Gpu).AppendLine();
 			stringBuilder.Append("trayIcon=").Append(TrayIcon ? 1 : 0).AppendLine();
 			stringBuilder.Append("showBattery=").Append(ShowBattery ? 1 : 0).AppendLine();
+			stringBuilder.Append("embed=").Append(Embed ? 1 : 0).AppendLine();
+			stringBuilder.Append("beta=").Append(Beta ? 1 : 0).AppendLine();
 			stringBuilder.Append("language=").Append(Language).AppendLine();
 			stringBuilder.Append("cpuLoad=").Append(Format(CpuLoad)).AppendLine();
 			stringBuilder.Append("cpuTemp=").Append(Format(CpuTemp)).AppendLine();

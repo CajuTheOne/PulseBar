@@ -78,18 +78,34 @@ internal sealed class Overlay : Form
 
 	private LogiForm? _logiForm;
 
+	private readonly BarWindow _bar = new BarWindow();
+
+	private readonly Updater _updater = new Updater();
+
+	private long _updateCheckAt = Environment.TickCount64 + 60000;
+
+	// Сама форма — невидимое окно для сообщений, таймеров и меню; строку рисует _bar.
 	protected override CreateParams CreateParams
 	{
 		get
 		{
 			CreateParams createParams = base.CreateParams;
 			createParams.Style = int.MinValue;
-			createParams.ExStyle |= 134742152;
+			createParams.ExStyle |= 0x8000080;
 			return createParams;
 		}
 	}
 
 	protected override bool ShowWithoutActivation => true;
+
+	protected override void SetVisibleCore(bool value)
+	{
+		if (!base.IsHandleCreated)
+		{
+			CreateHandle();
+		}
+		base.SetVisibleCore(value: false);
+	}
 
 	public Overlay(Settings s)
 	{
@@ -102,7 +118,7 @@ internal sealed class Overlay : Form
 		_msgTaskbarCreated = Native.RegisterWindowMessageW("TaskbarCreated");
 		_logi = new LogiService(LogiConfig.Load());
 		_logi.Changed += OnLogiChanged;
-		Log.Write($"start: admin={Environment.IsPrivilegedProcess}; CPU temp: {_sensors.CpuTemp.Status}; GPU: {_sensors.Gpu.Current?.Name ?? "none"}");
+		Log.Write($"start {Updater.Current}: admin={Environment.IsPrivilegedProcess}; GPU: {_sensors.Gpu.Current?.Name ?? "none"}");
 		Text = "PulseBar";
 		base.FormBorderStyle = FormBorderStyle.None;
 		base.ShowInTaskbar = false;
@@ -117,6 +133,8 @@ internal sealed class Overlay : Form
 		Native.ChangeWindowMessageFilterEx(base.Handle, _msgTaskbarCreated, 1u, IntPtr.Zero);
 		Native.ChangeWindowMessageFilterEx(base.Handle, 26u, 1u, IntPtr.Zero);
 		_hook = Native.SetWinEventHook(3u, 3u, IntPtr.Zero, _foregroundProc, 0u, 0u, 2u);
+		_bar.RightClick += ShowMenu;
+		_bar.DoubleClick += OpenTaskManager;
 		StartTimer();
 		BeginInvoke(Tick);
 		UpdateTrayIcon();
@@ -146,6 +164,9 @@ internal sealed class Overlay : Form
 				return;
 			}
 			break;
+		case 1024:
+			BeginUpdateCheck();
+			return;
 		case 736:
 			_dirty = true;
 			return;
@@ -163,6 +184,10 @@ internal sealed class Overlay : Form
 		{
 			_tray = IntPtr.Zero;
 			_dirty = true;
+			if (_bar.Embedded)
+			{
+				_bar.Destroy();
+			}
 		}
 		base.WndProc(ref m);
 	}
@@ -183,6 +208,11 @@ internal sealed class Overlay : Form
 		_r = _sensors.Read();
 		FillBattery();
 		long tickCount = Environment.TickCount64;
+		if (tickCount >= _updateCheckAt)
+		{
+			_updateCheckAt = tickCount + 86400000;
+			BeginUpdateCheck();
+		}
 		if (_trimAt != 0L && tickCount >= _trimAt)
 		{
 			_trimAt = 0L;
@@ -229,12 +259,16 @@ internal sealed class Overlay : Form
 			CreateBuffer(target.Width, target.Height);
 			_dirty = true;
 		}
-		int num = BarRenderer.Signature(in _r, _s, _lightTaskbar);
+		int num = BarRenderer.Signature(in _r, _s, _lightTaskbar) ^ ((_updater.Available != null) ? 1540483477 : 0);
 		bool flag = target.Left != _placed.Left || target.Top != _placed.Top || target.Width != _placed.Width || target.Height != _placed.Height;
 		if (_dirty || num != _signature)
 		{
 			_g.Clear(Color.FromArgb(1, 0, 0, 0));
 			_renderer.Draw(_g, in _r, _s, _palette);
+			if (_updater.Available != null)
+			{
+				DrawUpdateDot();
+			}
 			_g.Flush(FlushIntention.Sync);
 			_signature = num;
 			_dirty = false;
@@ -258,6 +292,10 @@ internal sealed class Overlay : Form
 			_notify = ((_tray != IntPtr.Zero) ? Native.FindWindowExW(_tray, IntPtr.Zero, "TrayNotifyWnd", null) : IntPtr.Zero);
 		}
 		if (_tray == IntPtr.Zero || Native.IsWindowVisible(_tray) == 0 || Native.GetWindowRect(_tray, out var r) == 0)
+		{
+			return false;
+		}
+		if (!EnsureBar())
 		{
 			return false;
 		}
@@ -310,7 +348,7 @@ internal sealed class Overlay : Form
 	private bool IsFullscreenOn(nint monitor, Native.RECT m)
 	{
 		nint foregroundWindow = Native.GetForegroundWindow();
-		if (foregroundWindow == IntPtr.Zero || foregroundWindow == base.Handle || foregroundWindow == _tray)
+		if (foregroundWindow == IntPtr.Zero || foregroundWindow == base.Handle || foregroundWindow == _bar.Handle || foregroundWindow == _tray)
 		{
 			return false;
 		}
@@ -347,7 +385,7 @@ internal sealed class Overlay : Form
 		if (show != _visible)
 		{
 			_visible = show;
-			Native.ShowWindow(base.Handle, show ? 4 : 0);
+			Native.ShowWindow(_bar.Handle, show ? 4 : 0);
 		}
 	}
 
@@ -358,19 +396,27 @@ internal sealed class Overlay : Form
 
 	private void EnsureAboveTaskbar()
 	{
-		if (!_visible || _tray == IntPtr.Zero)
+		if (!_visible || _tray == IntPtr.Zero || !_bar.Exists)
 		{
 			return;
 		}
+		if (_bar.Embedded)
+		{
+			if (Native.GetWindow(_tray, 5u) != _bar.Handle)
+			{
+				Native.SetWindowPos(_bar.Handle, IntPtr.Zero, 0, 0, 0, 0, 19u);
+			}
+			return;
+		}
 		int num = 0;
-		nint window = Native.GetWindow(base.Handle, 3u);
+		nint window = Native.GetWindow(_bar.Handle, 3u);
 		while (window != IntPtr.Zero && num < 256)
 		{
 			if (window == _tray)
 			{
 				nint window2 = Native.GetWindow(_tray, 3u);
 				bool flag = window2 != IntPtr.Zero && (Native.GetWindowLongPtrW(window2, -20) & 8) != 0;
-				Native.SetWindowPos(base.Handle, flag ? window2 : Native.HWND_TOPMOST, 0, 0, 0, 0, 531u);
+				Native.SetWindowPos(_bar.Handle, flag ? window2 : Native.HWND_TOPMOST, 0, 0, 0, 0, 531u);
 				break;
 			}
 			window = Native.GetWindow(window, 3u);
@@ -440,7 +486,15 @@ internal sealed class Overlay : Form
 			SourceConstantAlpha = byte.MaxValue,
 			AlphaFormat = 1
 		};
-		Native.UpdateLayeredWindow(base.Handle, IntPtr.Zero, &pOINT, &sIZE, _memDc, &pOINT2, 0u, &bLENDFUNCTION, 2u);
+		if (_bar.Embedded)
+		{
+			// Дочернее окно: координаты в клиентской области панели, положение задаёт SetWindowPos.
+			Native.GetWindowRect(_tray, out var r);
+			Native.SetWindowPos(_bar.Handle, IntPtr.Zero, t.Left - r.Left, t.Top - r.Top, _dibW, _dibH, 16u);
+			Native.UpdateLayeredWindow(_bar.Handle, IntPtr.Zero, null, &sIZE, _memDc, &pOINT2, 0u, &bLENDFUNCTION, 2u);
+			return;
+		}
+		Native.UpdateLayeredWindow(_bar.Handle, IntPtr.Zero, &pOINT, &sIZE, _memDc, &pOINT2, 0u, &bLENDFUNCTION, 2u);
 	}
 
 	private static bool ReadLightTaskbar()
@@ -453,24 +507,6 @@ internal sealed class Overlay : Form
 		catch
 		{
 			return false;
-		}
-	}
-
-	protected override void OnMouseUp(MouseEventArgs e)
-	{
-		base.OnMouseUp(e);
-		if (e.Button == MouseButtons.Right)
-		{
-			ShowMenu();
-		}
-	}
-
-	protected override void OnMouseDoubleClick(MouseEventArgs e)
-	{
-		base.OnMouseDoubleClick(e);
-		if (e.Button == MouseButtons.Left)
-		{
-			OpenTaskManager();
 		}
 	}
 
@@ -488,6 +524,19 @@ internal sealed class Overlay : Form
 		ToolStripManager.Renderer = (_lightTaskbar ? new ToolStripProfessionalRenderer() : new DarkMenuRenderer());
 		ContextMenuStrip contextMenuStrip = new ContextMenuStrip();
 		ToolStripItemCollection items = contextMenuStrip.Items;
+		Updater.Release available = _updater.Available;
+		if (available != null)
+		{
+			items.Add(new ToolStripMenuItem(_updater.Busy ? L.F("Downloading {0}…", available.Version) : L.F("Update to {0}", available.Version), null, delegate
+			{
+				InstallUpdate();
+			})
+			{
+				Enabled = !_updater.Busy,
+				Font = new Font(contextMenuStrip.Font, FontStyle.Bold)
+			});
+			items.Add(new ToolStripSeparator());
+		}
 		if (_logi.Config.Enabled && _logi.Config.Profiles.Count > 1)
 		{
 			ToolStripMenuItem toolStripMenuItem = Sub(items, L.T("Profile"));
@@ -613,20 +662,32 @@ internal sealed class Overlay : Form
 			_s.TrayIcon = trayIcon;
 			UpdateTrayIcon();
 		});
+		Check(items, L.T("Embed in the taskbar"), _s.Embed, delegate(bool embed)
+		{
+			_s.Embed = embed;
+			_bar.Destroy();
+			_visible = false;
+			_dirty = true;
+		});
 		Check(items, L.T("Start with Windows"), Autostart.IsEnabled(), SetAutostart, save: false);
+		Check(items, L.T("Get beta versions"), _s.Beta, delegate(bool beta)
+		{
+			_s.Beta = beta;
+			Native.PostMessageW(base.Handle, 1024u, IntPtr.Zero, IntPtr.Zero);
+		});
 		if (!_sensors.CpuTemp.Available)
 		{
 			items.Add(new ToolStripMenuItem(L.F("CPU temperature: {0}", _sensors.CpuTemp.Status))
 			{
 				Enabled = false
 			});
-			if (!Environment.IsPrivilegedProcess)
-			{
-				Item(items, L.T("Restart as administrator"), RestartElevated);
-			}
 		}
 		Item(items, L.T("Task Manager"), OpenTaskManager);
 		items.Add(new ToolStripSeparator());
+		items.Add(new ToolStripMenuItem("PulseBar " + Updater.Current)
+		{
+			Enabled = false
+		});
 		Item(items, L.T("Exit"), delegate
 		{
 			BeginInvoke(base.Close);
@@ -719,36 +780,65 @@ internal sealed class Overlay : Form
 
 	private void SetAutostart(bool enable)
 	{
-		string processPath = Environment.ProcessPath;
-		if (!((!Environment.IsPrivilegedProcess) ? Autostart.RunElevated(processPath, enable ? "--autostart on" : "--autostart off") : (enable ? Autostart.Enable(processPath) : Autostart.Disable())))
+		if (!(enable ? Autostart.Enable(Environment.ProcessPath) : Autostart.Disable()))
 		{
 			MessageBox.Show(L.T("Could not change autostart (details in %LOCALAPPDATA%\\PulseBar\\pulsebar.log)."), "PulseBar", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
 		}
 	}
 
-	private void RestartElevated()
+	// Строка создаётся при первом показе и заново после перезапуска Проводника.
+	private bool EnsureBar()
 	{
-		bool flag = Autostart.IsEnabled() && Autostart.RunTask();
-		if (!flag)
+		if (_bar.Exists)
 		{
-			try
-			{
-				Process.Start(new ProcessStartInfo(Environment.ProcessPath)
-				{
-					UseShellExecute = true,
-					Verb = "runas"
-				});
-				flag = true;
-			}
-			catch (Exception ex)
-			{
-				Log.Write("restart elevated: " + ex.Message);
-			}
+			return true;
 		}
-		if (flag)
+		_bar.Destroy();
+		_visible = false;
+		_placed = default(Native.RECT);
+		_dirty = true;
+		if (!_bar.Create(_tray, _s.Embed))
+		{
+			return false;
+		}
+		Log.Write(_bar.Embedded ? "bar: inside the taskbar" : "bar: over the taskbar");
+		return true;
+	}
+
+	private async void BeginUpdateCheck()
+	{
+		bool had = _updater.Available != null;
+		await _updater.CheckAsync(_s.Beta);
+		if (had != (_updater.Available != null))
+		{
+			_dirty = true;
+			UpdateOverlay();
+		}
+	}
+
+	private async void InstallUpdate()
+	{
+		if (await _updater.InstallAsync())
 		{
 			BeginInvoke(base.Close);
 		}
+		else
+		{
+			MessageBox.Show(L.T("Could not install the update (details in %LOCALAPPDATA%\\PulseBar\\pulsebar.log)."), "PulseBar", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+		}
+	}
+
+	// Точка «есть обновление» в правом верхнем углу строки.
+	private void DrawUpdateDot()
+	{
+		float d = Math.Max(4f, _dibH / 8f);
+		SmoothingMode smoothingMode = _g.SmoothingMode;
+		_g.SmoothingMode = SmoothingMode.AntiAlias;
+		using (SolidBrush brush = new SolidBrush(Color.FromArgb(76, 194, 255)))
+		{
+			_g.FillEllipse(brush, _dibW - d - 1f, 1f, d, d);
+		}
+		_g.SmoothingMode = smoothingMode;
 	}
 
 	private static void OpenTaskManager()
@@ -784,6 +874,7 @@ internal sealed class Overlay : Form
 		}
 		_trayIco?.Dispose();
 		_logi.Dispose();
+		_bar.Destroy();
 		_sensors.Dispose();
 		_renderer.Dispose();
 		FreeBuffer();

@@ -184,6 +184,9 @@ internal static class Native
 	public static extern int IsWindow(nint h);
 
 	[DllImport("user32.dll")]
+	public static extern int PostMessageW(nint h, uint msg, nint wParam, nint lParam);
+
+	[DllImport("user32.dll")]
 	public static extern int IsWindowVisible(nint h);
 
 	[DllImport("user32.dll")]
