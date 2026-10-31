@@ -101,5 +101,10 @@
 "Separator snap distance": "区切り線のスナップ間隔",
 "Add separator": "区切り線を追加",
 "Remove separator": "区切り線を削除",
-"Reset layout": "配置をリセット"
+"Reset layout": "配置をリセット",
+"Claude bar length": "Claude バーの長さ",
+"Claude bar height": "Claude バーの高さ",
+"Claude bar segments": "バーの区切り数",
+"solid": "連続",
+"Bar sizes apply to the large Claude style.": "バーのサイズは Claude の大スタイルに適用されます。"
 }

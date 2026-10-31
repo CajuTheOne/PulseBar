@@ -177,13 +177,15 @@ internal sealed class SettingsWindow : Window
 	{
 		StackPanel p = Page(L.T("Appearance"));
 		p.Children.Add(Caption(L.T("Preview")));
+		// Широкая строка уменьшается, чтобы превью было видно целиком; узкая — один к одному.
 		_preview = new Image
 		{
-			Stretch = Stretch.None,
+			Stretch = Stretch.Uniform,
+			StretchDirection = StretchDirection.DownOnly,
 			HorizontalAlignment = HorizontalAlignment.Left,
 			SnapsToDevicePixels = true
 		};
-		RenderOptions.SetBitmapScalingMode(_preview, BitmapScalingMode.NearestNeighbor);
+		RenderOptions.SetBitmapScalingMode(_preview, BitmapScalingMode.HighQuality);
 		p.Children.Add(new Border
 		{
 			Child = _preview,
@@ -217,6 +219,19 @@ internal sealed class SettingsWindow : Window
 			}));
 		}
 		p.Children.Add(ClaudeStyleCombo());
+		p.Children.Add(SliderRow(L.T("Claude bar length"), 40.0, 240.0, 2.0, () => _s.ClaudeBarLength, delegate(int v)
+		{
+			_s.ClaudeBarLength = v;
+		}, (int v) => $"{v} px"));
+		p.Children.Add(SliderRow(L.T("Claude bar height"), 4.0, 16.0, 1.0, () => _s.ClaudeBarHeight, delegate(int v)
+		{
+			_s.ClaudeBarHeight = v;
+		}, (int v) => $"{v} px"));
+		p.Children.Add(SliderRow(L.T("Claude bar segments"), 4.0, 20.0, 1.0, () => (_s.ClaudeSegments == 0) ? 4 : _s.ClaudeSegments, delegate(int v)
+		{
+			_s.ClaudeSegments = (v <= 4) ? 0 : v;
+		}, (int v) => (v <= 4) ? L.T("solid") : v.ToString()));
+		p.Children.Add(Note(L.T("Bar sizes apply to the large Claude style.")));
 		p.Children.Add(Caption(L.T("Layout on the taskbar")));
 		CheckBox edit = new CheckBox
 		{

@@ -101,5 +101,10 @@
 "Separator snap distance": "Abstand an Trennlinien",
 "Add separator": "Trennlinie hinzufügen",
 "Remove separator": "Trennlinie entfernen",
-"Reset layout": "Anordnung zurücksetzen"
+"Reset layout": "Anordnung zurücksetzen",
+"Claude bar length": "Länge der Claude-Balken",
+"Claude bar height": "Höhe der Claude-Balken",
+"Claude bar segments": "Segmente pro Balken",
+"solid": "durchgehend",
+"Bar sizes apply to the large Claude style.": "Die Balkengrößen gelten für den großen Claude-Stil."
 }

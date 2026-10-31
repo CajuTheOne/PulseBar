@@ -63,6 +63,13 @@ internal sealed class Settings
 	// Блок Claude: 0 — выключен, 1 — компактный (между блоками), 2 — большой (полосы 5h и 7d).
 	public int ClaudeStyle = 1;
 
+	// Большой стиль Claude: длина и высота полосы, px при 100 %; сегментов: 0 — сплошная полоса.
+	public int ClaudeBarLength = 78;
+
+	public int ClaudeBarHeight = 8;
+
+	public int ClaudeSegments = 10;
+
 	public bool ShowClaude
 	{
 		get
@@ -433,6 +440,15 @@ internal sealed class Settings
 		case "claudeStyle":
 			this.ClaudeStyle = Math.Clamp(result, 0, 2);
 			break;
+		case "claudeBarLength":
+			this.ClaudeBarLength = Math.Clamp(result, 40, 240);
+			break;
+		case "claudeBarHeight":
+			this.ClaudeBarHeight = Math.Clamp(result, 4, 16);
+			break;
+		case "claudeSegments":
+			this.ClaudeSegments = (result <= 0) ? 0 : Math.Clamp(result, 5, 20);
+			break;
 		case "snap":
 			this.Snap = result != 0;
 			break;
@@ -525,6 +541,9 @@ internal sealed class Settings
 				w.WriteBoolean("embed", Embed);
 				w.WriteBoolean("beta", Beta);
 				w.WriteNumber("claudeStyle", ClaudeStyle);
+				w.WriteNumber("claudeBarLength", ClaudeBarLength);
+				w.WriteNumber("claudeBarHeight", ClaudeBarHeight);
+				w.WriteNumber("claudeSegments", ClaudeSegments);
 				w.WriteBoolean("snap", Snap);
 				w.WriteNumber("snapGap", SnapGap);
 				w.WriteNumber("sepGap", SepGap);

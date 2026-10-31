@@ -112,7 +112,12 @@ internal static partial class L
 			["Separator snap distance"] = "Расстояние привязки разделителя",
 			["Add separator"] = "Добавить разделитель",
 			["Remove separator"] = "Удалить разделитель",
-			["Reset layout"] = "Сбросить расположение"
+			["Reset layout"] = "Сбросить расположение",
+			["Claude bar length"] = "Длина полос Claude",
+			["Claude bar height"] = "Высота полос Claude",
+			["Claude bar segments"] = "Сегментов в полосе",
+			["solid"] = "сплошная",
+			["Bar sizes apply to the large Claude style."] = "Размеры полос действуют в большом стиле Claude."
 		},
 		["uk"] = new Dictionary<string, string>
 		{
@@ -218,7 +223,12 @@ internal static partial class L
 			["Separator snap distance"] = "Відстань прив'язки роздільника",
 			["Add separator"] = "Додати роздільник",
 			["Remove separator"] = "Видалити роздільник",
-			["Reset layout"] = "Скинути розташування"
+			["Reset layout"] = "Скинути розташування",
+			["Claude bar length"] = "Довжина смуг Claude",
+			["Claude bar height"] = "Висота смуг Claude",
+			["Claude bar segments"] = "Сегментів у смузі",
+			["solid"] = "суцільна",
+			["Bar sizes apply to the large Claude style."] = "Розміри смуг діють у великому стилі Claude."
 		},
 		["de"] = new Dictionary<string, string>
 		{
@@ -324,7 +334,12 @@ internal static partial class L
 			["Separator snap distance"] = "Abstand an Trennlinien",
 			["Add separator"] = "Trennlinie hinzufügen",
 			["Remove separator"] = "Trennlinie entfernen",
-			["Reset layout"] = "Anordnung zurücksetzen"
+			["Reset layout"] = "Anordnung zurücksetzen",
+			["Claude bar length"] = "Länge der Claude-Balken",
+			["Claude bar height"] = "Höhe der Claude-Balken",
+			["Claude bar segments"] = "Segmente pro Balken",
+			["solid"] = "durchgehend",
+			["Bar sizes apply to the large Claude style."] = "Die Balkengrößen gelten für den großen Claude-Stil."
 		},
 		["fr"] = new Dictionary<string, string>
 		{
@@ -430,7 +445,12 @@ internal static partial class L
 			["Separator snap distance"] = "Distance d’aimantation du séparateur",
 			["Add separator"] = "Ajouter un séparateur",
 			["Remove separator"] = "Supprimer le séparateur",
-			["Reset layout"] = "Réinitialiser la disposition"
+			["Reset layout"] = "Réinitialiser la disposition",
+			["Claude bar length"] = "Longueur des barres Claude",
+			["Claude bar height"] = "Hauteur des barres Claude",
+			["Claude bar segments"] = "Segments par barre",
+			["solid"] = "continue",
+			["Bar sizes apply to the large Claude style."] = "Les tailles des barres s’appliquent au grand style Claude."
 		},
 		["es"] = new Dictionary<string, string>
 		{
@@ -536,7 +556,12 @@ internal static partial class L
 			["Separator snap distance"] = "Distancia de ajuste del separador",
 			["Add separator"] = "Añadir separador",
 			["Remove separator"] = "Quitar separador",
-			["Reset layout"] = "Restablecer disposición"
+			["Reset layout"] = "Restablecer disposición",
+			["Claude bar length"] = "Longitud de las barras de Claude",
+			["Claude bar height"] = "Altura de las barras de Claude",
+			["Claude bar segments"] = "Segmentos por barra",
+			["solid"] = "continua",
+			["Bar sizes apply to the large Claude style."] = "Los tamaños de las barras se aplican al estilo grande de Claude."
 		},
 		["pt"] = new Dictionary<string, string>
 		{
@@ -642,7 +667,12 @@ internal static partial class L
 			["Separator snap distance"] = "Distância de encaixe do separador",
 			["Add separator"] = "Adicionar separador",
 			["Remove separator"] = "Remover separador",
-			["Reset layout"] = "Redefinir disposição"
+			["Reset layout"] = "Redefinir disposição",
+			["Claude bar length"] = "Comprimento das barras do Claude",
+			["Claude bar height"] = "Altura das barras do Claude",
+			["Claude bar segments"] = "Segmentos por barra",
+			["solid"] = "contínua",
+			["Bar sizes apply to the large Claude style."] = "Os tamanhos das barras valem para o estilo grande do Claude."
 		},
 		["it"] = new Dictionary<string, string>
 		{
@@ -748,7 +778,12 @@ internal static partial class L
 			["Separator snap distance"] = "Distanza di aggancio del separatore",
 			["Add separator"] = "Aggiungi separatore",
 			["Remove separator"] = "Rimuovi separatore",
-			["Reset layout"] = "Ripristina disposizione"
+			["Reset layout"] = "Ripristina disposizione",
+			["Claude bar length"] = "Lunghezza delle barre di Claude",
+			["Claude bar height"] = "Altezza delle barre di Claude",
+			["Claude bar segments"] = "Segmenti per barra",
+			["solid"] = "continua",
+			["Bar sizes apply to the large Claude style."] = "Le dimensioni delle barre valgono per lo stile grande di Claude."
 		},
 		["pl"] = new Dictionary<string, string>
 		{
@@ -854,7 +889,12 @@ internal static partial class L
 			["Separator snap distance"] = "Odstęp przyciągania separatora",
 			["Add separator"] = "Dodaj separator",
 			["Remove separator"] = "Usuń separator",
-			["Reset layout"] = "Resetuj układ"
+			["Reset layout"] = "Resetuj układ",
+			["Claude bar length"] = "Długość pasków Claude",
+			["Claude bar height"] = "Wysokość pasków Claude",
+			["Claude bar segments"] = "Segmentów w pasku",
+			["solid"] = "ciągły",
+			["Bar sizes apply to the large Claude style."] = "Rozmiary pasków dotyczą dużego stylu Claude."
 		},
 		["zh"] = new Dictionary<string, string>
 		{
@@ -960,7 +1000,12 @@ internal static partial class L
 			["Separator snap distance"] = "分隔线吸附间距",
 			["Add separator"] = "添加分隔线",
 			["Remove separator"] = "删除分隔线",
-			["Reset layout"] = "重置布局"
+			["Reset layout"] = "重置布局",
+			["Claude bar length"] = "Claude 进度条长度",
+			["Claude bar height"] = "Claude 进度条高度",
+			["Claude bar segments"] = "进度条分段数",
+			["solid"] = "连续",
+			["Bar sizes apply to the large Claude style."] = "进度条尺寸适用于 Claude 的大样式。"
 		},
 		["ja"] = new Dictionary<string, string>
 		{
@@ -1066,7 +1111,12 @@ internal static partial class L
 			["Separator snap distance"] = "区切り線のスナップ間隔",
 			["Add separator"] = "区切り線を追加",
 			["Remove separator"] = "区切り線を削除",
-			["Reset layout"] = "配置をリセット"
+			["Reset layout"] = "配置をリセット",
+			["Claude bar length"] = "Claude バーの長さ",
+			["Claude bar height"] = "Claude バーの高さ",
+			["Claude bar segments"] = "バーの区切り数",
+			["solid"] = "連続",
+			["Bar sizes apply to the large Claude style."] = "バーのサイズは Claude の大スタイルに適用されます。"
 		}
 	};
 }

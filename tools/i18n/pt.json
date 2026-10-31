@@ -101,5 +101,10 @@
 "Separator snap distance": "Distância de encaixe do separador",
 "Add separator": "Adicionar separador",
 "Remove separator": "Remover separador",
-"Reset layout": "Redefinir disposição"
+"Reset layout": "Redefinir disposição",
+"Claude bar length": "Comprimento das barras do Claude",
+"Claude bar height": "Altura das barras do Claude",
+"Claude bar segments": "Segmentos por barra",
+"solid": "contínua",
+"Bar sizes apply to the large Claude style.": "Os tamanhos das barras valem para o estilo grande do Claude."
 }

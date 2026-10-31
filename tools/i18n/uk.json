@@ -101,5 +101,10 @@
 "Separator snap distance": "Відстань прив'язки роздільника",
 "Add separator": "Додати роздільник",
 "Remove separator": "Видалити роздільник",
-"Reset layout": "Скинути розташування"
+"Reset layout": "Скинути розташування",
+"Claude bar length": "Довжина смуг Claude",
+"Claude bar height": "Висота смуг Claude",
+"Claude bar segments": "Сегментів у смузі",
+"solid": "суцільна",
+"Bar sizes apply to the large Claude style.": "Розміри смуг діють у великому стилі Claude."
 }

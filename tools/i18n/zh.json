@@ -101,5 +101,10 @@
 "Separator snap distance": "分隔线吸附间距",
 "Add separator": "添加分隔线",
 "Remove separator": "删除分隔线",
-"Reset layout": "重置布局"
+"Reset layout": "重置布局",
+"Claude bar length": "Claude 进度条长度",
+"Claude bar height": "Claude 进度条高度",
+"Claude bar segments": "进度条分段数",
+"solid": "连续",
+"Bar sizes apply to the large Claude style.": "进度条尺寸适用于 Claude 的大样式。"
 }

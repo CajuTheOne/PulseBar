@@ -21,7 +21,13 @@ internal sealed class BarRenderer : IDisposable
 
 	private readonly Graphics _mg;
 
-	private (float, int, int, int, bool, int, int, int, string) _key = (-1f, -1, -1, -1, false, -1, -1, -1, "");
+	private (float, int, int, int, bool, int, int, int, string, int, int, int) _key = (-1f, -1, -1, -1, false, -1, -1, -1, "", -1, -1, -1);
+
+	private int _claudeBarLength;
+
+	private int _claudeBarHeight;
+
+	private int _claudeSegments;
 
 	private bool _showRamGb;
 
@@ -121,7 +127,7 @@ internal sealed class BarRenderer : IDisposable
 	// Элементы: cpu, gpu, vram, ram, claude, battery и разделители sep…; раскладку по панели делает Overlay.
 	public bool Configure(float dpiScale, int height, Settings s)
 	{
-		(float, int, int, int, bool, int, int, int, string) tuple = (dpiScale, height, s.Layout, s.TextSize, s.ShowRamGb, s.ClaudeStyle, s.SnapGap, s.SepGap, L.Code);
+		(float, int, int, int, bool, int, int, int, string, int, int, int) tuple = (dpiScale, height, s.Layout, s.TextSize, s.ShowRamGb, s.ClaudeStyle, s.SnapGap, s.SepGap, L.Code, s.ClaudeBarLength, s.ClaudeBarHeight, s.ClaudeSegments);
 		if (tuple == _key)
 		{
 			return false;
@@ -131,6 +137,9 @@ internal sealed class BarRenderer : IDisposable
 		_style = s.Layout;
 		_showRamGb = s.ShowRamGb;
 		_claudeStyle = s.ClaudeStyle;
+		_claudeBarLength = s.ClaudeBarLength;
+		_claudeBarHeight = s.ClaudeBarHeight;
+		_claudeSegments = s.ClaudeSegments;
 		bool flag = _style != 0;
 		float num = (_k = dpiScale * s.TextScale);
 		_h = height;
@@ -386,7 +395,7 @@ internal sealed class BarRenderer : IDisposable
 		return x + col;
 	}
 
-	private float ClaudeBarWidth => 10f * 8f * _k - 2f * _k;
+	private float ClaudeBarWidth => MathF.Round((float)_claudeBarLength * _k);
 
 	// Большой стиль Claude: вертикальная подпись, две строки «5h ▮▮▮▮▯▯▯▯▯▯ 40% · 2h» (как у Claude Code Usage Monitor).
 	private float ClaudeLarge(Graphics g, float x, in Readings r, Settings s, Palette p)
@@ -403,16 +412,32 @@ internal sealed class BarRenderer : IDisposable
 		Text(g, tag, _label, p.Label, x, _wTag, _near, cy);
 		x += _wTag + 4f * _k;
 		Color c = (stale ? p.NoData : p.Level(v, s.Claude));
-		int filled = (float.IsNaN(v) ? 0 : Math.Clamp((int)MathF.Ceiling(v / 10f - 0.001f), 0, 10));
-		float seg = 6f * _k;
-		float h = MathF.Round(8f * _k);
+		float len = ClaudeBarWidth;
+		float h = Math.Max(2f, MathF.Round((float)_claudeBarHeight * _k));
 		float y = MathF.Round(cy - h / 2f);
+		float pct = (float.IsNaN(v) ? 0f : Math.Clamp(v, 0f, 100f));
 		using (SolidBrush on = new SolidBrush(c))
 		{
 			using SolidBrush off = new SolidBrush(p.Track);
-			for (int i = 0; i < 10; i++)
+			int n = _claudeSegments;
+			if (n <= 0)
 			{
-				g.FillRectangle((i < filled) ? on : off, MathF.Round(x + (float)i * 8f * _k), y, MathF.Round(seg), h);
+				g.FillRectangle(off, MathF.Round(x), y, len, h);
+				if (pct > 0f)
+				{
+					g.FillRectangle(on, MathF.Round(x), y, Math.Max(1f, MathF.Round(len * pct / 100f)), h);
+				}
+			}
+			else
+			{
+				float gap = Math.Max(1f, MathF.Round(2f * _k));
+				float seg = Math.Max(1f, (len - gap * (float)(n - 1)) / (float)n);
+				int filled = Math.Clamp((int)MathF.Ceiling(pct * (float)n / 100f - 0.001f), 0, n);
+				for (int i = 0; i < n; i++)
+				{
+					float sx = MathF.Round(x + (float)i * (seg + gap));
+					g.FillRectangle((i < filled) ? on : off, sx, y, Math.Max(1f, MathF.Round(x + (float)i * (seg + gap) + seg) - sx), h);
+				}
 			}
 		}
 		x += ClaudeBarWidth + 6f * _k;

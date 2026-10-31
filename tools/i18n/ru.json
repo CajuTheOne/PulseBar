@@ -101,5 +101,10 @@
 "Separator snap distance": "Расстояние привязки разделителя",
 "Add separator": "Добавить разделитель",
 "Remove separator": "Удалить разделитель",
-"Reset layout": "Сбросить расположение"
+"Reset layout": "Сбросить расположение",
+"Claude bar length": "Длина полос Claude",
+"Claude bar height": "Высота полос Claude",
+"Claude bar segments": "Сегментов в полосе",
+"solid": "сплошная",
+"Bar sizes apply to the large Claude style.": "Размеры полос действуют в большом стиле Claude."
 }

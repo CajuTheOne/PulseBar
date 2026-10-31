@@ -101,5 +101,10 @@
 "Separator snap distance",
 "Add separator",
 "Remove separator",
-"Reset layout"
+"Reset layout",
+"Claude bar length",
+"Claude bar height",
+"Claude bar segments",
+"solid",
+"Bar sizes apply to the large Claude style."
 ]
