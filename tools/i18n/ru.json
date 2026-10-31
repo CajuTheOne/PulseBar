@@ -84,5 +84,22 @@
 "Account": "Аккаунт",
 "Tooltip on hover": "Подсказка при наведении",
 "Chart in the tooltip": "График в подсказке",
-"You can also drag the bar along the taskbar with the mouse.": "Строку можно и просто перетащить мышью по панели задач."
+"You can also drag the bar along the taskbar with the mouse.": "Строку можно и просто перетащить мышью по панели задач.",
+"Two lines": "Две строки",
+"blocks in a row, separators between them": "блоки в ряд, разделители между ними",
+"vertical labels, values in two rows": "вертикальные подписи, значения в две строки",
+"Elements": "Элементы",
+"Claude limits": "Лимиты Claude",
+"Off": "Выкл",
+"Compact (between blocks)": "Компактный (между блоками)",
+"Large (bars)": "Большой (полосы)",
+"Layout on the taskbar": "Расположение на панели задач",
+"Edit mode": "Режим правки",
+"In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.": "В режиме правки перетаскивайте элементы прямо на панели задач; с Shift двигаются все сразу. Esc или этот переключатель завершают правку и сохраняют расположение.",
+"Snap to neighbours": "Привязка к соседям",
+"Snap distance": "Расстояние привязки",
+"Separator snap distance": "Расстояние привязки разделителя",
+"Add separator": "Добавить разделитель",
+"Remove separator": "Удалить разделитель",
+"Reset layout": "Сбросить расположение"
 }

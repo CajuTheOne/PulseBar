@@ -55,6 +55,20 @@ internal static class SettingsShot
 		public void ReopenSettings(int page)
 		{
 		}
+
+		public bool EditMode => false;
+
+		public void SetEditMode(bool on)
+		{
+		}
+
+		public void ResetLayout()
+		{
+		}
+
+		public void AddSeparator()
+		{
+		}
 	}
 
 	public static int Run(string png, int page, bool expand, string? language)

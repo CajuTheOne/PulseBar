@@ -84,5 +84,22 @@
 "Account": "アカウント",
 "Tooltip on hover": "ホバー時のヒント",
 "Chart in the tooltip": "ヒントにグラフを表示",
-"You can also drag the bar along the taskbar with the mouse.": "マウスでバーをタスクバーに沿ってドラッグすることもできます。"
+"You can also drag the bar along the taskbar with the mouse.": "マウスでバーをタスクバーに沿ってドラッグすることもできます。",
+"Two lines": "2 行",
+"blocks in a row, separators between them": "ブロックを横に並べ、間に区切り線",
+"vertical labels, values in two rows": "縦書きラベル、値は 2 行",
+"Elements": "要素",
+"Claude limits": "Claude の上限",
+"Off": "オフ",
+"Compact (between blocks)": "コンパクト（ブロックの間）",
+"Large (bars)": "大（バー）",
+"Layout on the taskbar": "タスクバー上の配置",
+"Edit mode": "編集モード",
+"In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.": "編集モードではタスクバー上で要素をドラッグします。Shift を押すとすべてが一緒に動きます。Esc またはこのスイッチで編集を終了し、配置を保存します。",
+"Snap to neighbours": "隣にスナップ",
+"Snap distance": "スナップ間隔",
+"Separator snap distance": "区切り線のスナップ間隔",
+"Add separator": "区切り線を追加",
+"Remove separator": "区切り線を削除",
+"Reset layout": "配置をリセット"
 }

@@ -84,5 +84,22 @@
 "Account": "Cuenta",
 "Tooltip on hover": "Información al pasar el ratón",
 "Chart in the tooltip": "Gráfico en la información",
-"You can also drag the bar along the taskbar with the mouse.": "También puedes arrastrar la barra por la barra de tareas con el ratón."
+"You can also drag the bar along the taskbar with the mouse.": "También puedes arrastrar la barra por la barra de tareas con el ratón.",
+"Two lines": "Dos líneas",
+"blocks in a row, separators between them": "bloques en fila, separadores entre ellos",
+"vertical labels, values in two rows": "etiquetas verticales, valores en dos líneas",
+"Elements": "Elementos",
+"Claude limits": "Límites de Claude",
+"Off": "Desactivado",
+"Compact (between blocks)": "Compacto (entre bloques)",
+"Large (bars)": "Grande (barras)",
+"Layout on the taskbar": "Disposición en la barra de tareas",
+"Edit mode": "Modo de edición",
+"In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.": "En modo de edición arrastra los elementos en la barra de tareas; con Mayús se mueven todos juntos. Esc o este interruptor termina la edición y guarda la disposición.",
+"Snap to neighbours": "Ajustar a los vecinos",
+"Snap distance": "Distancia de ajuste",
+"Separator snap distance": "Distancia de ajuste del separador",
+"Add separator": "Añadir separador",
+"Remove separator": "Quitar separador",
+"Reset layout": "Restablecer disposición"
 }

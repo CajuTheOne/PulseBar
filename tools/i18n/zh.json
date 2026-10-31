@@ -84,5 +84,22 @@
 "Account": "账户",
 "Tooltip on hover": "悬停提示",
 "Chart in the tooltip": "提示中显示图表",
-"You can also drag the bar along the taskbar with the mouse.": "也可以用鼠标沿任务栏拖动此栏。"
+"You can also drag the bar along the taskbar with the mouse.": "也可以用鼠标沿任务栏拖动此栏。",
+"Two lines": "两行",
+"blocks in a row, separators between them": "模块排成一行，中间有分隔线",
+"vertical labels, values in two rows": "竖排标签，数值分两行",
+"Elements": "元素",
+"Claude limits": "Claude 限额",
+"Off": "关闭",
+"Compact (between blocks)": "紧凑（模块之间）",
+"Large (bars)": "大（进度条）",
+"Layout on the taskbar": "任务栏上的布局",
+"Edit mode": "编辑模式",
+"In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.": "在编辑模式下直接在任务栏上拖动元素；按住 Shift 可一起移动全部元素。按 Esc 或此开关结束编辑并保存布局。",
+"Snap to neighbours": "吸附到相邻元素",
+"Snap distance": "吸附间距",
+"Separator snap distance": "分隔线吸附间距",
+"Add separator": "添加分隔线",
+"Remove separator": "删除分隔线",
+"Reset layout": "重置布局"
 }

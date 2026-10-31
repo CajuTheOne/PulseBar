@@ -26,7 +26,8 @@ internal sealed class BarWindow : NativeWindow
 
 	private long _lastClick;
 
-	public event Action? RightClick;
+	// x — в пикселях окна строки.
+	public event Action<int>? RightClick;
 
 	public event Action? DoubleClick;
 
@@ -43,8 +44,15 @@ internal sealed class BarWindow : NativeWindow
 
 	private int _downX;
 
-	// Перетаскивание строки левой кнопкой: Drag(dx) — сдвиг мыши от нажатия, px экрана; DragEnd — отпустили.
-	public event Action? DragStart;
+	private int _downClientX;
+
+	private bool _downShift;
+
+	// Режим правки: левая кнопка перетаскивает элементы; иначе — только щелчки.
+	public bool EditMode;
+
+	// Перетаскивание: DragStart(x в окне в момент нажатия, Shift), Drag(dx) — сдвиг мыши от нажатия, px экрана.
+	public event Action<int, bool>? DragStart;
 
 	public event Action<int>? Drag;
 
@@ -109,7 +117,13 @@ internal sealed class BarWindow : NativeWindow
 		case 0x21: // WM_MOUSEACTIVATE: не забирать фокус у панели и программ
 			m.Result = 3; // MA_NOACTIVATE
 			return;
-		case 0x201: // WM_LBUTTONDOWN: начало щелчка или перетаскивания
+		case 0x201: // WM_LBUTTONDOWN: начало щелчка или (в режиме правки) перетаскивания
+			if (!EditMode)
+			{
+				return;
+			}
+			_downClientX = (short)(m.LParam.ToInt64() & 0xFFFF);
+			_downShift = (m.WParam.ToInt64() & 4) != 0; // MK_SHIFT
 			GetCursorPos(out POINT p);
 			_downX = p.X;
 			_down = true;
@@ -148,7 +162,7 @@ internal sealed class BarWindow : NativeWindow
 			_down = false;
 			break;
 		case 0x205: // WM_RBUTTONUP
-			RightClick?.Invoke();
+			RightClick?.Invoke((short)(m.LParam.ToInt64() & 0xFFFF));
 			return;
 		case 0x200: // WM_MOUSEMOVE
 			if (_down)
@@ -158,7 +172,7 @@ internal sealed class BarWindow : NativeWindow
 				if (!_dragging && Math.Abs(dx) >= GetSystemMetrics(68)) // SM_CXDRAG
 				{
 					_dragging = true;
-					DragStart?.Invoke();
+					DragStart?.Invoke(_downClientX, _downShift);
 				}
 				if (_dragging)
 				{

@@ -84,5 +84,22 @@
 "Account": "Konto",
 "Tooltip on hover": "Podpowiedź po najechaniu",
 "Chart in the tooltip": "Wykres w podpowiedzi",
-"You can also drag the bar along the taskbar with the mouse.": "Pasek można też przeciągnąć myszą wzdłuż paska zadań."
+"You can also drag the bar along the taskbar with the mouse.": "Pasek można też przeciągnąć myszą wzdłuż paska zadań.",
+"Two lines": "Dwa wiersze",
+"blocks in a row, separators between them": "bloki w rzędzie, separatory między nimi",
+"vertical labels, values in two rows": "pionowe etykiety, wartości w dwóch wierszach",
+"Elements": "Elementy",
+"Claude limits": "Limity Claude",
+"Off": "Wył.",
+"Compact (between blocks)": "Kompaktowy (między blokami)",
+"Large (bars)": "Duży (paski)",
+"Layout on the taskbar": "Układ na pasku zadań",
+"Edit mode": "Tryb edycji",
+"In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.": "W trybie edycji przeciągaj elementy na pasku zadań; z Shift przesuwają się wszystkie razem. Esc lub ten przełącznik kończy edycję i zapisuje układ.",
+"Snap to neighbours": "Przyciągaj do sąsiadów",
+"Snap distance": "Odstęp przyciągania",
+"Separator snap distance": "Odstęp przyciągania separatora",
+"Add separator": "Dodaj separator",
+"Remove separator": "Usuń separator",
+"Reset layout": "Resetuj układ"
 }

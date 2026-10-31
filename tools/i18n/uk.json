@@ -84,5 +84,22 @@
 "Account": "Обліковий запис",
 "Tooltip on hover": "Підказка під час наведення",
 "Chart in the tooltip": "Графік у підказці",
-"You can also drag the bar along the taskbar with the mouse.": "Рядок можна й просто перетягнути мишею по панелі завдань."
+"You can also drag the bar along the taskbar with the mouse.": "Рядок можна й просто перетягнути мишею по панелі завдань.",
+"Two lines": "Два рядки",
+"blocks in a row, separators between them": "блоки в ряд, роздільники між ними",
+"vertical labels, values in two rows": "вертикальні підписи, значення у два рядки",
+"Elements": "Елементи",
+"Claude limits": "Ліміти Claude",
+"Off": "Вимк",
+"Compact (between blocks)": "Компактний (між блоками)",
+"Large (bars)": "Великий (смуги)",
+"Layout on the taskbar": "Розташування на панелі завдань",
+"Edit mode": "Режим редагування",
+"In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.": "У режимі редагування перетягуйте елементи просто на панелі завдань; із Shift рухаються всі разом. Esc або цей перемикач завершують редагування і зберігають розташування.",
+"Snap to neighbours": "Прив'язка до сусідів",
+"Snap distance": "Відстань прив'язки",
+"Separator snap distance": "Відстань прив'язки роздільника",
+"Add separator": "Додати роздільник",
+"Remove separator": "Видалити роздільник",
+"Reset layout": "Скинути розташування"
 }

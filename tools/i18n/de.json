@@ -84,5 +84,22 @@
 "Account": "Konto",
 "Tooltip on hover": "Tooltip beim Darüberfahren",
 "Chart in the tooltip": "Diagramm im Tooltip",
-"You can also drag the bar along the taskbar with the mouse.": "Sie können die Leiste auch mit der Maus entlang der Taskleiste ziehen."
+"You can also drag the bar along the taskbar with the mouse.": "Sie können die Leiste auch mit der Maus entlang der Taskleiste ziehen.",
+"Two lines": "Zwei Zeilen",
+"blocks in a row, separators between them": "Blöcke nebeneinander, Trennlinien dazwischen",
+"vertical labels, values in two rows": "senkrechte Beschriftungen, Werte in zwei Zeilen",
+"Elements": "Elemente",
+"Claude limits": "Claude-Limits",
+"Off": "Aus",
+"Compact (between blocks)": "Kompakt (zwischen Blöcken)",
+"Large (bars)": "Groß (Balken)",
+"Layout on the taskbar": "Anordnung auf der Taskleiste",
+"Edit mode": "Bearbeitungsmodus",
+"In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.": "Im Bearbeitungsmodus Elemente direkt auf der Taskleiste ziehen; mit Umschalt bewegen sich alle zusammen. Esc oder dieser Schalter beendet die Bearbeitung und speichert die Anordnung.",
+"Snap to neighbours": "An Nachbarn ausrichten",
+"Snap distance": "Ausrichtungsabstand",
+"Separator snap distance": "Abstand an Trennlinien",
+"Add separator": "Trennlinie hinzufügen",
+"Remove separator": "Trennlinie entfernen",
+"Reset layout": "Anordnung zurücksetzen"
 }

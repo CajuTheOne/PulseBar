@@ -60,7 +60,54 @@ internal sealed class Settings
 
 	public bool Beta;
 
-	public bool ShowClaude = true;
+	// Блок Claude: 0 — выключен, 1 — компактный (между блоками), 2 — большой (полосы 5h и 7d).
+	public int ClaudeStyle = 1;
+
+	public bool ShowClaude
+	{
+		get
+		{
+			return ClaudeStyle != 0;
+		}
+		set
+		{
+			if (!value)
+			{
+				ClaudeStyle = 0;
+			}
+			else if (ClaudeStyle == 0)
+			{
+				ClaudeStyle = 1;
+			}
+		}
+	}
+
+	// Расположение элементов на панели: группы прижатых друг к другу элементов; X — расстояние от трея до правого
+	// края группы, px при 100 %. null — по умолчанию (всё в ряд у трея). Разделители — элементы sep1, sep2, …
+	public sealed class Group
+	{
+		public int X;
+
+		public List<string> Items = new List<string>();
+
+		public Group Clone()
+		{
+			return new Group
+			{
+				X = X,
+				Items = new List<string>(Items)
+			};
+		}
+	}
+
+	public List<Group>? Groups;
+
+	// Привязка при перетаскивании и расстояния между прилипшими элементами (у разделителя — своё), px при 100 %.
+	public bool Snap = true;
+
+	public int SnapGap = 20;
+
+	public int SepGap = 10;
 
 	public bool ShowCpu = true;
 
@@ -166,6 +213,76 @@ internal sealed class Settings
 		return Order().Where(IsShown).ToArray();
 	}
 
+	public List<Group> LayoutGroups => Groups ?? (Groups = DefaultGroups());
+
+	// «Всё в ряд у трея»: порядок блоков из 1.x/2.0, в одну строку — с разделителями между блоками.
+	public List<Group> DefaultGroups()
+	{
+		Group group = new Group
+		{
+			X = Math.Clamp(TrayGap, 0, 400)
+		};
+		int sep = 0;
+		foreach (string item in Order())
+		{
+			if (group.Items.Count > 0 && Layout == 0)
+			{
+				group.Items.Add("sep" + ++sep);
+			}
+			group.Items.Add(item);
+		}
+		return new List<Group> { group };
+	}
+
+	public void ResetLayout()
+	{
+		Groups = DefaultGroups();
+	}
+
+	public string NewSeparatorId()
+	{
+		int max = 0;
+		foreach (Group group in LayoutGroups)
+		{
+			foreach (string item in group.Items)
+			{
+				if (item.StartsWith("sep", StringComparison.Ordinal) && int.TryParse(item.AsSpan(3), out int n))
+				{
+					max = Math.Max(max, n);
+				}
+			}
+		}
+		return "sep" + (max + 1);
+	}
+
+	// Каждый блок — ровно в одной группе; потерянные (из старых настроек) — в начало ближайшей к трею группы.
+	private void NormalizeGroups()
+	{
+		if (Groups == null)
+		{
+			return;
+		}
+		HashSet<string> seen = new HashSet<string>();
+		foreach (Group group in Groups)
+		{
+			group.Items.RemoveAll((string id) => (!AllBlocks.Contains(id) && !id.StartsWith("sep", StringComparison.Ordinal)) || !seen.Add(id));
+		}
+		Groups.RemoveAll((Group g) => g.Items.Count == 0);
+		if (Groups.Count == 0)
+		{
+			Groups = null;
+			return;
+		}
+		Group nearest = Groups.OrderBy((Group g) => g.X).First();
+		foreach (string block in AllBlocks)
+		{
+			if (!seen.Contains(block))
+			{
+				nearest.Items.Insert(0, block);
+			}
+		}
+	}
+
 	private static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PulseBar");
 
 	private static string JsonPath => Path.Combine(Dir, "settings.json");
@@ -181,10 +298,22 @@ internal sealed class Settings
 			if (File.Exists(JsonPath))
 			{
 				using JsonDocument jsonDocument = JsonDocument.Parse(File.ReadAllText(JsonPath));
+				bool snapGap = false;
 				foreach (JsonProperty item in jsonDocument.RootElement.EnumerateObject())
 				{
+					if (item.Name == "groups")
+					{
+						settings.Groups = ReadGroups(item.Value);
+						continue;
+					}
+					snapGap |= item.Name == "snapGap";
 					settings.Apply(item.Name, JsonText(item.Value));
 				}
+				if (!snapGap)
+				{
+					settings.SnapGap = settings.GroupGap;
+				}
+				settings.NormalizeGroups();
 			}
 			else if (File.Exists(IniPath))
 			{
@@ -208,6 +337,34 @@ internal sealed class Settings
 			Log.Write("settings load: " + ex.Message);
 		}
 		return settings;
+	}
+
+	private static List<Group>? ReadGroups(JsonElement v)
+	{
+		if (v.ValueKind != JsonValueKind.Array)
+		{
+			return null;
+		}
+		List<Group> list = new List<Group>();
+		foreach (JsonElement item in v.EnumerateArray())
+		{
+			Group group = new Group
+			{
+				X = (item.TryGetProperty("x", out JsonElement x) && x.TryGetInt32(out int n)) ? Math.Clamp(n, 0, 4000) : 0
+			};
+			if (item.TryGetProperty("items", out JsonElement items) && items.ValueKind == JsonValueKind.Array)
+			{
+				foreach (JsonElement id in items.EnumerateArray())
+				{
+					if (id.ValueKind == JsonValueKind.String)
+					{
+						group.Items.Add(id.GetString()!);
+					}
+				}
+			}
+			list.Add(group);
+		}
+		return list;
 	}
 
 	// Значение JSON в том же виде, что в settings.ini: true → 1, [60, 85] → 60,85.
@@ -272,6 +429,18 @@ internal sealed class Settings
 			break;
 		case "showClaude":
 			this.ShowClaude = result != 0;
+			break;
+		case "claudeStyle":
+			this.ClaudeStyle = Math.Clamp(result, 0, 2);
+			break;
+		case "snap":
+			this.Snap = result != 0;
+			break;
+		case "snapGap":
+			this.SnapGap = Math.Clamp(result, 0, 80);
+			break;
+		case "sepGap":
+			this.SepGap = Math.Clamp(result, 0, 80);
 			break;
 		case "hoverTip":
 			this.HoverTip = result != 0;
@@ -355,7 +524,27 @@ internal sealed class Settings
 				w.WriteBoolean("showBattery", ShowBattery);
 				w.WriteBoolean("embed", Embed);
 				w.WriteBoolean("beta", Beta);
-				w.WriteBoolean("showClaude", ShowClaude);
+				w.WriteNumber("claudeStyle", ClaudeStyle);
+				w.WriteBoolean("snap", Snap);
+				w.WriteNumber("snapGap", SnapGap);
+				w.WriteNumber("sepGap", SepGap);
+				if (Groups != null)
+				{
+					w.WriteStartArray("groups");
+					foreach (Group group in Groups)
+					{
+						w.WriteStartObject();
+						w.WriteNumber("x", group.X);
+						w.WriteStartArray("items");
+						foreach (string item in group.Items)
+						{
+							w.WriteStringValue(item);
+						}
+						w.WriteEndArray();
+						w.WriteEndObject();
+					}
+					w.WriteEndArray();
+				}
 				w.WriteBoolean("hoverTip", HoverTip);
 				w.WriteBoolean("hoverChart", HoverChart);
 				w.WriteBoolean("showCpu", ShowCpu);

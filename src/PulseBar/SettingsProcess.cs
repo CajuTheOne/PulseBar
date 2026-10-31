@@ -21,21 +21,28 @@ internal static class SettingsProcess
 
 	public static readonly uint MsgOpenLogitech = RegisterWindowMessageW("PulseBar.OpenLogitech");
 
+	// Режим правки (wParam 1/0), сброс расположения, новый разделитель — делает строка: расположением владеет она.
+	public static readonly uint MsgEditMode = RegisterWindowMessageW("PulseBar.EditMode");
+
+	public static readonly uint MsgResetLayout = RegisterWindowMessageW("PulseBar.ResetLayout");
+
+	public static readonly uint MsgAddSeparator = RegisterWindowMessageW("PulseBar.AddSeparator");
+
 	public static string StatusPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "status.json");
 
 	private static nint _bar;
 
-	private static void Notify(uint msg)
+	private static void Notify(uint msg, nint wParam = 0)
 	{
 		if (_bar != IntPtr.Zero)
 		{
-			PostMessageW(_bar, msg, IntPtr.Zero, IntPtr.Zero);
+			PostMessageW(_bar, msg, wParam, IntPtr.Zero);
 		}
 	}
 
 	// ---------- сторона строки ----------
 
-	public static void WriteStatus(in Readings r, ClaudeUsage claude, bool light, IReadOnlyList<GpuSensor.Adapter> adapters)
+	public static void WriteStatus(in Readings r, ClaudeUsage claude, bool light, IReadOnlyList<GpuSensor.Adapter> adapters, bool edit)
 	{
 		try
 		{
@@ -44,6 +51,7 @@ internal static class SettingsProcess
 			{
 				w.WriteStartObject();
 				w.WriteBoolean("light", light);
+				w.WriteBoolean("edit", edit);
 				Num(w, "cpuLoad", r.CpuLoad);
 				Num(w, "cpuTemp", r.CpuTemp);
 				Num(w, "gpuLoad", r.GpuLoad);
@@ -158,6 +166,8 @@ internal static class SettingsProcess
 
 		private string _claudeAccount = "";
 
+		private bool _edit;
+
 		private bool _light;
 
 		private List<GpuSensor.Adapter> _adapters = new List<GpuSensor.Adapter>();
@@ -200,6 +210,31 @@ internal static class SettingsProcess
 
 		public string ClaudeAccount => _claudeAccount;
 
+		public bool EditMode
+		{
+			get
+			{
+				ReadStatus();
+				return _edit;
+			}
+		}
+
+		public void SetEditMode(bool on)
+		{
+			_edit = on;
+			Notify(MsgEditMode, on ? 1 : 0);
+		}
+
+		public void ResetLayout()
+		{
+			Notify(MsgResetLayout);
+		}
+
+		public void AddSeparator()
+		{
+			Notify(MsgAddSeparator);
+		}
+
 		public Updater Updater { get; } = new Updater();
 
 		public IReadOnlyList<GpuSensor.Adapter> Adapters => _adapters;
@@ -231,6 +266,8 @@ internal static class SettingsProcess
 
 		public void Apply()
 		{
+			// Расположение меняет только строка (перетаскиванием) — не затирать его своей устаревшей копией.
+			Settings.Groups = Settings.Load().Groups;
 			Settings.Save();
 			Notify(MsgSettingsChanged);
 		}
@@ -283,6 +320,7 @@ internal static class SettingsProcess
 				using JsonDocument doc = JsonDocument.Parse(f);
 				JsonElement e = doc.RootElement;
 				_light = e.TryGetProperty("light", out JsonElement l) && l.GetBoolean();
+				_edit = e.TryGetProperty("edit", out JsonElement ed) && ed.GetBoolean();
 				_readings = new Readings
 				{
 					CpuLoad = F(e, "cpuLoad"),

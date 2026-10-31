@@ -54,6 +54,15 @@ internal interface ISettingsHost
 
 	// Пересоздать окно (после смены языка), открыв ту же вкладку.
 	void ReopenSettings(int page);
+
+	// Режим правки расположения на панели и действия с расположением — их выполняет строка.
+	bool EditMode { get; }
+
+	void SetEditMode(bool on);
+
+	void ResetLayout();
+
+	void AddSeparator();
 }
 
 // Окно настроек: вкладки слева, тема Fluent (как в Windows 11, светлая/тёмная — по системе).
@@ -93,7 +102,6 @@ internal sealed class SettingsWindow : Window
 		MinHeight = 480.0;
 		WindowStartupLocation = WindowStartupLocation.CenterScreen;
 		_pages.Add((L.T("Appearance"), AppearancePage));
-		_pages.Add((L.T("Blocks"), BlocksPage));
 		_pages.Add((L.T("Thresholds"), ThresholdsPage));
 		_pages.Add((L.T("Keyboard"), KeyboardPage));
 		_pages.Add((L.T("Mouse"), MousePage));
@@ -190,33 +198,78 @@ internal sealed class SettingsWindow : Window
 		{
 			Margin = new Thickness(0.0, 0.0, 0.0, 12.0)
 		};
-		presets.Children.Add(Preset(L.T("Standard"), L.T("two lines, all blocks"), delegate
-		{
-			_s.Layout = 1;
-			_s.TextSize = 1;
-			_s.ShowRamGb = true;
-			ShowBlocks("cpu", "gpu", "vram", "ram", "claude", "battery");
-		}));
-		presets.Children.Add(Preset(L.T("Compact"), L.T("one line, no GB"), delegate
+		presets.Children.Add(Preset(L.T("One line"), L.T("blocks in a row, separators between them"), delegate
 		{
 			_s.Layout = 0;
-			_s.TextSize = 1;
-			_s.ShowRamGb = false;
-			ShowBlocks("cpu", "gpu", "vram", "ram", "claude", "battery");
-		}));
-		presets.Children.Add(Preset(L.T("Minimal"), L.T("CPU and GPU only"), delegate
+		}, reset: true));
+		presets.Children.Add(Preset(L.T("Two lines"), L.T("vertical labels, values in two rows"), delegate
 		{
 			_s.Layout = 1;
-			_s.TextSize = 1;
-			ShowBlocks("cpu", "gpu");
-		}));
-		presets.Children.Add(Preset(L.T("Gaming"), L.T("large text, temperatures"), delegate
-		{
-			_s.Layout = 1;
-			_s.TextSize = 2;
-			ShowBlocks("cpu", "gpu", "claude");
-		}));
+		}, reset: true));
 		p.Children.Add(presets);
+		p.Children.Add(Caption(L.T("Elements")));
+		foreach (string block in new string[5] { "cpu", "gpu", "vram", "ram", "battery" })
+		{
+			string b = block;
+			p.Children.Add(Check(BlockName(b), () => _s.IsShown(b), delegate(bool v)
+			{
+				_s.SetShown(b, v);
+			}));
+		}
+		p.Children.Add(ClaudeStyleCombo());
+		p.Children.Add(Caption(L.T("Layout on the taskbar")));
+		CheckBox edit = new CheckBox
+		{
+			Content = L.T("Edit mode"),
+			IsChecked = _host.EditMode,
+			Margin = new Thickness(0.0, 4.0, 0.0, 4.0)
+		};
+		edit.Click += delegate
+		{
+			_host.SetEditMode(edit.IsChecked == true);
+		};
+		p.Children.Add(edit);
+		p.Children.Add(Note(L.T("In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.")));
+		p.Children.Add(Check(L.T("Snap to neighbours"), () => _s.Snap, delegate(bool v)
+		{
+			_s.Snap = v;
+		}));
+		p.Children.Add(SliderRow(L.T("Snap distance"), 0.0, 60.0, 1.0, () => _s.SnapGap, delegate(int v)
+		{
+			_s.SnapGap = v;
+		}, (int v) => $"{v} px"));
+		p.Children.Add(SliderRow(L.T("Separator snap distance"), 0.0, 40.0, 1.0, () => _s.SepGap, delegate(int v)
+		{
+			_s.SepGap = v;
+		}, (int v) => $"{v} px"));
+		WrapPanel buttons = new WrapPanel
+		{
+			Margin = new Thickness(0.0, 8.0, 0.0, 16.0)
+		};
+		Button add = new Button
+		{
+			Content = L.T("Add separator"),
+			Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
+		};
+		add.Click += delegate
+		{
+			_host.AddSeparator();
+		};
+		Button reset = new Button
+		{
+			Content = L.T("Reset layout")
+		};
+		reset.Click += delegate
+		{
+			_host.ResetLayout();
+		};
+		buttons.Children.Add(add);
+		buttons.Children.Add(reset);
+		p.Children.Add(buttons);
+		_refresh = delegate
+		{
+			edit.IsChecked = _host.EditMode;
+		};
 		StackPanel more = new StackPanel();
 		more.Children.Add(Combo(L.T("Layout"), new string[2]
 		{
@@ -243,18 +296,6 @@ internal sealed class SettingsWindow : Window
 		{
 			_s.BlueNormal = v == 1;
 		}));
-		int[] gaps = new int[7] { 6, 10, 14, 20, 26, 32, 40 };
-		more.Children.Add(Combo(L.T("Spacing between blocks"), gaps.Select((int g) => $"{g} px").ToArray(), () => Math.Max(0, Array.IndexOf(gaps, _s.GroupGap)), delegate(int v)
-		{
-			_s.GroupGap = gaps[v];
-		}));
-		more.Children.Add(SliderRow(L.T("Spacing from tray"), 0.0, 1500.0, 10.0, () => _s.TrayGap, delegate(int v)
-		{
-			_s.TrayGap = v;
-		}, (int v) => $"{v} px"));
-		TextBlock dragNote = Note(L.T("You can also drag the bar along the taskbar with the mouse."));
-		dragNote.Margin = new Thickness(200.0, 0.0, 0.0, 8.0);
-		more.Children.Add(dragNote);
 		int[] intervals = new int[4] { 500, 1000, 2000, 5000 };
 		more.Children.Add(Combo(L.T("Update interval"), intervals.Select((int ms) => (ms < 1000) ? L.T("0.5 s") : L.F("{0} s", ms / 1000)).ToArray(), () => Math.Max(0, Array.IndexOf(intervals, _s.IntervalMs)), delegate(int v)
 		{
@@ -324,6 +365,19 @@ internal sealed class SettingsWindow : Window
 		return p;
 	}
 
+	private UIElement ClaudeStyleCombo()
+	{
+		return Combo(L.T("Claude limits"), new string[3]
+		{
+			L.T("Off"),
+			L.T("Compact (between blocks)"),
+			L.T("Large (bars)")
+		}, () => _s.ClaudeStyle, delegate(int v)
+		{
+			_s.ClaudeStyle = v;
+		});
+	}
+
 	private void ShowBlocks(params string[] blocks)
 	{
 		foreach (string b in Settings.AllBlocks)
@@ -332,7 +386,8 @@ internal sealed class SettingsWindow : Window
 		}
 	}
 
-	private UIElement Preset(string title, string sub, Action apply)
+	// reset — после применения разложить элементы заново (в одну строку — с разделителями).
+	private UIElement Preset(string title, string sub, Action apply, bool reset = false)
 	{
 		StackPanel content = new StackPanel();
 		content.Children.Add(new TextBlock
@@ -351,7 +406,7 @@ internal sealed class SettingsWindow : Window
 		Button b = new Button
 		{
 			Content = content,
-			Width = 140.0,
+			Width = 230.0,
 			Height = 58.0,
 			Margin = new Thickness(0.0, 0.0, 8.0, 8.0),
 			HorizontalContentAlignment = HorizontalAlignment.Left,
@@ -361,6 +416,10 @@ internal sealed class SettingsWindow : Window
 		{
 			apply();
 			Changed();
+			if (reset)
+			{
+				_host.ResetLayout();
+			}
 		};
 		return b;
 	}
@@ -374,13 +433,19 @@ internal sealed class SettingsWindow : Window
 		float scale = (float)VisualTreeHelper.GetDpi(this).DpiScaleX;
 		int h = (int)MathF.Round(48f * scale);
 		Readings r = _host.Readings;
-		_previewRenderer.Configure(scale, h, _s, _host.Claude != null);
-		int w = Math.Max(1, _previewRenderer.Width);
+		_previewRenderer.Configure(scale, h, _s);
+		// Превью — видимые элементы подряд, слева направо (группы, дальние от трея, — левее).
+		List<string> ids = (from g in _s.LayoutGroups
+			orderby g.X descending
+			from id in g.Items
+			where BarRenderer.IsSeparator(id) || (id == "claude" ? (_s.ClaudeStyle != 0 && _host.Claude != null) : _s.IsShown(id))
+			select id).ToList();
+		int w = Math.Max(1, (int)MathF.Ceiling(_previewRenderer.RowWidth(ids)));
 		using Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppPArgb);
 		using (Graphics g = Graphics.FromImage(bmp))
 		{
 			g.Clear(System.Drawing.Color.Transparent);
-			_previewRenderer.Draw(g, in r, _s, Palette.Create(_host.LightTaskbar, _s.BlueNormal));
+			_previewRenderer.DrawRow(g, ids, in r, _s, Palette.Create(_host.LightTaskbar, _s.BlueNormal));
 		}
 		BitmapData data = bmp.LockBits(new System.Drawing.Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppPArgb);
 		try
@@ -392,93 +457,6 @@ internal sealed class SettingsWindow : Window
 		finally
 		{
 			bmp.UnlockBits(data);
-		}
-	}
-
-	// ---------- Блоки ----------
-
-	private UIElement BlocksPage()
-	{
-		StackPanel p = Page(L.T("Blocks"));
-		p.Children.Add(Note(L.T("Drag a block by its handle to change the order. Unticked blocks are hidden.")));
-		ListBox list = new ListBox
-		{
-			AllowDrop = true,
-			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
-		};
-		Fill();
-		Point start = default(Point);
-		string dragging = null;
-		list.PreviewMouseMove += delegate(object _, MouseEventArgs e)
-		{
-			if (dragging != null && e.LeftButton == MouseButtonState.Pressed && (e.GetPosition(list) - start).Length > 4.0)
-			{
-				string key = dragging;
-				dragging = null;
-				DragDrop.DoDragDrop(list, key, DragDropEffects.Move);
-			}
-		};
-		list.Drop += delegate(object _, DragEventArgs e)
-		{
-			if (e.Data.GetData(typeof(string)) is string key)
-			{
-				ListBoxItem target = Ancestor<ListBoxItem>(e.OriginalSource as DependencyObject);
-				List<string> order = _s.Order().ToList();
-				order.Remove(key);
-				int index = (target?.Tag is string t) ? order.IndexOf(t) : order.Count;
-				if (target != null && e.GetPosition(target).Y > target.ActualHeight / 2.0)
-				{
-					index++;
-				}
-				order.Insert(Math.Clamp(index, 0, order.Count), key);
-				_s.BlockOrder = string.Join(",", order);
-				Changed();
-				Fill();
-			}
-		};
-		p.Children.Add(list);
-		return p;
-		void Fill()
-		{
-			list.Items.Clear();
-			foreach (string key2 in _s.Order())
-			{
-				string k = key2;
-				TextBlock handle = new TextBlock
-				{
-					Text = "⠿",
-					FontSize = 16.0,
-					Cursor = Cursors.SizeAll,
-					Margin = new Thickness(0.0, 0.0, 12.0, 0.0),
-					VerticalAlignment = VerticalAlignment.Center
-				};
-				handle.PreviewMouseLeftButtonDown += delegate(object _, MouseButtonEventArgs e)
-				{
-					start = e.GetPosition(list);
-					dragging = k;
-				};
-				CheckBox check = new CheckBox
-				{
-					Content = BlockName(k),
-					IsChecked = _s.IsShown(k)
-				};
-				check.Click += delegate
-				{
-					_s.SetShown(k, check.IsChecked == true);
-					Changed();
-				};
-				StackPanel row = new StackPanel
-				{
-					Orientation = Orientation.Horizontal
-				};
-				row.Children.Add(handle);
-				row.Children.Add(check);
-				list.Items.Add(new ListBoxItem
-				{
-					Content = row,
-					Tag = k
-				});
-			}
 		}
 	}
 
@@ -494,15 +472,6 @@ internal sealed class SettingsWindow : Window
 			"battery" => L.T("Keyboard and mouse battery"),
 			_ => key,
 		};
-	}
-
-	private static T? Ancestor<T>(DependencyObject? d) where T : DependencyObject
-	{
-		while (d != null && d is not T)
-		{
-			d = (d is Visual || d is System.Windows.Media.Media3D.Visual3D) ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
-		}
-		return d as T;
 	}
 
 	// ---------- Пороги ----------
@@ -732,10 +701,7 @@ internal sealed class SettingsWindow : Window
 	private UIElement ClaudePage()
 	{
 		StackPanel p = Page("Claude");
-		p.Children.Add(Check(L.T("Show Claude limits"), () => _s.ShowClaude, delegate(bool v)
-		{
-			_s.ShowClaude = v;
-		}));
+		p.Children.Add(ClaudeStyleCombo());
 		TextBlock status = new TextBlock
 		{
 			Margin = new Thickness(0.0, 12.0, 0.0, 12.0),
@@ -881,7 +847,7 @@ internal sealed class SettingsWindow : Window
 		{
 			Text = text,
 			FontWeight = FontWeights.SemiBold,
-			Margin = new Thickness(0.0, 0.0, 0.0, 6.0)
+			Margin = new Thickness(0.0, 10.0, 0.0, 6.0)
 		};
 		return t;
 	}

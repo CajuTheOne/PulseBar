@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -105,12 +106,39 @@ internal sealed class Overlay : Form
 
 	private int _hoverX = -1;
 
-	// Перетаскивание строки: отступ от трея при нажатии и наибольший допустимый (строка не уходит за левый край панели).
-	private int _dragGap0;
+	// Раскладка: элементы в координатах экрана, левый край окна строки, край трея, левый край панели, масштаб.
+	private readonly List<(string Id, int L, int R)> _elements = new List<(string, int, int)>();
 
-	private int _maxGap = 4000;
+	private readonly List<(int G, int I, string Id, int L, int R)> _arranged = new List<(int, int, string, int, int)>();
+
+	private int _winLeft;
+
+	private int _trayEdge;
+
+	private int _taskbarLeft;
 
 	private float _scale = 1f;
+
+	private int _layoutSig;
+
+	// Режим правки: элементы перетаскиваются мышью (Shift — все сразу); Esc или пункт меню — выход с сохранением.
+	private bool _edit;
+
+	private string? _dragId;
+
+	private bool _dragAll;
+
+	private List<Settings.Group>? _dragBase;
+
+	private int _dragL0;
+
+	private int _dragR0;
+
+	private nint _keyHook;
+
+	private KeyboardProc? _keyProc;
+
+	private string? _menuHit;
 
 	private long _updateCheckAt = Environment.TickCount64 + 60000;
 
@@ -165,7 +193,7 @@ internal sealed class Overlay : Form
 		Native.ChangeWindowMessageFilterEx(base.Handle, _msgTaskbarCreated, 1u, IntPtr.Zero);
 		Native.ChangeWindowMessageFilterEx(base.Handle, 26u, 1u, IntPtr.Zero);
 		_hook = Native.SetWinEventHook(3u, 3u, IntPtr.Zero, _foregroundProc, 0u, 0u, 2u);
-		_bar.RightClick += ShowMenu;
+		_bar.RightClick += ShowMenuAt;
 		_bar.DoubleClick += OpenTaskManager;
 		_bar.Hover += OnBarHover;
 		_bar.Leave += HideTip;
@@ -233,6 +261,21 @@ internal sealed class Overlay : Form
 			OpenLogi();
 			return;
 		}
+		if (m.Msg == SettingsProcess.MsgEditMode)
+		{
+			SetEditMode(m.WParam != IntPtr.Zero);
+			return;
+		}
+		if (m.Msg == SettingsProcess.MsgResetLayout)
+		{
+			ResetLayout();
+			return;
+		}
+		if (m.Msg == SettingsProcess.MsgAddSeparator)
+		{
+			AddSeparator(null);
+			return;
+		}
 		if (_msgTaskbarCreated != 0 && m.Msg == _msgTaskbarCreated)
 		{
 			_tray = IntPtr.Zero;
@@ -264,7 +307,7 @@ internal sealed class Overlay : Form
 		RecordHistory();
 		if (SettingsOpen)
 		{
-			SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters);
+			SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit);
 		}
 		long tickCount = Environment.TickCount64;
 		if (tickCount >= _updateCheckAt)
@@ -322,12 +365,12 @@ internal sealed class Overlay : Form
 			CreateBuffer(target.Width, target.Height);
 			_dirty = true;
 		}
-		int num = BarRenderer.Signature(in _r, _s, _lightTaskbar) ^ ((_updater.Available != null) ? 1540483477 : 0);
+		int num = BarRenderer.Signature(in _r, _s, _lightTaskbar) ^ ((_updater.Available != null) ? 1540483477 : 0) ^ _layoutSig ^ (_edit ? 1013904242 : 0);
 		bool flag = target.Left != _placed.Left || target.Top != _placed.Top || target.Width != _placed.Width || target.Height != _placed.Height;
 		if (_dirty || num != _signature)
 		{
-			_g.Clear(Color.FromArgb(1, 0, 0, 0));
-			_renderer.Draw(_g, in _r, _s, _palette);
+			_g.Clear(Color.Transparent);
+			DrawElements(target.Left);
 			if (_updater.Available != null)
 			{
 				DrawUpdateDot();
@@ -388,7 +431,7 @@ internal sealed class Overlay : Form
 		{
 			num2 = 1f;
 		}
-		if (_renderer.Configure(num2, r.Height, _s, ClaudeVisible))
+		if (_renderer.Configure(num2, r.Height, _s))
 		{
 			_dirty = true;
 		}
@@ -398,15 +441,30 @@ internal sealed class Overlay : Form
 			num3 = r2.Left;
 		}
 		_scale = num2;
-		_maxGap = Math.Max(0, (int)((float)(num3 - r.Left - _renderer.Width) / num2));
-		num3 -= (int)MathF.Round((float)Math.Min(_s.TrayGap, _maxGap) * num2);
+		_trayEdge = num3;
+		_taskbarLeft = r.Left;
+		Arrange(_s.LayoutGroups, _arranged);
+		_elements.Clear();
+		int num4 = 17;
+		foreach (var (_, _, id, l, rr) in _arranged)
+		{
+			_elements.Add((id, l, rr));
+			num4 = HashCode.Combine(num4, id, l, rr);
+		}
+		_layoutSig = num4;
+		if (_elements.Count == 0)
+		{
+			return false;
+		}
+		int num5 = (int)MathF.Ceiling(_renderer.Pad) + (int)(6f * num2);
 		target = new Native.RECT
 		{
-			Left = num3 - _renderer.Width,
+			Left = Math.Max(r.Left, _elements.Min(((string Id, int L, int R) e) => e.L) - num5),
 			Top = r.Top,
-			Right = num3,
+			Right = Math.Min(r.Right, _elements.Max(((string Id, int L, int R) e) => e.R) + num5),
 			Bottom = r.Bottom
 		};
+		_winLeft = target.Left;
 		return true;
 	}
 
@@ -586,6 +644,12 @@ internal sealed class Overlay : Form
 		}
 	}
 
+	private void ShowMenuAt(int clientX)
+	{
+		_menuHit = ((clientX >= 0) ? ElementAt(_winLeft + clientX)?.Id : null);
+		ShowMenu();
+	}
+
 	private void ShowMenu()
 	{
 		HideTip();
@@ -618,6 +682,24 @@ internal sealed class Overlay : Form
 		{
 			OpenSettings();
 		});
+		Check(items, L.T("Edit mode"), _edit, SetEditMode, save: false);
+		if (_edit)
+		{
+			string hit = _menuHit;
+			Item(items, L.T("Add separator"), delegate
+			{
+				AddSeparator(hit);
+			});
+			if (hit != null && BarRenderer.IsSeparator(hit))
+			{
+				Item(items, L.T("Remove separator"), delegate
+				{
+					RemoveSeparator(hit);
+				});
+			}
+			Item(items, L.T("Reset layout"), ResetLayout);
+		}
+		_menuHit = null;
 		if (_logi.Config.Enabled && _logi.Config.Profiles.Count > 1)
 		{
 			ToolStripMenuItem toolStripMenuItem = Sub(items, L.T("Profile"));
@@ -819,6 +901,10 @@ internal sealed class Overlay : Form
 		_trayIco?.Dispose();
 		_logi.Dispose();
 		_tip?.Dispose();
+		if (_keyHook != IntPtr.Zero)
+		{
+			UnhookWindowsHookEx(_keyHook);
+		}
 		_claude.Changed -= OnClaudeChanged;
 		_claude.Dispose();
 		_bar.Destroy();
@@ -851,7 +937,7 @@ internal sealed class Overlay : Form
 			}
 			return;
 		}
-		SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters);
+		SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit);
 		try
 		{
 			_settingsProcess = Process.Start(new ProcessStartInfo(Environment.ProcessPath, $"--settings {page} {base.Handle.ToInt64()}")
@@ -904,28 +990,379 @@ internal sealed class Overlay : Form
 		UpdateOverlay();
 	}
 
-	private void OnDragStart()
+	// ---------- Раскладка элементов по панели ----------
+
+	private bool IsVisibleElement(string id)
 	{
-		HideTip();
-		_dragGap0 = Math.Min(_s.TrayGap, _maxGap);
+		if (BarRenderer.IsSeparator(id))
+		{
+			return true;
+		}
+		if (id == "claude")
+		{
+			if (_s.ClaudeStyle != 0)
+			{
+				return _claude.Available;
+			}
+			return false;
+		}
+		return _s.IsShown(id);
 	}
 
-	// Мышь вправо — строка ближе к трею (отступ меньше).
+	// Группа прижатых элементов кладётся справа налево от своего правого края (X от трея); группа не уходит
+	// за левый край панели. Результат — координаты экрана.
+	private void Arrange(List<Settings.Group> groups, List<(int G, int I, string Id, int L, int R)> list)
+	{
+		list.Clear();
+		for (int i = 0; i < groups.Count; i++)
+		{
+			Settings.Group group = groups[i];
+			int count = list.Count;
+			int num = _trayEdge - (int)MathF.Round((float)group.X * _scale);
+			string right = null;
+			for (int num2 = group.Items.Count - 1; num2 >= 0; num2--)
+			{
+				string text = group.Items[num2];
+				if (IsVisibleElement(text))
+				{
+					if (right != null)
+					{
+						num -= (int)MathF.Round(_renderer.Gap(text, right));
+					}
+					int num3 = Math.Max(1, (int)MathF.Ceiling(_renderer.ElementWidth(text)));
+					list.Add((i, num2, text, num - num3, num));
+					num -= num3;
+					right = text;
+				}
+			}
+			if (list.Count > count)
+			{
+				int num4 = _taskbarLeft + 2 - list[list.Count - 1].L;
+				if (num4 > 0)
+				{
+					for (int j = count; j < list.Count; j++)
+					{
+						var (g, item, id, l, r) = list[j];
+						list[j] = (g, item, id, l + num4, r + num4);
+					}
+				}
+			}
+		}
+	}
+
+	private (string Id, int L, int R)? ElementAt(int screenX)
+	{
+		foreach (var element in _elements)
+		{
+			int num = (BarRenderer.IsSeparator(element.Id) ? ((int)(6f * _scale)) : 0);
+			if (screenX >= element.L - num && screenX < element.R + num)
+			{
+				return element;
+			}
+		}
+		return null;
+	}
+
+	// Промежутки между группами прозрачны (alpha 0) — мышь проходит к панели задач; под элементами — почти прозрачная
+	// подложка (alpha 1), чтобы ловить наведение и щелчки. В режиме правки — пунктирные рамки.
+	private void DrawElements(int winLeft)
+	{
+		int num = (int)MathF.Ceiling(_renderer.Pad);
+		int num2 = (int)(6f * _scale);
+		using (SolidBrush brush = new SolidBrush(Color.FromArgb(1, 0, 0, 0)))
+		{
+			foreach (var (id, l, r) in _elements)
+			{
+				int num3 = (BarRenderer.IsSeparator(id) ? num2 : num);
+				_g.FillRectangle(brush, l - winLeft - num3, 0, r - l + 2 * num3, _dibH);
+				_renderer.DrawElement(_g, id, l - winLeft, in _r, _s, _palette);
+			}
+		}
+		if (!_edit)
+		{
+			return;
+		}
+		using Pen pen = new Pen(Color.FromArgb(76, 194, 255), Math.Max(1f, _scale))
+		{
+			DashStyle = DashStyle.Dash
+		};
+		foreach (var (id2, l2, r2) in _elements)
+		{
+			int num4 = (BarRenderer.IsSeparator(id2) ? num2 : 3);
+			_g.DrawRectangle(pen, l2 - winLeft - num4, 3, r2 - l2 + 2 * num4 - 1, _dibH - 7);
+		}
+	}
+
+	// ---------- Режим правки ----------
+
+	private void SetEditMode(bool on)
+	{
+		if (on == _edit)
+		{
+			return;
+		}
+		_edit = on;
+		_bar.EditMode = on;
+		HideTip();
+		if (on)
+		{
+			_keyProc ??= OnKey;
+			_keyHook = SetWindowsHookExW(13, _keyProc, GetModuleHandleW(null), 0u);
+		}
+		else
+		{
+			if (_keyHook != IntPtr.Zero)
+			{
+				UnhookWindowsHookEx(_keyHook);
+			}
+			_keyHook = IntPtr.Zero;
+			_s.Save();
+		}
+		Log.Write(on ? ("layout: edit mode on; " + string.Join(" ", _elements.Select(((string Id, int L, int R) e) => $"{e.Id}:{e.L}-{e.R}"))) : "layout: edit mode off, layout saved");
+		_dirty = true;
+		UpdateOverlay();
+	}
+
+	// Esc завершает режим правки; клавиша не перехватывается, только замечается.
+	private nint OnKey(int code, nint wParam, nint lParam)
+	{
+		if (code >= 0 && wParam == 256 && Marshal.ReadInt32(lParam) == 27)
+		{
+			BeginInvoke(delegate
+			{
+				SetEditMode(on: false);
+			});
+		}
+		return CallNextHookEx(_keyHook, code, wParam, lParam);
+	}
+
+	private void OnDragStart(int clientX, bool shift)
+	{
+		HideTip();
+		_dragId = null;
+		_dragAll = false;
+		_dragBase = null;
+		if (!_edit)
+		{
+			return;
+		}
+		_dragBase = _s.LayoutGroups.Select((Settings.Group g) => g.Clone()).ToList();
+		if (shift)
+		{
+			_dragAll = true;
+			return;
+		}
+		(string Id, int L, int R)? tuple = ElementAt(_winLeft + clientX);
+		if (tuple.HasValue)
+		{
+			(_dragId, _dragL0, _dragR0) = tuple.Value;
+		}
+	}
+
+	// Перетаскиваемый элемент вынимается из своей группы; рядом с краем соседа (ближе 24 px) он к нему прилипает,
+	// иначе становится отдельной группой там, где его отпустили. С Shift двигаются все группы.
 	private void OnDrag(int dx)
 	{
-		int gap = Math.Clamp(_dragGap0 - (int)MathF.Round((float)dx / _scale), 0, _maxGap);
-		if (gap != _s.TrayGap)
+		if (_dragBase == null || (!_dragAll && _dragId == null))
 		{
-			_s.TrayGap = gap;
-			UpdateOverlay();
+			return;
 		}
+		List<Settings.Group> list = _dragBase.Select((Settings.Group g) => g.Clone()).ToList();
+		if (_dragAll)
+		{
+			int num = (int)MathF.Round((float)dx / _scale);
+			foreach (Settings.Group item in list)
+			{
+				item.X = Math.Max(0, item.X - num);
+			}
+		}
+		else
+		{
+			RemoveElement(list, _dragId);
+			int num2 = _dragL0 + dx;
+			int num3 = _dragR0 + dx;
+			if (!_s.Snap || !TrySnap(list, _dragId, num2, num3))
+			{
+				Settings.Group group = new Settings.Group
+				{
+					X = Math.Max(0, (int)MathF.Round((float)(_trayEdge - num3) / _scale))
+				};
+				group.Items.Add(_dragId);
+				list.Add(group);
+			}
+		}
+		_s.Groups = list;
+		_dirty = true;
+		UpdateOverlay();
 	}
 
 	private void OnDragEnd()
 	{
-		_s.Save();
-		Log.Write($"bar: moved, {_s.TrayGap} px from the tray");
+		if (_dragBase != null && (_dragAll || _dragId != null))
+		{
+			_s.Save();
+			Log.Write("layout: moved " + (_dragAll ? "all" : _dragId));
+		}
+		_dragBase = null;
+		_dragId = null;
+		_dragAll = false;
 	}
+
+	// Убрать элемент из группы так, чтобы остальные элементы группы остались на месте.
+	private void RemoveElement(List<Settings.Group> groups, string id)
+	{
+		for (int i = 0; i < groups.Count; i++)
+		{
+			Settings.Group group = groups[i];
+			int num = group.Items.IndexOf(id);
+			if (num < 0)
+			{
+				continue;
+			}
+			bool flag = true;
+			for (int j = num + 1; j < group.Items.Count; j++)
+			{
+				if (IsVisibleElement(group.Items[j]))
+				{
+					flag = false;
+					break;
+				}
+			}
+			string left = null;
+			for (int num2 = num - 1; num2 >= 0; num2--)
+			{
+				if (IsVisibleElement(group.Items[num2]))
+				{
+					left = group.Items[num2];
+					break;
+				}
+			}
+			if (flag && left != null && IsVisibleElement(id))
+			{
+				group.X += (int)MathF.Round((_renderer.ElementWidth(id) + _renderer.Gap(left, id)) / _scale);
+			}
+			group.Items.RemoveAt(num);
+			if (group.Items.Count == 0)
+			{
+				groups.RemoveAt(i);
+			}
+			break;
+		}
+	}
+
+	// Куда вставить перетаскиваемый элемент: если его центр над группой — в ближайший промежуток этой группы;
+	// иначе — к краю соседней группы, если до края меньше 24 px. false — не прилип.
+	private bool TrySnap(List<Settings.Group> groups, string id, int l, int r)
+	{
+		List<(int G, int I, string Id, int L, int R)> list = new List<(int, int, string, int, int)>();
+		Arrange(groups, list);
+		int width = r - l;
+		int center = (l + r) / 2;
+		int catchPx = (int)(24f * _scale);
+		int bestScore = int.MaxValue;
+		int bestGroup = -1;
+		int bestIndex = -1;
+		bool bestEnd = false;
+		int bestRight = 0;
+		for (int i = 0; i < groups.Count; i++)
+		{
+			List<(int G, int I, string Id, int L, int R)> items = (from e in list
+				where e.G == i
+				orderby e.L
+				select e).ToList();
+			if (items.Count == 0)
+			{
+				continue;
+			}
+			var first = items[0];
+			var last = items[items.Count - 1];
+			int gapL = (int)MathF.Round(_renderer.Gap(id, first.Id));
+			int gapR = (int)MathF.Round(_renderer.Gap(last.Id, id));
+			bool over = center >= first.L - catchPx && center <= last.R + catchPx;
+			Consider(over ? Math.Abs(center - (first.L - gapL / 2)) : Math.Abs(r + gapL - first.L), i, first.I, atEnd: false, 0);
+			Consider(over ? Math.Abs(center - (last.R + gapR / 2)) : Math.Abs(l - gapR - last.R), i, last.I + 1, atEnd: true, last.R + gapR + width);
+			if (over)
+			{
+				for (int j = 0; j + 1 < items.Count; j++)
+				{
+					Consider(Math.Abs(center - (items[j].R + items[j + 1].L) / 2), i, items[j + 1].I, atEnd: false, 0);
+				}
+			}
+			void Consider(int distance, int group, int index, bool atEnd, int newRight)
+			{
+				int score = (over ? distance : ((distance < catchPx) ? (100000 + distance) : int.MaxValue));
+				if (score < bestScore)
+				{
+					bestScore = score;
+					bestGroup = group;
+					bestIndex = index;
+					bestEnd = atEnd;
+					bestRight = newRight;
+				}
+			}
+		}
+		if (bestGroup < 0)
+		{
+			return false;
+		}
+		groups[bestGroup].Items.Insert(bestIndex, id);
+		if (bestEnd)
+		{
+			groups[bestGroup].X = Math.Max(0, (int)MathF.Round((float)(_trayEdge - bestRight) / _scale));
+		}
+		return true;
+	}
+
+	// Разделитель — справа от элемента, по которому щёлкнули; без него — в начало ближайшей к трею группы.
+	private void AddSeparator(string? afterId)
+	{
+		List<Settings.Group> layoutGroups = _s.LayoutGroups;
+		string item = _s.NewSeparatorId();
+		Settings.Group group = ((afterId != null) ? layoutGroups.FirstOrDefault((Settings.Group g) => g.Items.Contains(afterId)) : null);
+		if (group != null)
+		{
+			group.Items.Insert(group.Items.IndexOf(afterId) + 1, item);
+		}
+		else
+		{
+			layoutGroups.OrderBy((Settings.Group g) => g.X).First().Items.Insert(0, item);
+		}
+		_s.Save();
+		_dirty = true;
+		UpdateOverlay();
+	}
+
+	private void RemoveSeparator(string id)
+	{
+		List<Settings.Group> layoutGroups = _s.LayoutGroups;
+		RemoveElement(layoutGroups, id);
+		_s.Save();
+		_dirty = true;
+		UpdateOverlay();
+	}
+
+	private void ResetLayout()
+	{
+		_s.ResetLayout();
+		_s.Save();
+		Log.Write("layout: reset");
+		_dirty = true;
+		UpdateOverlay();
+	}
+
+	private delegate nint KeyboardProc(int code, nint wParam, nint lParam);
+
+	[DllImport("user32.dll")]
+	private static extern nint SetWindowsHookExW(int id, KeyboardProc proc, nint module, uint thread);
+
+	[DllImport("user32.dll")]
+	private static extern bool UnhookWindowsHookEx(nint hook);
+
+	[DllImport("user32.dll")]
+	private static extern nint CallNextHookEx(nint hook, int code, nint wParam, nint lParam);
+
+	[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+	private static extern nint GetModuleHandleW(string? name);
 
 	private void RecordHistory()
 	{
@@ -945,7 +1382,7 @@ internal sealed class Overlay : Form
 	// Подсказка: через 0,45 с после наведения; дальше обновляется вместе со строкой и следует за мышью по блокам.
 	private void OnBarHover(int x)
 	{
-		if (!_s.HoverTip)
+		if (!_s.HoverTip || _edit)
 		{
 			return;
 		}
@@ -973,23 +1410,14 @@ internal sealed class Overlay : Form
 	private void ShowTip()
 	{
 		ContextMenuStrip menu = _menu;
-		if (_hoverX < 0 || !_visible || (menu != null && menu.Visible))
+		if (_hoverX < 0 || !_visible || _edit || (menu != null && menu.Visible))
 		{
 			return;
 		}
-		string key = null;
-		float left = 0f;
-		float right = 0f;
-		foreach (var (k, l, r) in _renderer.Blocks)
-		{
-			if (_hoverX >= l && _hoverX < r)
-			{
-				key = k;
-				left = l;
-				right = r;
-				break;
-			}
-		}
+		(string Id, int L, int R)? tuple = ElementAt(_winLeft + _hoverX);
+		string key = ((tuple.HasValue && !BarRenderer.IsSeparator(tuple.Value.Id)) ? tuple.Value.Id : null);
+		float left = (tuple.HasValue ? ((float)(tuple.Value.L - _winLeft)) : 0f);
+		float right = (tuple.HasValue ? ((float)(tuple.Value.R - _winLeft)) : 0f);
 		if (key == null)
 		{
 			if (_tip != null && _tip.Visible)
@@ -1123,7 +1551,14 @@ internal sealed class Overlay : Form
 		return " · " + L.F("reset in {0}", left);
 	}
 
-	private bool ClaudeVisible => _s.ShowClaude && _claude.Available;
+	private static float MinutesLeft(DateTimeOffset? at)
+	{
+		if (!at.HasValue)
+		{
+			return float.NaN;
+		}
+		return (float)(at.Value - DateTimeOffset.Now).TotalMinutes;
+	}
 
 	private void FillClaude()
 	{
@@ -1132,6 +1567,8 @@ internal sealed class Overlay : Form
 		_r.ClaudeFiveHour = current?.FiveHour ?? float.NaN;
 		_r.ClaudeSevenDay = current?.SevenDay ?? float.NaN;
 		_r.ClaudeStale = current?.Stale ?? false;
+		_r.ClaudeFiveHourLeft = MinutesLeft(current?.FiveHourReset);
+		_r.ClaudeSevenDayLeft = MinutesLeft(current?.SevenDayReset);
 	}
 
 	private void OnClaudeChanged()

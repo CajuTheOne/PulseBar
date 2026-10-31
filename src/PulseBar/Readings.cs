@@ -35,4 +35,9 @@ internal struct Readings
 	public float ClaudeSevenDay;
 
 	public bool ClaudeStale;
+
+	// Минут до сброса лимитов (NaN — неизвестно).
+	public float ClaudeFiveHourLeft;
+
+	public float ClaudeSevenDayLeft;
 }
