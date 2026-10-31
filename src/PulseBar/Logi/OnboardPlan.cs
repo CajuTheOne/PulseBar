@@ -13,6 +13,8 @@ internal static class OnboardPlan
 
 	public const int DefaultBreathePeriod = 3000;
 
+	public const int DefaultWavePeriod = 3000;
+
 	public const int DefaultCyclePeriod = 5000;
 
 	// Основа для сборки: свой сектор профиля, если он цел, иначе заводской (как делает G HUB при первом сохранении).
@@ -85,6 +87,12 @@ internal static class OnboardPlan
 		{
 			byte[] w = (byte[])((basis != null && basis[0] == 0x04) ? basis.Clone() : WaveTemplate.Clone());
 			w[9] = (byte)Math.Clamp(brightness, 1, 100);
+			// Период волны, мс: байты 7 (младший) и 10 (старший), как у OpenRGB; в шаблоне 0x0834 = 2100.
+			if (l.Period > 0)
+			{
+				w[7] = (byte)l.Period;
+				w[10] = (byte)(l.Period >> 8);
+			}
 			return w;
 		}
 		default:

@@ -7,14 +7,20 @@ namespace PulseBar.Logi;
 
 // Желаемое состояние клавиатуры в режиме PulseBar (2.3): подсветка клавиш и логотипа (эффект или «по клавишам»),
 // яркость 0–100 и лампочки M (биты M1–M3). LightingKey — отпечаток подсветки: одинаковый отпечаток — нечего отправлять.
+// Animate — дыхание, цикл, волна идут (PulseBar рисует кадры); иначе зона горит статичным цветом.
 internal sealed record KeyFrame(Lighting Keys, Lighting Logo, bool PerKey, IReadOnlyDictionary<byte, Rgb> Colors, int Brightness, byte MLeds)
 {
+	public bool Animate { get; init; }
+
+	// Есть ли в кадре анимированная зона.
+	public bool HasAnimation => (!PerKey && LogiKeyboard.Animated(Keys)) || LogiKeyboard.Animated(Logo);
+
 	public string LightingKey
 	{
 		get
 		{
 			StringBuilder sb = new StringBuilder();
-			sb.Append(PerKey ? "perkey " : "effect ").Append(Keys.Effect).Append(' ').Append(Keys.Color).Append(' ').Append(Keys.Period);
+			sb.Append(Animate ? "anim " : "").Append(PerKey ? "perkey " : "effect ").Append(Keys.Effect).Append(' ').Append(Keys.Color).Append(' ').Append(Keys.Period);
 			sb.Append(" | ").Append(Logo.Effect).Append(' ').Append(Logo.Color).Append(' ').Append(Logo.Period);
 			if (PerKey)
 			{

@@ -29,6 +29,9 @@ public class ServiceTests
 
 		public volatile bool DynamicLighting;
 
+		// Часы анимации, мс.
+		public long Now;
+
 		public Rig(Action<LogiConfig>? edit = null, Action<FakeG915>? before = null)
 		{
 			Dir = Path.Combine(Path.GetTempPath(), "PulseBarTests", Guid.NewGuid().ToString("N"));
@@ -57,7 +60,8 @@ public class ServiceTests
 				SystemEvents = false,
 				Timers = false,
 				FirstSyncMs = int.MaxValue / 2,
-				DynamicLighting = () => DynamicLighting
+				DynamicLighting = () => DynamicLighting,
+				Now = () => Interlocked.Read(ref Now)
 			};
 			Svc = new LogiService(LogiConfig.Load(ConfigPath), readOnly: false, env);
 			Svc.Start();
@@ -317,6 +321,78 @@ public class ServiceTests
 		r.Dispose();
 		Assert.AreEqual(2, r.Kb.SwMode, "given back on exit");
 		Assert.AreEqual(6, r.Kb.SwFlags);
+	}
+
+	private static int PerKeyWrites(FakeG915 kb)
+	{
+		return kb.Calls.Count(x => x.Feature == 0x8081 && x.Fn == 6);
+	}
+
+	[TestMethod]
+	public void BreathingIsDrawnFrameByFrame()
+	{
+		using Rig r = new Rig(c =>
+		{
+			c.Profiles[0].Keyboard.Effect = "breathing";
+			c.Profiles[0].Keyboard.Color = "#FF0000";
+			c.Profiles[0].Keyboard.Period = 2000;
+		});
+		Assert.AreEqual(Rgb.Black, KeysColor(r.Kb), "t = 0: breath out");
+		r.Now = 500;
+		r.Svc.AnimateNow();
+		r.Settle();
+		Assert.IsTrue(Math.Abs(KeysColor(r.Kb).R - 128) <= 1 && KeysColor(r.Kb).G == 0, $"quarter period: half ({KeysColor(r.Kb)})");
+		r.Now = 1000;
+		r.Svc.AnimateNow();
+		r.Settle();
+		Assert.AreEqual(new Rgb(255, 0, 0), KeysColor(r.Kb), "half period: full colour");
+		int writes = PerKeyWrites(r.Kb);
+		r.Svc.AnimateNow();
+		r.Settle();
+		Assert.AreEqual(writes, PerKeyWrites(r.Kb), "nothing changed, nothing sent");
+		Assert.IsTrue(writes < 40, $"one colour for all keys goes in groups of 13 ({writes} writes)");
+	}
+
+	[TestMethod]
+	public void WaveRunsAcrossTheKeyboardAndCycleChangesHue()
+	{
+		using Rig r = new Rig(c =>
+		{
+			c.Profiles[0].Keyboard.Effect = "wave";
+			c.Profiles[0].Logo.Effect = "cycle";
+			c.Profiles[0].Logo.Period = 3000;
+		});
+		r.Now = 700;
+		r.Svc.AnimateNow();
+		r.Settle();
+		// Esc (номер 38) слева, Pause (69) справа — разные оттенки; логотип — оттенок по кругу.
+		Assert.AreNotEqual(r.Kb.Frame[38], r.Kb.Frame[69]);
+		Rgb logo = r.Kb.Frame[KeyLayout.Logo];
+		r.Now = 1700;
+		r.Svc.AnimateNow();
+		r.Settle();
+		Assert.AreNotEqual(logo, r.Kb.Frame[KeyLayout.Logo]);
+	}
+
+	[TestMethod]
+	public void AnimationStopsWhenTheLightIsOffAndComesBack()
+	{
+		using Rig r = new Rig(c =>
+		{
+			c.Profiles[0].Keyboard.Effect = "cycle";
+			c.Profiles[0].Keyboard.Color = "#123456";
+		});
+		r.Svc.DisplayChanged(on: false);
+		r.Settle();
+		Assert.AreEqual(new Rgb(0x12, 0x34, 0x56), KeysColor(r.Kb), "static colour while the screen is off");
+		int writes = PerKeyWrites(r.Kb);
+		r.Now = 1234;
+		r.Svc.AnimateNow();
+		r.Settle();
+		Assert.AreEqual(writes, PerKeyWrites(r.Kb), "no frames while the light is off");
+		r.Svc.DisplayChanged(on: true);
+		r.Settle();
+		Assert.AreNotEqual(new Rgb(0x12, 0x34, 0x56), KeysColor(r.Kb), "animated again");
 	}
 
 	[TestMethod]

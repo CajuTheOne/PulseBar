@@ -372,8 +372,13 @@ internal sealed partial class SettingsWindow
 		{
 			string e = (perKey && pr.PerKey) ? "static" : l.Effect;
 			colorRow.Visibility = (e == "static" || e == "breathing") ? Visibility.Visible : Visibility.Collapsed;
-			period.Visibility = periodText.Visibility = (e == "breathing" || e == "cycle") ? Visibility.Visible : Visibility.Collapsed;
-			int ms = (l.Period > 0) ? l.Period : ((e == "cycle") ? OnboardPlan.DefaultCyclePeriod : OnboardPlan.DefaultBreathePeriod);
+			period.Visibility = periodText.Visibility = (e == "breathing" || e == "cycle" || e == "wave") ? Visibility.Visible : Visibility.Collapsed;
+			int ms = (l.Period > 0) ? l.Period : e switch
+			{
+				"cycle" => OnboardPlan.DefaultCyclePeriod,
+				"wave" => OnboardPlan.DefaultWavePeriod,
+				_ => OnboardPlan.DefaultBreathePeriod
+			};
 			loading = true;
 			period.Value = ms / 1000.0;
 			periodText.Text = $"{ms / 1000.0:0.#} s";

@@ -79,6 +79,15 @@ internal sealed class LogiService : IDisposable
 
 	private readonly Timer _battery;
 
+	// Кадры анимации (дыхание, цикл, волна) — 10 раз в секунду, пока анимация идёт.
+	private const int AnimationMs = 100;
+
+	private readonly Timer _anim;
+
+	private bool _animating;
+
+	private int _animPending;
+
 	// Чужие записи подсветки за последнюю минуту (время) и ждёт ли перерисовка.
 	private readonly List<long> _foreign = new List<long>();
 
@@ -123,6 +132,17 @@ internal sealed class LogiService : IDisposable
 		_battery = new Timer(delegate
 		{
 			Post(ReadBatteries);
+		}, null, -1, -1);
+		_anim = new Timer(delegate
+		{
+			if (Interlocked.Exchange(ref _animPending, 1) == 0)
+			{
+				Post(delegate
+				{
+					Interlocked.Exchange(ref _animPending, 0);
+					Animate();
+				});
+			}
 		}, null, -1, -1);
 	}
 
@@ -173,6 +193,7 @@ internal sealed class LogiService : IDisposable
 		_tick.Dispose();
 		_slow.Dispose();
 		_battery.Dispose();
+		_anim.Dispose();
 		if (!_readOnly && _env.SystemEvents)
 		{
 			SystemEvents.SessionSwitch -= OnSessionSwitch;
@@ -723,11 +744,17 @@ internal sealed class LogiService : IDisposable
 			b = Math.Min(b, Config.IdleBrightness);
 		}
 		(int pct, bool charging) = KeyboardBatteryState();
-		if (pct >= 0 && pct < LowBattery && !charging)
+		bool low = pct >= 0 && pct < LowBattery && !charging;
+		if (low)
 		{
 			b = Math.Min(b, LowBatteryCap);
 		}
-		return KeyFrame.From(p, b, (byte)(1 << Current));
+		KeyFrame f = KeyFrame.From(p, b, (byte)(1 << Current));
+		// Анимация — только когда её видно и есть заряд: при простое, низком заряде и погашенной подсветке — статичный цвет.
+		return f with
+		{
+			Animate = f.HasAnimation && b > 0 && !_idle && !low
+		};
 	}
 
 	private void Reconcile()
@@ -747,13 +774,58 @@ internal sealed class LogiService : IDisposable
 			}
 			Log.Write($"logi: {kb.Device.Name}: PulseBar mode, profile {Current + 1}");
 		}
-		if (!kb.Apply(Desired(), out error))
+		KeyFrame frame = Desired();
+		if (!kb.Apply(frame, _env.Now(), out error))
 		{
 			kb.Invalidate();
 			Retry(error);
 			return;
 		}
 		_retries = 0;
+		SetAnimating(frame.Animate);
+	}
+
+	// Кадр анимации: дорисовать изменившиеся клавиши. Анимация кончилась (простой, экран, другой профиль) — таймер стоп.
+	private void Animate()
+	{
+		LogiKeyboard? kb = _kb;
+		if (kb == null || !Controlling || !kb.SetUpDone || !IsOnline(kb.Device))
+		{
+			SetAnimating(on: false);
+			return;
+		}
+		KeyFrame frame = Desired();
+		if (!frame.Animate)
+		{
+			SetAnimating(on: false);
+			Kick();
+			return;
+		}
+		if (!kb.Apply(frame, _env.Now(), out string error))
+		{
+			SetAnimating(on: false);
+			kb.Invalidate();
+			Retry(error);
+		}
+	}
+
+	private void SetAnimating(bool on)
+	{
+		if (on == _animating)
+		{
+			return;
+		}
+		_animating = on;
+		if (_env.Timers)
+		{
+			_anim.Change(on ? AnimationMs : (-1), on ? AnimationMs : (-1));
+		}
+	}
+
+	// Для тестов: один кадр анимации в потоке службы.
+	internal void AnimateNow()
+	{
+		Post(Animate);
 	}
 
 	// Ошибка связи: повторить через 1, 2, 4 с; дальше — только по событию или проверке раз в 20 с.
@@ -825,6 +897,7 @@ internal sealed class LogiService : IDisposable
 		{
 			return;
 		}
+		SetAnimating(on: false);
 		kb.Release(Current + 1);
 		Log.Write($"logi: {kb.Device.Name}: keyboard memory, profile {Current + 1} ({why})");
 	}
@@ -1348,4 +1421,7 @@ internal sealed class LogiEnv
 	public int FirstSyncMs = 15000;
 
 	public Func<bool> DynamicLighting = LogiService.DynamicLightingOn;
+
+	// Часы анимации, мс.
+	public Func<long> Now = () => Environment.TickCount64;
 }

@@ -44,6 +44,12 @@ internal sealed class LogiKeyboard
 	// Программное управление подсветкой (0x8071 fn5) до PulseBar: [режим, флаги]; возвращается при отпускании.
 	private byte[]? _swOriginal;
 
+	// Цвета, уже отправленные клавиатуре: номер клавиши → цвет (пусто — отправить все).
+	private readonly Dictionary<byte, Rgb> _sent = new Dictionary<byte, Rgb>();
+
+	// Столбец волны для каждой клавиши (по раскладке).
+	private Dictionary<byte, float>? _columns;
+
 	public LogiDevice Device { get; }
 
 	public KeyEdges Edges { get; } = new KeyEdges();
@@ -70,6 +76,7 @@ internal sealed class LogiKeyboard
 	{
 		_setUp = false;
 		_lighting = null;
+		_sent.Clear();
 		_brightness = -1;
 		_mleds = -1;
 		lock (Edges)
@@ -131,17 +138,23 @@ internal sealed class LogiKeyboard
 		return Device.Call(LogiDevice.OnboardProfiles, 2, ReadOnlySpan<byte>.Empty, out _, 2)?[0] ?? (-1);
 	}
 
-	public bool Apply(KeyFrame f, out string error)
+	// ms — время анимации (для дыхания, цикла, волны): кадр с тем же отпечатком дорисовывает только изменения.
+	public bool Apply(KeyFrame f, long ms, out string error)
 	{
 		error = "";
 		string key = f.LightingKey;
 		if (key != _lighting)
 		{
-			if (!PaintLighting(f, out error))
+			_sent.Clear();
+			if (!PaintFrame(f, f.Animate ? ms : (-1), out error))
 			{
 				return false;
 			}
 			_lighting = key;
+		}
+		else if (f.Animate && !PaintFrame(f, ms, out error))
+		{
+			return false;
 		}
 		if (f.Brightness != _brightness && Device.Has(LogiDevice.Brightness))
 		{
@@ -213,25 +226,60 @@ internal sealed class LogiKeyboard
 
 	// Кадр подсветки в режиме PulseBar — только цветами по клавишам (0x8081). Эффекты 0x8071 G915 в этом режиме
 	// принимает, но не показывает (проверка 31.10.2026; G HUB в этом режиме тоже рисует сам). Клавиши — цвет зоны
-	// (выключена — чёрный), в режиме «По клавишам» — свои цвета; логотип — номер 210 с цветом своей зоны. Дыхание,
-	// цикл и волна здесь показываются статичным цветом зоны, сами эффекты работают из памяти клавиатуры.
-	private bool PaintLighting(KeyFrame f, out string error)
+	// (выключена — чёрный) или свои цвета в режиме «По клавишам»; логотип — номер 210 с цветом своей зоны. Дыхание, цикл и
+	// волна рисуются кадрами (ms — время анимации; -1 — без анимации: статичный цвет зоны). Отправляются только клавиши,
+	// цвет которых изменился, группами одного цвета; после сброса (_sent пуст) — все.
+	private bool PaintFrame(KeyFrame f, long ms, out string error)
 	{
 		error = "";
 		if (KeyIds.Length == 0 || !Device.Has(LogiDevice.PerKeyLighting))
 		{
 			return true;
 		}
-		EnsureSoftwareControl();
-		Rgb keys = ZoneColor(f.Keys);
-		Rgb logo = ZoneColor(f.Logo);
-		foreach (IGrouping<Rgb, byte> g in KeyIds.GroupBy((byte id) => (id == KeyLayout.Logo) ? logo : ((f.PerKey && f.Colors.TryGetValue(id, out Rgb c)) ? c : keys)))
+		if (_sent.Count == 0)
+		{
+			EnsureSoftwareControl();
+		}
+		Rgb keys = Rgb.Parse(f.Keys.Color);
+		Rgb logo = Rgb.Parse(f.Logo.Color);
+		Dictionary<float, Rgb> byColumn = new Dictionary<float, Rgb>();
+		Dictionary<byte, Rgb> changed = new Dictionary<byte, Rgb>();
+		foreach (byte id in KeyIds)
+		{
+			Rgb c;
+			if (id == KeyLayout.Logo)
+			{
+				c = ColorAt(f.Logo, logo, 0.0, ms);
+			}
+			else if (f.PerKey)
+			{
+				c = f.Colors.TryGetValue(id, out Rgb k) ? k : keys;
+			}
+			else
+			{
+				float x = Column(id);
+				if (!byColumn.TryGetValue(x, out c))
+				{
+					c = byColumn[x] = ColorAt(f.Keys, keys, x, ms);
+				}
+			}
+			if (!_sent.TryGetValue(id, out Rgb old) || old != c)
+			{
+				changed[id] = c;
+			}
+		}
+		if (changed.Count == 0)
+		{
+			return true;
+		}
+		foreach (IGrouping<Rgb, byte> g in changed.Keys.GroupBy(id => changed[id]))
 		{
 			byte[] ids = g.ToArray();
 			for (int i = 0; i < ids.Length; i += 13)
 			{
 				if (!PaintKeys(g.Key, ids.AsSpan(i, Math.Min(13, ids.Length - i)), out int e))
 				{
+					_sent.Clear();
 					error = $"key colours: error {e}";
 					return false;
 				}
@@ -239,15 +287,84 @@ internal sealed class LogiKeyboard
 		}
 		if (Device.Call(LogiDevice.PerKeyLighting, 7, new byte[5], out int e2, 3) == null)
 		{
+			_sent.Clear();
 			error = $"key colours frame: error {e2}";
 			return false;
+		}
+		foreach (var (id, c) in changed)
+		{
+			_sent[id] = c;
 		}
 		return true;
 	}
 
-	private static Rgb ZoneColor(Lighting l)
+	public static bool Animated(Lighting l)
 	{
-		return (l.Effect == "off") ? Rgb.Black : Rgb.Parse(l.Color);
+		return l.Effect == "breathing" || l.Effect == "cycle" || l.Effect == "wave";
+	}
+
+	// Цвет зоны в момент ms (-1 — без анимации): дыхание — яркость цвета по синусоиде, цикл — оттенок по кругу, волна —
+	// оттенок по кругу со сдвигом по горизонтали (x — 0 слева … 1 справа), волна идёт слева направо.
+	internal static Rgb ColorAt(Lighting l, Rgb color, double x, long ms)
+	{
+		switch (l.Effect)
+		{
+		case "off":
+			return Rgb.Black;
+		case "breathing":
+		{
+			if (ms < 0)
+			{
+				return color;
+			}
+			double k = 0.5 - 0.5 * Math.Cos(2.0 * Math.PI * Phase(ms, l.Period, OnboardPlan.DefaultBreathePeriod));
+			return new Rgb((byte)Math.Round(color.R * k), (byte)Math.Round(color.G * k), (byte)Math.Round(color.B * k));
+		}
+		case "cycle":
+			return (ms < 0) ? color : Hue(Phase(ms, l.Period, OnboardPlan.DefaultCyclePeriod));
+		case "wave":
+			return (ms < 0) ? color : Hue(Phase(ms, l.Period, OnboardPlan.DefaultWavePeriod) - x);
+		default:
+			return color;
+		}
+	}
+
+	private static double Phase(long ms, int period, int fallback)
+	{
+		int p = (period > 0) ? period : fallback;
+		return (double)(ms % p) / p;
+	}
+
+	// Оттенок (доля круга) при полной насыщенности и яркости.
+	private static Rgb Hue(double turns)
+	{
+		double h = (turns - Math.Floor(turns)) * 6.0;
+		int sector = (int)h % 6;
+		double f = h - Math.Floor(h);
+		byte up = (byte)Math.Round(255 * f);
+		byte down = (byte)Math.Round(255 * (1 - f));
+		return sector switch
+		{
+			0 => new Rgb(255, up, 0),
+			1 => new Rgb(down, 255, 0),
+			2 => new Rgb(0, 255, up),
+			3 => new Rgb(0, down, 255),
+			4 => new Rgb(up, 0, 255),
+			_ => new Rgb(255, 0, down)
+		};
+	}
+
+	// Положение клавиши по горизонтали 0…1, округлённое до 1/16 (16 столбцов волны — меньше групп цвета и пакетов).
+	private float Column(byte id)
+	{
+		if (_columns == null)
+		{
+			KeyDef[] defs = KeyLayout.For(KeyIds);
+			float min = defs.Min(k => k.X + k.W / 2f);
+			float max = defs.Max(k => k.X + k.W / 2f);
+			_columns = defs.ToDictionary(k => k.Id, k => MathF.Round((k.X + k.W / 2f - min) / Math.Max(1f, max - min) * 16f) / 16f);
+		}
+		return _columns.TryGetValue(id, out float x) ? x : 0f;
 	}
 
 	// 0x8081 fn6: один цвет для 1–13 клавиш [R, G, B, номера…], недостающие места — повтор последнего номера.
@@ -274,6 +391,7 @@ internal sealed class LogiKeyboard
 	public void InvalidateLighting()
 	{
 		_lighting = null;
+		_sent.Clear();
 	}
 
 	// Яркость, поставленная кнопкой на клавиатуре: уже применена, второй раз не отправлять.
