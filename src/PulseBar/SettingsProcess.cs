@@ -101,6 +101,7 @@ internal static class SettingsProcess
 				w.WriteString("keyEffects", string.Join(",", logi.Effects(0)));
 				w.WriteString("logoEffects", string.Join(",", logi.Effects(1)));
 				w.WriteString("keyIds", Convert.ToHexString(logi.KeyIds.ToArray()));
+				w.WriteString("foreign", logi.ForeignLighting);
 				w.WriteEndObject();
 				w.WriteStartArray("adapters");
 				foreach (GpuSensor.Adapter a in adapters)
@@ -392,7 +393,7 @@ internal static class SettingsProcess
 				_claudeApi = e.TryGetProperty("claudeApi", out JsonElement api) ? (api.GetString() ?? "") : "";
 				if (e.TryGetProperty("logi", out JsonElement lg) && lg.ValueKind == JsonValueKind.Object)
 				{
-					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""));
+					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""), lg.TryGetProperty("foreign", out JsonElement fl) ? (fl.GetString() ?? "") : "");
 				}
 				_claudeAccount = e.TryGetProperty("claudeAccount", out JsonElement acc) ? (acc.GetString() ?? "") : "";
 				_adapters = new List<GpuSensor.Adapter>();

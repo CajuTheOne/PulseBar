@@ -19,8 +19,19 @@ internal sealed class LogiKeyboard
 		(0x04, "wave")
 	};
 
-	// Таблица эффектов и подсвечиваемые клавиши не меняются: читаются один раз за запуск для каждой клавиатуры.
-	private static readonly Dictionary<string, (Dictionary<int, Dictionary<int, int>> Clusters, byte[] Keys)> Known = new Dictionary<string, (Dictionary<int, Dictionary<int, int>>, byte[])>();
+	// Таблица эффектов, зоны и подсвечиваемые клавиши не меняются: читаются один раз за запуск для каждой клавиатуры.
+	private sealed record Caps(Dictionary<int, Dictionary<int, int>> Clusters, int KeysZone, int LogoZone, byte[] Keys);
+
+	private static readonly Dictionary<string, Caps> Known = new Dictionary<string, Caps>();
+
+	// Для тестов: разные модели клавиатуры с одним именем.
+	internal static void ForgetKnown()
+	{
+		lock (Known)
+		{
+			Known.Clear();
+		}
+	}
 
 	private string? _lighting;
 
@@ -34,8 +45,13 @@ internal sealed class LogiKeyboard
 
 	public KeyEdges Edges { get; } = new KeyEdges();
 
-	// Кластеры 0x8071: номер → (индекс эффекта → id эффекта). Обычно 0 — клавиши, 1 — логотип.
+	// Кластеры 0x8071: номер → (индекс эффекта → id эффекта).
 	public Dictionary<int, Dictionary<int, int>> Clusters { get; } = new Dictionary<int, Dictionary<int, int>>();
+
+	// Какой кластер — клавиши, какой — логотип (по месту из 0x8071; у G915 0 — логотип, 1 — клавиши); -1 — нет.
+	public int KeysZone { get; private set; } = -1;
+
+	public int LogoZone { get; private set; } = -1;
 
 	// Номера клавиш, которые принимает 0x8081 (подсвечиваемые клавиши).
 	public byte[] KeyIds { get; private set; } = Array.Empty<byte>();
@@ -77,12 +93,14 @@ internal sealed class LogiKeyboard
 		{
 			lock (Known)
 			{
-				if (Known.TryGetValue(Device.Name, out var k))
+				if (Known.TryGetValue(Device.Name, out Caps? k))
 				{
 					foreach (var (c, map) in k.Clusters)
 					{
 						Clusters[c] = map;
 					}
+					KeysZone = k.KeysZone;
+					LogoZone = k.LogoZone;
 					KeyIds = k.Keys;
 				}
 			}
@@ -93,11 +111,11 @@ internal sealed class LogiKeyboard
 		}
 		if (KeyIds.Length == 0 && Device.Has(LogiDevice.PerKeyLighting))
 		{
-			KeyIds = ProbeKeyIds();
+			KeyIds = ReadKeyIds();
 		}
 		lock (Known)
 		{
-			Known[Device.Name] = (Clusters, KeyIds);
+			Known[Device.Name] = new Caps(Clusters, KeysZone, LogoZone, KeyIds);
 		}
 		_setUp = true;
 		return true;
@@ -160,7 +178,7 @@ internal sealed class LogiKeyboard
 	private bool PaintLighting(KeyFrame f, out string error)
 	{
 		error = "";
-		if (!SetEffect(0, f.Keys, out error) || !SetEffect(1, f.Logo, out error))
+		if (!SetEffect(KeysZone, f.Keys, out error) || !SetEffect(LogoZone, f.Logo, out error))
 		{
 			return false;
 		}
@@ -189,7 +207,8 @@ internal sealed class LogiKeyboard
 		return true;
 	}
 
-	// Эффект кластера через 0x8071: [кластер, индекс эффекта, 10 параметров, 0 — не сохранять в памяти].
+	// Эффект кластера через 0x8071: [кластер, индекс эффекта, 10 параметров, 1]. Последний байт — 1, как у OpenRGB и
+	// Solaar: с 0 G915 отвечает ошибкой 5 (проверка 31.10.2026). Параметры — как в записи встроенной памяти.
 	// Яркость здесь всегда 100: общую яркость задаёт 0x8040.
 	private bool SetEffect(int cluster, Lighting l, out string error)
 	{
@@ -214,8 +233,15 @@ internal sealed class LogiKeyboard
 		args[0] = (byte)cluster;
 		args[1] = (byte)index;
 		Array.Copy(entry, 1, args, 2, 10);
+		args[12] = 1;
 		if (Device.Call(LogiDevice.RgbEffects, 1, args, out int e, 3) == null)
 		{
+			if (e > 0 && e != HidppLink.ErrBusy)
+			{
+				// Клавиатура отклонила параметры: кадр без этого эффекта, иначе сверка повторялась бы без конца.
+				Log.Write($"logi: effect {l.Effect} (zone {cluster}) rejected: error {e}");
+				return true;
+			}
 			error = $"effect {l.Effect} (zone {cluster}): error {e}";
 			return false;
 		}
@@ -236,15 +262,44 @@ internal sealed class LogiKeyboard
 		return Device.Call(LogiDevice.PerKeyLighting, 6, args, out error, 3) != null;
 	}
 
-	// Таблица эффектов 0x8071: fn0 [кластер, индекс] → [кластер, индекс, id эффекта BE16, …]; ошибка — индекс за концом.
+	// Эффекты зоны (логотип или клавиши): индекс эффекта → id эффекта; null — такой зоны нет.
+	public Dictionary<int, int>? EffectsOf(bool logo)
+	{
+		return Clusters.TryGetValue(logo ? LogoZone : KeysZone, out Dictionary<int, int>? map) ? map : null;
+	}
+
+	// Подсветка изменилась не нами (служба Windows «Динамическое освещение» и т. п.): кадр отправить заново.
+	public void InvalidateLighting()
+	{
+		_lighting = null;
+	}
+
+	// Яркость, поставленная кнопкой на клавиатуре: уже применена, второй раз не отправлять.
+	public int AppliedBrightness
+	{
+		get
+		{
+			return _brightness;
+		}
+		set
+		{
+			_brightness = value;
+		}
+	}
+
+	// Таблица эффектов 0x8071 (журнал G915 31.10.2026):
+	//   fn0 [кластер, 0xFF] → [кластер, 0, место BE16, число эффектов]; место 1 — клавиши, 2 — логотип;
+	//   fn0 [кластер, индекс] → [кластер, индекс, id эффекта BE16, …]; ошибка 2 — индекс или кластер за концом.
 	private void ReadEffects()
 	{
 		if (!Device.Has(LogiDevice.RgbEffects))
 		{
 			return;
 		}
+		Dictionary<int, int> places = new Dictionary<int, int>();
 		for (int c = 0; c < 4; c++)
 		{
+			byte[]? info = Device.Call(LogiDevice.RgbEffects, 0, new byte[2] { (byte)c, 0xFF }, out _, 2);
 			Dictionary<int, int> map = new Dictionary<int, int>();
 			for (int i = 0; i < 16; i++)
 			{
@@ -260,37 +315,51 @@ internal sealed class LogiKeyboard
 				break;
 			}
 			Clusters[c] = map;
+			places[c] = (info != null) ? ((info[2] << 8) | info[3]) : 0;
 		}
-		Log.Write("logi: effects " + string.Join("; ", Clusters.Select(c => $"zone {c.Key}: " + string.Join(",", c.Value.Values.Select(v => $"{v:X2}")))));
+		KeysZone = places.FirstOrDefault(x => x.Value == 1, new KeyValuePair<int, int>(-1, 0)).Key;
+		LogoZone = places.FirstOrDefault(x => x.Value == 2, new KeyValuePair<int, int>(-1, 0)).Key;
+		// Место не сообщили: клавиши — зона с наибольшим числом эффектов, логотип — другая.
+		if (KeysZone < 0)
+		{
+			KeysZone = Clusters.Where(x => x.Key != LogoZone).OrderByDescending(x => x.Value.Count).Select(x => x.Key).DefaultIfEmpty(-1).First();
+		}
+		if (LogoZone < 0)
+		{
+			LogoZone = Clusters.Keys.Where(x => x != KeysZone).DefaultIfEmpty(-1).First();
+		}
+		Log.Write($"logi: effects keys zone {KeysZone}, logo zone {LogoZone}; " + string.Join("; ", Clusters.Select(c => $"zone {c.Key}: " + string.Join(",", c.Value.Values.Select(v => $"{v:X2}")))));
 	}
 
-	// Какие номера клавиш принимает 0x8081: пробуем блоками по 13 (чёрным, без показа — кадр не завершается),
-	// при ошибке «неверный аргумент» — по одной.
-	private byte[] ProbeKeyIds()
+	// Номера клавиш: карта 0x8081 fn0 [0, страница] → [0, страница, 14 байт — по биту на номер страница×112 + i]
+	// (у G915 страница 0 — все номера 0–111, страница 1 — мультимедиа, G1–G5, логотип). Карта говорит, какие номера
+	// клавиатура принимает, а не какие клавиши у неё есть, поэтому оставляем только клавиши раскладки: ANSI или ISO —
+	// по 0x4540.
+	private byte[] ReadKeyIds()
 	{
-		List<byte> ok = new List<byte>();
-		for (int start = 1; start < 256; start += 13)
+		List<byte> ids = new List<byte>();
+		for (int page = 0; page < 3; page++)
 		{
-			byte[] block = Enumerable.Range(start, Math.Min(13, 256 - start)).Select(i => (byte)i).ToArray();
-			if (PaintKeys(Rgb.Black, block, out int e))
+			byte[]? r = Device.Call(LogiDevice.PerKeyLighting, 0, new byte[2] { 0, (byte)page }, out int e, 2);
+			if (r == null || r.Length < 16)
 			{
-				ok.AddRange(block);
-				continue;
-			}
-			if (e != 2)
-			{
-				Log.Write($"logi: key probe stopped at {start} (error {e})");
+				Log.Write($"logi: key map page {page}: error {e}");
 				break;
 			}
-			foreach (byte id in block)
+			for (int i = 0; i < 14 * 8; i++)
 			{
-				if (PaintKeys(Rgb.Black, new byte[1] { id }, out _))
+				int id = page * 112 + i;
+				if (id < 256 && (r[2 + i / 8] & (1 << (i % 8))) != 0)
 				{
-					ok.Add(id);
+					ids.Add((byte)id);
 				}
 			}
 		}
-		Log.Write($"logi: {ok.Count} lit keys");
-		return ok.ToArray();
+		int layout = Device.Has(LogiDevice.KeyboardLayout) ? (Device.Call(LogiDevice.KeyboardLayout, 0, ReadOnlySpan<byte>.Empty, out _, 2)?[0] ?? 0) : 0;
+		bool iso = KeyLayout.IsIso(layout);
+		HashSet<byte> physical = KeyLayout.Physical(iso);
+		byte[] keys = ids.Where(physical.Contains).ToArray();
+		Log.Write($"logi: layout {layout} ({(iso ? "ISO" : "ANSI")}), {ids.Count} key numbers, {keys.Length} keys");
+		return keys;
 	}
 }

@@ -177,5 +177,8 @@
 "This keyboard has no supported profile memory": "このキーボードには対応するプロファイルメモリがありません",
 "Wave": "ウェーブ",
 "also without PulseBar": "PulseBar なしでも",
-"with PulseBar": "PulseBar 使用時"
+"with PulseBar": "PulseBar 使用時",
+"Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard.": "Windows のダイナミック ライティングがキーボードの色を変えています（Logitech LampArray サービス）。PulseBar は色を戻しますが、このキーボードではダイナミック ライティングをオフにすることをおすすめします。",
+"Another program changes the keyboard lighting. PulseBar paints it back.": "別のプログラムがキーボードのライティングを変更しています。PulseBar は色を戻します。",
+"Open Dynamic Lighting settings": "ダイナミック ライティングの設定を開く"
 }

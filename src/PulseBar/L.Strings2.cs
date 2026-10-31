@@ -188,7 +188,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "У этой клавиатуры нет поддерживаемой памяти профилей",
 			["Wave"] = "Волна",
 			["also without PulseBar"] = "и без PulseBar",
-			["with PulseBar"] = "с PulseBar"
+			["with PulseBar"] = "с PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "«Динамическое освещение» Windows перекрашивает клавиатуру (служба Logitech LampArray). PulseBar возвращает свои цвета, но лучше выключить «Динамическое освещение» для этой клавиатуры.",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Другая программа меняет подсветку клавиатуры. PulseBar возвращает свои цвета.",
+			["Open Dynamic Lighting settings"] = "Открыть настройки «Динамического освещения»"
 		},
 		["uk"] = new Dictionary<string, string>
 		{
@@ -370,7 +373,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "Ця клавіатура не має підтримуваної пам'яті профілів",
 			["Wave"] = "Хвиля",
 			["also without PulseBar"] = "і без PulseBar",
-			["with PulseBar"] = "з PulseBar"
+			["with PulseBar"] = "з PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "«Динамічне освітлення» Windows перефарбовує клавіатуру (служба Logitech LampArray). PulseBar повертає свої кольори, але краще вимкнути «Динамічне освітлення» для цієї клавіатури.",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Інша програма змінює підсвітку клавіатури. PulseBar повертає свої кольори.",
+			["Open Dynamic Lighting settings"] = "Відкрити налаштування «Динамічного освітлення»"
 		},
 		["de"] = new Dictionary<string, string>
 		{
@@ -552,7 +558,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "Diese Tastatur hat keinen unterstützten Profilspeicher",
 			["Wave"] = "Welle",
 			["also without PulseBar"] = "auch ohne PulseBar",
-			["with PulseBar"] = "mit PulseBar"
+			["with PulseBar"] = "mit PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "Die dynamische Beleuchtung von Windows färbt die Tastatur um (Logitech LampArray Service). PulseBar stellt seine Farben wieder her, besser ist es aber, die dynamische Beleuchtung für diese Tastatur auszuschalten.",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Ein anderes Programm ändert die Tastaturbeleuchtung. PulseBar stellt seine Farben wieder her.",
+			["Open Dynamic Lighting settings"] = "Einstellungen für dynamische Beleuchtung öffnen"
 		},
 		["fr"] = new Dictionary<string, string>
 		{
@@ -734,7 +743,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "Ce clavier n'a pas de mémoire de profils prise en charge",
 			["Wave"] = "Vague",
 			["also without PulseBar"] = "aussi sans PulseBar",
-			["with PulseBar"] = "avec PulseBar"
+			["with PulseBar"] = "avec PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "L'éclairage dynamique de Windows recolore le clavier (service Logitech LampArray). PulseBar remet ses couleurs, mais mieux vaut désactiver l'éclairage dynamique pour ce clavier.",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Un autre programme modifie l'éclairage du clavier. PulseBar remet ses couleurs.",
+			["Open Dynamic Lighting settings"] = "Ouvrir les paramètres de l'éclairage dynamique"
 		},
 		["es"] = new Dictionary<string, string>
 		{
@@ -916,7 +928,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "Este teclado no tiene memoria de perfiles compatible",
 			["Wave"] = "Onda",
 			["also without PulseBar"] = "también sin PulseBar",
-			["with PulseBar"] = "con PulseBar"
+			["with PulseBar"] = "con PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "La iluminación dinámica de Windows cambia los colores del teclado (servicio Logitech LampArray). PulseBar restaura sus colores, pero es mejor desactivar la iluminación dinámica para este teclado.",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Otro programa cambia la iluminación del teclado. PulseBar restaura sus colores.",
+			["Open Dynamic Lighting settings"] = "Abrir la configuración de iluminación dinámica"
 		},
 		["pt"] = new Dictionary<string, string>
 		{
@@ -1098,7 +1113,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "Este teclado não tem memória de perfis compatível",
 			["Wave"] = "Onda",
 			["also without PulseBar"] = "também sem o PulseBar",
-			["with PulseBar"] = "com o PulseBar"
+			["with PulseBar"] = "com o PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "A iluminação dinâmica do Windows muda as cores do teclado (serviço Logitech LampArray). O PulseBar restaura as cores dele, mas é melhor desligar a iluminação dinâmica para este teclado.",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Outro programa muda a iluminação do teclado. O PulseBar restaura as cores dele.",
+			["Open Dynamic Lighting settings"] = "Abrir as configurações de iluminação dinâmica"
 		},
 		["it"] = new Dictionary<string, string>
 		{
@@ -1280,7 +1298,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "Questa tastiera non ha una memoria profili supportata",
 			["Wave"] = "Onda",
 			["also without PulseBar"] = "anche senza PulseBar",
-			["with PulseBar"] = "con PulseBar"
+			["with PulseBar"] = "con PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "L'illuminazione dinamica di Windows ricolora la tastiera (servizio Logitech LampArray). PulseBar ripristina i suoi colori, ma è meglio disattivare l'illuminazione dinamica per questa tastiera.",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Un altro programma modifica l'illuminazione della tastiera. PulseBar ripristina i suoi colori.",
+			["Open Dynamic Lighting settings"] = "Apri le impostazioni dell'illuminazione dinamica"
 		},
 		["pl"] = new Dictionary<string, string>
 		{
@@ -1462,7 +1483,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "Ta klawiatura nie ma obsługiwanej pamięci profili",
 			["Wave"] = "Fala",
 			["also without PulseBar"] = "również bez PulseBar",
-			["with PulseBar"] = "z PulseBar"
+			["with PulseBar"] = "z PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "Oświetlenie dynamiczne Windows przemalowuje klawiaturę (usługa Logitech LampArray). PulseBar przywraca swoje kolory, ale lepiej wyłączyć oświetlenie dynamiczne dla tej klawiatury.",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Inny program zmienia podświetlenie klawiatury. PulseBar przywraca swoje kolory.",
+			["Open Dynamic Lighting settings"] = "Otwórz ustawienia oświetlenia dynamicznego"
 		},
 		["zh"] = new Dictionary<string, string>
 		{
@@ -1644,7 +1668,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "此键盘没有受支持的配置文件存储",
 			["Wave"] = "波浪",
 			["also without PulseBar"] = "无需 PulseBar",
-			["with PulseBar"] = "需要 PulseBar"
+			["with PulseBar"] = "需要 PulseBar",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "Windows 动态光效正在改变键盘颜色（Logitech LampArray 服务）。PulseBar 会恢复自己的颜色，但最好为此键盘关闭动态光效。",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "另一个程序正在更改键盘灯光。PulseBar 会恢复自己的颜色。",
+			["Open Dynamic Lighting settings"] = "打开动态光效设置"
 		},
 		["ja"] = new Dictionary<string, string>
 		{
@@ -1826,7 +1853,10 @@ internal static partial class L
 			["This keyboard has no supported profile memory"] = "このキーボードには対応するプロファイルメモリがありません",
 			["Wave"] = "ウェーブ",
 			["also without PulseBar"] = "PulseBar なしでも",
-			["with PulseBar"] = "PulseBar 使用時"
+			["with PulseBar"] = "PulseBar 使用時",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "Windows のダイナミック ライティングがキーボードの色を変えています（Logitech LampArray サービス）。PulseBar は色を戻しますが、このキーボードではダイナミック ライティングをオフにすることをおすすめします。",
+			["Another program changes the keyboard lighting. PulseBar paints it back."] = "別のプログラムがキーボードのライティングを変更しています。PulseBar は色を戻します。",
+			["Open Dynamic Lighting settings"] = "ダイナミック ライティングの設定を開く"
 		}
 	};
 }

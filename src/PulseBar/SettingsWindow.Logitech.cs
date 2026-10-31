@@ -1,6 +1,7 @@
 #pragma warning disable WPF0001
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -72,6 +73,38 @@ internal sealed partial class SettingsWindow
 			LineHeight = 20.0
 		};
 		p.Children.Add(status);
+		// Другая программа перекрашивает клавиатуру — обычно «Динамическое освещение» Windows через службу Logitech LampArray.
+		TextBlock foreignText = new TextBlock
+		{
+			TextWrapping = TextWrapping.Wrap,
+			Margin = new Thickness(0.0, 0.0, 0.0, 4.0)
+		};
+		Button lightingSettings = new Button
+		{
+			Content = L.T("Open Dynamic Lighting settings"),
+			HorizontalAlignment = HorizontalAlignment.Left,
+			Margin = new Thickness(0.0, 0.0, 0.0, 8.0)
+		};
+		lightingSettings.Click += delegate
+		{
+			try
+			{
+				Process.Start(new ProcessStartInfo("ms-settings:personalization-lighting")
+				{
+					UseShellExecute = true
+				});
+			}
+			catch (Exception)
+			{
+			}
+		};
+		StackPanel foreign = new StackPanel
+		{
+			Visibility = Visibility.Collapsed
+		};
+		foreign.Children.Add(foreignText);
+		foreign.Children.Add(lightingSettings);
+		p.Children.Add(foreign);
 		p.Children.Add(Check(L.T("Control Logitech devices (instead of G HUB)"), () => c.Enabled, delegate(bool v)
 		{
 			c.Enabled = v;
@@ -148,6 +181,9 @@ internal sealed partial class SettingsWindow
 			};
 			status.Text = device + ((mode.Length > 0) ? ("\n" + mode) : "") + ((s.Result.Length > 0) ? ("\n" + s.Result) : "");
 			factory.IsEnabled = backup.IsEnabled = s.Mode == "host";
+			foreign.Visibility = (s.Foreign.Length > 0) ? Visibility.Visible : Visibility.Collapsed;
+			foreignText.Text = (s.Foreign == "lamparray") ? L.T("Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard.") : L.T("Another program changes the keyboard lighting. PulseBar paints it back.");
+			lightingSettings.Visibility = (s.Foreign == "lamparray") ? Visibility.Visible : Visibility.Collapsed;
 		}
 	}
 

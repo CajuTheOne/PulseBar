@@ -5,7 +5,8 @@ namespace PulseBar;
 
 internal static class Log
 {
-	private static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "pulsebar.log");
+	// Тесты переводят журнал в свою папку, чтобы не писать в журнал строки, запущенной у пользователя.
+	internal static string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "pulsebar.log");
 
 	public static void Write(string message)
 	{

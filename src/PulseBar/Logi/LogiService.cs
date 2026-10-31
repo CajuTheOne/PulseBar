@@ -79,6 +79,15 @@ internal sealed class LogiService : IDisposable
 
 	private readonly Timer _battery;
 
+	// Чужие записи подсветки за последнюю минуту (время) и ждёт ли перерисовка.
+	private readonly List<long> _foreign = new List<long>();
+
+	private bool _repaintDue;
+
+	private long _foreignSeen = -1;
+
+	private StreamWriter? _trace;
+
 	public LogiConfig Config { get; private set; }
 
 	// Профиль, который сейчас на клавиатуре (0–2): по программе в фокусе или выбранный вручную.
@@ -140,6 +149,16 @@ internal sealed class LogiService : IDisposable
 			_slow.Change(3000, 3000);
 			_battery.Change(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
 		}
+		// PULSEBAR_LOGI_TRACE=1 — все пакеты HID++ в logi-trace-*.txt (для разбора ошибок на настоящей клавиатуре).
+		if (Environment.GetEnvironmentVariable("PULSEBAR_LOGI_TRACE") == "1")
+		{
+			string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar");
+			Directory.CreateDirectory(dir);
+			_trace = new StreamWriter(Path.Combine(dir, $"logi-trace-{DateTime.Now:yyyyMMdd-HHmmss}.txt"), append: false, Encoding.UTF8)
+			{
+				AutoFlush = true
+			};
+		}
 		// Первая сверка памяти клавиатуры с профилями — через 15 с после запуска (не мешать запуску Windows).
 		_onboardDue = Environment.TickCount64 + _env.FirstSyncMs;
 	}
@@ -174,6 +193,11 @@ internal sealed class LogiService : IDisposable
 		foreach (HidppLink l in _links)
 		{
 			l.Dispose();
+		}
+		lock (_lock)
+		{
+			_trace?.Dispose();
+			_trace = null;
 		}
 	}
 
@@ -273,6 +297,18 @@ internal sealed class LogiService : IDisposable
 			foreach (HidppLink link in links)
 			{
 				link.Notification += (byte dev, byte feat, byte fn, byte[] data) => OnNotification(link, dev, feat, fn, data);
+				link.Foreign += (byte dev, byte feat, byte fn) => OnForeign(link, dev, feat, fn);
+				if (_trace != null)
+				{
+					long t0 = Environment.TickCount64;
+					link.Raw += delegate (bool inbound, byte[] r)
+					{
+						lock (_lock)
+						{
+							_trace?.WriteLine($"{Environment.TickCount64 - t0,8} {link.Pid:X4} {(inbound ? "IN " : "OUT")} {Convert.ToHexString(r)}");
+						}
+					};
+				}
 				link.Connection += (byte dev, bool linked) => Post(() => OnConnection(link, dev, linked));
 				link.Died += () => DevicesChanged();
 				if (link.IsReceiver)
@@ -422,7 +458,146 @@ internal sealed class LogiService : IDisposable
 				RaiseChanged();
 			});
 			break;
+		case LogiDevice.Brightness:
+			// Кнопка яркости на клавиатуре: fn0 [яркость BE16] (журнал G915: 25 → 12).
+			if (fn == 0 && data.Length >= 2)
+			{
+				int value = (data[0] << 8) | data[1];
+				Interlocked.Exchange(ref _lastKeyInput, Environment.TickCount64);
+				Post(() => OnBrightnessKey(kb, value));
+			}
+			break;
 		}
+	}
+
+	// Яркость, выбранная кнопкой на клавиатуре, становится яркостью текущего профиля. Своя же запись (то же значение,
+	// что отправили последним) — не нажатие.
+	private void OnBrightnessKey(LogiKeyboard kb, int value)
+	{
+		if (!Controlling || !kb.SetUpDone || value == kb.AppliedBrightness || value < 0 || value > 100)
+		{
+			return;
+		}
+		kb.AppliedBrightness = value;
+		Profile p = Config.Profiles[Current];
+		if (p.Brightness != value)
+		{
+			Log.Write($"logi: brightness key: {value}% for profile {Current + 1}");
+			p.Brightness = value;
+			LogiConfig c = LogiConfig.Load(_env.ConfigPath);
+			c.Profiles[Current].Brightness = value;
+			c.Save(_env.ConfigPath);
+			_onboardDue = Environment.TickCount64 + 4000;
+		}
+		Kick();
+		RaiseChanged();
+	}
+
+	// Ответ на чужую запись подсветки: служба Logitech LampArray перекрашивает клавиатуру в цвет «Динамического
+	// освещения» Windows (журнал 31.10.2026: синий акцент #0078D4 после каждой смены эффекта). Через 0,5 с свой кадр
+	// отправляется заново, но не чаще 5 раз в минуту: дальше не спорить, только сообщить в окне настроек.
+	private void OnForeign(HidppLink link, byte dev, byte feat, byte fn)
+	{
+		LogiKeyboard? kb = _kb;
+		if (kb == null || kb.Device.Link != link || kb.Device.Index != dev)
+		{
+			return;
+		}
+		ushort id = kb.Device.FeatureAt(feat);
+		bool lighting = (id == LogiDevice.PerKeyLighting && fn >= 1) || (id == LogiDevice.RgbEffects && fn == 1);
+		bool brightness = id == LogiDevice.Brightness && fn == 2;
+		if (!lighting && !brightness)
+		{
+			return;
+		}
+		Post(delegate
+		{
+			if (!Controlling || !kb.SetUpDone)
+			{
+				return;
+			}
+			long now = Environment.TickCount64;
+			bool first = _foreignSeen < 0 || now - _foreignSeen > 600000;
+			_foreignSeen = now;
+			if (first)
+			{
+				Log.Write($"logi: another program changes the lighting ({LogiDevice.FeatureName(id)} fn{fn}){(_env.DynamicLighting() ? ", Windows Dynamic Lighting is on" : "")}");
+				RaiseChanged();
+			}
+			if (lighting)
+			{
+				kb.InvalidateLighting();
+			}
+			else
+			{
+				kb.AppliedBrightness = -1;
+			}
+			if (_repaintDue)
+			{
+				return;
+			}
+			_foreign.RemoveAll(x => now - x > 60000);
+			if (_foreign.Count >= 5)
+			{
+				return;
+			}
+			_foreign.Add(now);
+			_repaintDue = true;
+			ThreadPool.QueueUserWorkItem(delegate
+			{
+				Thread.Sleep(500);
+				Post(delegate
+				{
+					_repaintDue = false;
+					Reconcile();
+				});
+			});
+		});
+	}
+
+	// Другая программа меняла подсветку за последние 10 минут: "lamparray" — «Динамическое освещение» Windows через
+	// службу Logitech LampArray, "other" — кто-то ещё, "" — нет.
+	public string ForeignLighting
+	{
+		get
+		{
+			if (_foreignSeen < 0 || Environment.TickCount64 - _foreignSeen > 600000)
+			{
+				return "";
+			}
+			return _env.DynamicLighting() ? "lamparray" : "other";
+		}
+	}
+
+	// «Динамическое освещение» Windows включено и служба Logitech LampArray запущена.
+	public static bool DynamicLightingOn()
+	{
+		try
+		{
+			using RegistryKey? k = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Lighting");
+			if (k?.GetValue("AmbientLightingEnabled") is not int on || on == 0)
+			{
+				return false;
+			}
+		}
+		catch (Exception)
+		{
+			return false;
+		}
+		foreach (string name in new string[3] { "logi_lamparray_service.AMD64", "logi_lamparray_service.ARM64", "logi_lamparray_service" })
+		{
+			Process[] p = Process.GetProcessesByName(name);
+			bool found = p.Length != 0;
+			foreach (Process x in p)
+			{
+				x.Dispose();
+			}
+			if (found)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void OnPress(string key)
@@ -830,10 +1005,10 @@ internal sealed class LogiService : IDisposable
 	}
 
 	// Эффекты, которые есть у зоны (0 — клавиши, 1 — логотип), по именам из настроек.
-	public IReadOnlyList<string> Effects(int cluster)
+	public IReadOnlyList<string> Effects(int zone)
 	{
-		LogiKeyboard? kb = _kb;
-		if (kb == null || !kb.Clusters.TryGetValue(cluster, out Dictionary<int, int>? map))
+		Dictionary<int, int>? map = _kb?.EffectsOf(logo: zone == 1);
+		if (map == null)
 		{
 			return Array.Empty<string>();
 		}
@@ -1170,4 +1345,6 @@ internal sealed class LogiEnv
 	public bool Timers = true;
 
 	public int FirstSyncMs = 15000;
+
+	public Func<bool> DynamicLighting = LogiService.DynamicLightingOn;
 }

@@ -84,6 +84,10 @@ internal sealed class HidppLink : IDisposable
 	// (устройство, индекс функции, номер функции, данные) — уведомление с программным id 0.
 	public event Action<byte, byte, byte, byte[]>? Notification;
 
+	// (устройство, индекс функции, номер функции) — ответ на чужой запрос: в устройство пишет другая программа
+	// (служба Logitech LampArray для «Динамического освещения» Windows, G HUB). Ответы приходят всем, кто открыл канал.
+	public event Action<byte, byte, byte>? Foreign;
+
 	// (устройство, на связи) — событие подключения от приёмника.
 	public event Action<byte, bool>? Connection;
 
@@ -378,6 +382,14 @@ internal sealed class HidppLink : IDisposable
 			Raise(delegate
 			{
 				Notification?.Invoke(dev, b2, fn, data);
+			});
+		}
+		else if (r[0] == ReportLong && b2 > 0 && b2 < 0x80)
+		{
+			byte fn = (byte)(b3 >> 4);
+			Raise(delegate
+			{
+				Foreign?.Invoke(dev, b2, fn);
 			});
 		}
 	}

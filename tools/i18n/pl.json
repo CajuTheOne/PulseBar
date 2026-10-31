@@ -177,5 +177,8 @@
 "This keyboard has no supported profile memory": "Ta klawiatura nie ma obsługiwanej pamięci profili",
 "Wave": "Fala",
 "also without PulseBar": "również bez PulseBar",
-"with PulseBar": "z PulseBar"
+"with PulseBar": "z PulseBar",
+"Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard.": "Oświetlenie dynamiczne Windows przemalowuje klawiaturę (usługa Logitech LampArray). PulseBar przywraca swoje kolory, ale lepiej wyłączyć oświetlenie dynamiczne dla tej klawiatury.",
+"Another program changes the keyboard lighting. PulseBar paints it back.": "Inny program zmienia podświetlenie klawiatury. PulseBar przywraca swoje kolory.",
+"Open Dynamic Lighting settings": "Otwórz ustawienia oświetlenia dynamicznego"
 }

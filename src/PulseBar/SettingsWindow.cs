@@ -64,8 +64,9 @@ internal interface ISettingsHost
 	void AddSeparator();
 
 	// Logitech: состояние клавиатуры (от строки) и команды строке — устройством владеет она. Mode: off, ghub, none,
-	// offline, host, starting; KeyEffects / LogoEffects — эффекты зон, которые есть у клавиатуры; KeyIds — подсвечиваемые клавиши.
-	sealed record Logitech(string Device, bool Online, int Battery, string Mode, bool GHub, string Result, string[] KeyEffects, string[] LogoEffects, byte[] KeyIds)
+	// offline, host, starting; KeyEffects / LogoEffects — эффекты зон, которые есть у клавиатуры; KeyIds — подсвечиваемые клавиши;
+	// Foreign — подсветку меняет другая программа: lamparray («Динамическое освещение» Windows), other или "".
+	sealed record Logitech(string Device, bool Online, int Battery, string Mode, bool GHub, string Result, string[] KeyEffects, string[] LogoEffects, byte[] KeyIds, string Foreign = "")
 	{
 		public static readonly Logitech Empty = new Logitech("", Online: false, -1, "", GHub: false, "", Array.Empty<string>(), Array.Empty<string>(), Array.Empty<byte>());
 	}

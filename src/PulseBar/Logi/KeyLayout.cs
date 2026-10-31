@@ -6,6 +6,7 @@ namespace PulseBar.Logi;
 // Раскладка G915/G913 для редактора цветов клавиш (2.3): номер клавиши 0x8081 (= код HID − 3 у обычных клавиш),
 // подпись, положение и размер в ширинах клавиши. ANSI или ISO выбирается по клавишам, которые сообщила клавиатура:
 // ISO — есть клавиша 0x61 (лишняя слева от Z) и Enter в две строки; ANSI — длинный левый Shift и «\» над Enter.
+// Сама клавиатура принимает все номера 0–111 (карта 0x8081), поэтому список её клавиш строится по раскладке из 0x4540.
 internal static class KeyLayout
 {
 	public const byte Logo = 210;
@@ -22,6 +23,19 @@ internal static class KeyLayout
 		KeyDef[] all = Build(iso, ids.Contains(AnsiBackslash) || !ids.Contains(IsoHash));
 		// Логотип — отдельная зона (своя подсветка); остальные — только подсвечиваемые клавиши, если список известен.
 		return all.Where(k => k.Id != Logo && (ids.Count == 0 || ids.Contains(k.Id))).ToArray();
+	}
+
+	// Раскладка из 0x4540 (1 — US, 2 — US International, 3 — UK, 4 — немецкая, 5 — французская, …, 7 — русская):
+	// у US и русской клавиатур Logitech форма ANSI, у европейских — ISO. 0 — не сообщила: ANSI.
+	public static bool IsIso(int layout)
+	{
+		return layout != 0 && layout != 1 && layout != 2 && layout != 7;
+	}
+
+	// Номера всех клавиш раскладки, включая логотип.
+	public static HashSet<byte> Physical(bool iso)
+	{
+		return new HashSet<byte>(Build(iso, !iso).Select(k => k.Id));
 	}
 
 	// Быстрые группы редактора.

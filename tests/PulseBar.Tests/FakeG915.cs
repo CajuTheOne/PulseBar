@@ -7,7 +7,8 @@ namespace PulseBar.Tests;
 
 // Модель G915 на приёмнике Lightspeed (слот 1) для тестов: отвечает на запросы HID++ так же, как настоящая клавиатура
 // (таблица функций, память профилей из копии, подсветка, яркость, лампочки M), и ведёт себя как прошивка при нажатиях:
-// во встроенном режиме M переключает профиль сама, в режиме PulseBar — только сообщает о нажатии.
+// во встроенном режиме M переключает профиль сама, в режиме PulseBar — только сообщает о нажатии. Форматы ответов и
+// уведомлений — из журнала настоящей G915 (logi-diag 31.10.2026, Data\g915-diag-20261031.txt).
 internal sealed class FakeG915 : IHidppPort
 {
 	public const byte Slot = 1;
@@ -23,11 +24,18 @@ internal sealed class FakeG915 : IHidppPort
 
 	private static readonly byte[] Description = Convert.FromHexString("0104010303081000FF3604");
 
+	// Зоны 0x8071: 0 — логотип (место 2), 1 — клавиши (место 1); эффекты в порядке таблицы настоящей клавиатуры.
+	public const int LogoZone = 0;
+
+	public const int KeysZone = 1;
+
 	private static readonly int[][] ClusterEffects = new int[2][]
 	{
-		new int[5] { 0x00, 0x01, 0x0A, 0x03, 0x04 },
-		new int[4] { 0x00, 0x01, 0x0A, 0x03 }
+		new int[4] { 0x00, 0x01, 0x03, 0x0A },
+		new int[7] { 0x00, 0x01, 0x0A, 0x03, 0x04, 0x0B, 0x0C }
 	};
+
+	private static readonly int[] ClusterPlaces = new int[2] { 2, 1 };
 
 	private readonly object _lock = new object();
 
@@ -39,7 +47,11 @@ internal sealed class FakeG915 : IHidppPort
 
 	public readonly Dictionary<int, byte[]> Sectors;
 
-	public readonly HashSet<byte> LitKeys;
+	// Номера, которые принимает 0x8081: все 0–111, мультимедиа, G1–G5, логотип (карта fn0 настоящей G915).
+	public readonly HashSet<byte> Accepted;
+
+	// Раскладка 0x4540: 7 — русская (ANSI).
+	public int Layout = 7;
 
 	// Что клавиатура получила (для проверок).
 	public readonly List<(ushort Feature, byte Fn, byte[] Args)> Calls = new List<(ushort, byte, byte[])>();
@@ -77,9 +89,8 @@ internal sealed class FakeG915 : IHidppPort
 	public FakeG915(Dictionary<int, byte[]> sectors)
 	{
 		Sectors = sectors.ToDictionary(x => x.Key, x => (byte[])x.Value.Clone());
-		// ANSI-раскладка без логотипа и мультимедиа — как у клавиатуры, которая их не подсвечивает.
-		LitKeys = new HashSet<byte>(KeyLayout.For(Array.Empty<byte>()).Select(k => k.Id).Where(id => id < 150 || id >= 180));
-		LitKeys.Add(KeyLayout.Logo);
+		Accepted = new HashSet<byte>(Enumerable.Range(0, 112).Select(i => (byte)i));
+		Accepted.UnionWith(new byte[11] { 153, 155, 156, 157, 158, 180, 181, 182, 183, 184, KeyLayout.Logo });
 	}
 
 	public void Start()
@@ -97,6 +108,7 @@ internal sealed class FakeG915 : IHidppPort
 
 	// ---------- действия пользователя ----------
 
+	// Во встроенном режиме событие 0x8100 не приходит: клавиатура сообщает только о смене эффекта (0x8071 fn1 [01]).
 	public void PressM(int n)
 	{
 		if (Mode == 1)
@@ -105,11 +117,50 @@ internal sealed class FakeG915 : IHidppPort
 			{
 				Profile = n;
 			}
-			Notify(0x8100, 0, new byte[2] { 0, (byte)n });
+			Notify(0x8071, 1, new byte[2] { 1, 0 });
 			return;
 		}
 		Notify(0x8020, 0, new byte[2] { (byte)(1 << (n - 1)), 0 });
 		Notify(0x8020, 0, new byte[2]);
+	}
+
+	// Нажатие M1 с задетой M2, как в журнале: 03 → 02 → 03 → 02 → 00.
+	public void PressM1TouchingM2()
+	{
+		foreach (byte b in new byte[5] { 3, 2, 3, 2, 0 })
+		{
+			Notify(0x8020, 0, new byte[2] { b, 0 });
+		}
+	}
+
+	// Кнопка яркости: прошивка меняет яркость сама и сообщает 0x8040 fn0 [яркость BE16].
+	public void PressBrightness(int value)
+	{
+		lock (_lock)
+		{
+			Brightness = value;
+		}
+		Notify(0x8040, 0, new byte[2] { (byte)(value >> 8), (byte)value });
+	}
+
+	// Служба Logitech LampArray («Динамическое освещение» Windows) красит все клавиши в один цвет; ответы на её
+	// запросы (программный id 0xF) приходят и в канал PulseBar.
+	public void ForeignPaint(Rgb c)
+	{
+		byte index = (byte)(Array.IndexOf(FeatureIds, (ushort)0x8081) + 1);
+		lock (_lock)
+		{
+			foreach (byte id in Accepted)
+			{
+				if (id != KeyLayout.Logo)
+				{
+					Frame[id] = c;
+				}
+			}
+		}
+		byte[] r = new byte[20] { 0x11, Slot, index, 0x6F, c.R, c.G, c.B, 0x62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		Received?.Invoke(r);
+		Received?.Invoke(new byte[20] { 0x11, Slot, index, 0x7F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
 	}
 
 	public void PressG(int n, int repeats = 1)
@@ -304,7 +355,19 @@ internal sealed class FakeG915 : IHidppPort
 		case 0x8071:
 			if (fn == 0)
 			{
-				if (a[0] >= ClusterEffects.Length || a[1] >= ClusterEffects[a[0]].Length)
+				if (a[0] == 0xFF)
+				{
+					return new byte[7] { 0xFF, 0, (byte)ClusterEffects.Length, 0, 2, 0, 4 };
+				}
+				if (a[0] >= ClusterEffects.Length)
+				{
+					return null;
+				}
+				if (a[1] == 0xFF)
+				{
+					return new byte[5] { a[0], 0, 0, (byte)ClusterPlaces[a[0]], (byte)ClusterEffects[a[0]].Length };
+				}
+				if (a[1] >= ClusterEffects[a[0]].Length)
 				{
 					return null;
 				}
@@ -321,6 +384,21 @@ internal sealed class FakeG915 : IHidppPort
 			}
 			return new byte[0];
 		case 0x8081:
+			if (fn == 0)
+			{
+				// Карта номеров: [0, страница, 14 байт — бит на номер страница×112 + i].
+				byte[] map = new byte[16];
+				map[1] = a[1];
+				foreach (byte id in Accepted)
+				{
+					int i = id - a[1] * 112;
+					if (i >= 0 && i < 112)
+					{
+						map[2 + i / 8] |= (byte)(1 << (i % 8));
+					}
+				}
+				return map;
+			}
 			if (fn == 6)
 			{
 				if (Mode != 2)
@@ -330,7 +408,7 @@ internal sealed class FakeG915 : IHidppPort
 				}
 				for (int i = 3; i < 16; i++)
 				{
-					if (!LitKeys.Contains(a[i]))
+					if (!Accepted.Contains(a[i]))
 					{
 						return null;
 					}
@@ -383,6 +461,8 @@ internal sealed class FakeG915 : IHidppPort
 				Brightness = (a[0] << 8) | a[1];
 			}
 			return new byte[0];
+		case 0x4540:
+			return new byte[1] { (byte)Layout };
 		case 0x8100:
 			return Onboard(fn, a, out err);
 		default:
@@ -408,6 +488,11 @@ internal sealed class FakeG915 : IHidppPort
 		case 2:
 			return new byte[1] { (byte)Mode };
 		case 3:
+			// В режиме PulseBar профиль не меняется: ошибка 2 (журнал).
+			if (Mode == 2)
+			{
+				return null;
+			}
 			Profile = (a[0] << 8) | a[1];
 			return new byte[0];
 		case 4:
