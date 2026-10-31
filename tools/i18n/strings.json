@@ -106,5 +106,9 @@
 "Claude bar height",
 "Claude bar segments",
 "solid",
-"Bar sizes apply to the large Claude style."
+"Bar sizes apply to the large Claude style.",
+"account open in the Claude app",
+"Open in the Claude app",
+"Claude Code sign-in",
+"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."
 ]

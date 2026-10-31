@@ -84,7 +84,7 @@ internal static class SettingsProcess
 					w.WriteEndObject();
 				}
 				w.WriteString("claudeApi", claude.ApiStatus);
-				w.WriteString("claudeAccount", claude.Account);
+				w.WriteString("claudeAccount", claude.AccountLabel);
 				w.WriteStartArray("adapters");
 				foreach (GpuSensor.Adapter a in adapters)
 				{

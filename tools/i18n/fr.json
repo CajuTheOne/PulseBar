@@ -106,5 +106,9 @@
 "Claude bar height": "Hauteur des barres Claude",
 "Claude bar segments": "Segments par barre",
 "solid": "continue",
-"Bar sizes apply to the large Claude style.": "Les tailles des barres s’appliquent au grand style Claude."
+"Bar sizes apply to the large Claude style.": "Les tailles des barres s’appliquent au grand style Claude.",
+"account open in the Claude app": "compte ouvert dans l’application Claude",
+"Open in the Claude app": "Ouvert dans l’application Claude",
+"Claude Code sign-in": "Connexion Claude Code",
+"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "L’application Claude enregistre l’utilisation du compte qui y est ouvert. Les heures de réinitialisation viennent de claude.ai et ne s’affichent que si ce compte est aussi celui de Claude Code."
 }

@@ -63,6 +63,9 @@ internal sealed class Settings
 	// Блок Claude: 0 — выключен, 1 — компактный (между блоками), 2 — большой (полосы 5h и 7d).
 	public int ClaudeStyle = 1;
 
+	// Чьи лимиты Claude: true — аккаунта, открытого в приложении Claude; false — аккаунта Claude Code.
+	public bool ClaudeFollowApp = true;
+
 	// Большой стиль Claude: длина и высота полосы, px при 100 %; сегментов: 0 — сплошная полоса.
 	public int ClaudeBarLength = 78;
 
@@ -437,6 +440,9 @@ internal sealed class Settings
 		case "showClaude":
 			this.ShowClaude = result != 0;
 			break;
+		case "claudeFollowApp":
+			this.ClaudeFollowApp = result != 0;
+			break;
 		case "claudeStyle":
 			this.ClaudeStyle = Math.Clamp(result, 0, 2);
 			break;
@@ -541,6 +547,7 @@ internal sealed class Settings
 				w.WriteBoolean("embed", Embed);
 				w.WriteBoolean("beta", Beta);
 				w.WriteNumber("claudeStyle", ClaudeStyle);
+				w.WriteBoolean("claudeFollowApp", ClaudeFollowApp);
 				w.WriteNumber("claudeBarLength", ClaudeBarLength);
 				w.WriteNumber("claudeBarHeight", ClaudeBarHeight);
 				w.WriteNumber("claudeSegments", ClaudeSegments);

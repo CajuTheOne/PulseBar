@@ -106,5 +106,9 @@
 "Claude bar height": "Высота полос Claude",
 "Claude bar segments": "Сегментов в полосе",
 "solid": "сплошная",
-"Bar sizes apply to the large Claude style.": "Размеры полос действуют в большом стиле Claude."
+"Bar sizes apply to the large Claude style.": "Размеры полос действуют в большом стиле Claude.",
+"account open in the Claude app": "аккаунт, открытый в приложении Claude",
+"Open in the Claude app": "Открытый в приложении Claude",
+"Claude Code sign-in": "Вход Claude Code",
+"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "Приложение Claude записывает лимиты аккаунта, открытого в нём. Время сброса приходит с claude.ai и показывается, только если это же аккаунт входа Claude Code."
 }

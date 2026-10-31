@@ -140,7 +140,8 @@ internal sealed class Overlay : Form
 
 	private string? _menuHit;
 
-	private long _updateCheckAt = Environment.TickCount64 + 60000;
+	// Первая проверка обновлений — через 5 с после запуска, дальше раз в сутки (и кнопкой в «О программе»).
+	private long _updateCheckAt = Environment.TickCount64 + 5000;
 
 	// Сама форма — невидимое окно для сообщений, таймеров и меню; строку рисует _bar.
 	protected override CreateParams CreateParams
@@ -171,6 +172,7 @@ internal sealed class Overlay : Form
 		L.Set(s.Language);
 		_sensors = new Sensors(s.Gpu);
 		_claude = new ClaudeUsage(s.ClaudeIntervalMin);
+		_claude.FollowApp = s.ClaudeFollowApp;
 		_claude.Changed += OnClaudeChanged;
 		_lightTaskbar = ReadLightTaskbar();
 		_palette = Palette.Create(_lightTaskbar, s.BlueNormal);
@@ -978,6 +980,7 @@ internal sealed class Overlay : Form
 		L.Set(_s.Language);
 		StartTimer();
 		_claude.IntervalMin = _s.ClaudeIntervalMin;
+		_claude.FollowApp = _s.ClaudeFollowApp;
 		UpdateTrayIcon();
 		if (_bar.Exists && _bar.Embedded != _s.Embed)
 		{
@@ -1484,9 +1487,10 @@ internal sealed class Overlay : Form
 		case "claude":
 		{
 			ClaudeUsage.Snapshot c = _claude.Current;
-			if (_claude.Account.Length > 0)
+			string account = _claude.AccountLabel;
+			if (account.Length > 0)
 			{
-				rows.Add((L.T("Account"), _claude.Account, null));
+				rows.Add((L.T("Account"), account, null));
 			}
 			if (c != null)
 			{

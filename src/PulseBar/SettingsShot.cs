@@ -81,7 +81,7 @@ internal static class SettingsShot
 		{
 			Settings = s,
 			Claude = claude.Current,
-			ClaudeAccount = claude.Account,
+			ClaudeAccount = claude.AccountLabel,
 			Readings = new Readings
 			{
 				CpuLoad = 7f,

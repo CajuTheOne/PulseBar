@@ -106,5 +106,9 @@
 "Claude bar height": "Wysokość pasków Claude",
 "Claude bar segments": "Segmentów w pasku",
 "solid": "ciągły",
-"Bar sizes apply to the large Claude style.": "Rozmiary pasków dotyczą dużego stylu Claude."
+"Bar sizes apply to the large Claude style.": "Rozmiary pasków dotyczą dużego stylu Claude.",
+"account open in the Claude app": "konto otwarte w aplikacji Claude",
+"Open in the Claude app": "Otwarte w aplikacji Claude",
+"Claude Code sign-in": "Logowanie Claude Code",
+"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "Aplikacja Claude zapisuje użycie konta, które jest w niej otwarte. Czas resetu pochodzi z claude.ai i jest pokazywany tylko wtedy, gdy to samo konto jest zalogowane w Claude Code."
 }

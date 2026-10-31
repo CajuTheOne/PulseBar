@@ -117,7 +117,11 @@ internal static partial class L
 			["Claude bar height"] = "Высота полос Claude",
 			["Claude bar segments"] = "Сегментов в полосе",
 			["solid"] = "сплошная",
-			["Bar sizes apply to the large Claude style."] = "Размеры полос действуют в большом стиле Claude."
+			["Bar sizes apply to the large Claude style."] = "Размеры полос действуют в большом стиле Claude.",
+			["account open in the Claude app"] = "аккаунт, открытый в приложении Claude",
+			["Open in the Claude app"] = "Открытый в приложении Claude",
+			["Claude Code sign-in"] = "Вход Claude Code",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "Приложение Claude записывает лимиты аккаунта, открытого в нём. Время сброса приходит с claude.ai и показывается, только если это же аккаунт входа Claude Code."
 		},
 		["uk"] = new Dictionary<string, string>
 		{
@@ -228,7 +232,11 @@ internal static partial class L
 			["Claude bar height"] = "Висота смуг Claude",
 			["Claude bar segments"] = "Сегментів у смузі",
 			["solid"] = "суцільна",
-			["Bar sizes apply to the large Claude style."] = "Розміри смуг діють у великому стилі Claude."
+			["Bar sizes apply to the large Claude style."] = "Розміри смуг діють у великому стилі Claude.",
+			["account open in the Claude app"] = "обліковий запис, відкритий у застосунку Claude",
+			["Open in the Claude app"] = "Відкритий у застосунку Claude",
+			["Claude Code sign-in"] = "Вхід Claude Code",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "Застосунок Claude записує ліміти облікового запису, відкритого в ньому. Час скидання надходить із claude.ai і показується, лише якщо це той самий обліковий запис входу Claude Code."
 		},
 		["de"] = new Dictionary<string, string>
 		{
@@ -339,7 +347,11 @@ internal static partial class L
 			["Claude bar height"] = "Höhe der Claude-Balken",
 			["Claude bar segments"] = "Segmente pro Balken",
 			["solid"] = "durchgehend",
-			["Bar sizes apply to the large Claude style."] = "Die Balkengrößen gelten für den großen Claude-Stil."
+			["Bar sizes apply to the large Claude style."] = "Die Balkengrößen gelten für den großen Claude-Stil.",
+			["account open in the Claude app"] = "in der Claude-App geöffnetes Konto",
+			["Open in the Claude app"] = "In der Claude-App geöffnet",
+			["Claude Code sign-in"] = "Claude-Code-Anmeldung",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "Die Claude-App zeichnet die Nutzung des darin geöffneten Kontos auf. Rücksetzzeiten kommen von claude.ai und werden nur angezeigt, wenn dieses Konto auch für Claude Code angemeldet ist."
 		},
 		["fr"] = new Dictionary<string, string>
 		{
@@ -450,7 +462,11 @@ internal static partial class L
 			["Claude bar height"] = "Hauteur des barres Claude",
 			["Claude bar segments"] = "Segments par barre",
 			["solid"] = "continue",
-			["Bar sizes apply to the large Claude style."] = "Les tailles des barres s’appliquent au grand style Claude."
+			["Bar sizes apply to the large Claude style."] = "Les tailles des barres s’appliquent au grand style Claude.",
+			["account open in the Claude app"] = "compte ouvert dans l’application Claude",
+			["Open in the Claude app"] = "Ouvert dans l’application Claude",
+			["Claude Code sign-in"] = "Connexion Claude Code",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "L’application Claude enregistre l’utilisation du compte qui y est ouvert. Les heures de réinitialisation viennent de claude.ai et ne s’affichent que si ce compte est aussi celui de Claude Code."
 		},
 		["es"] = new Dictionary<string, string>
 		{
@@ -561,7 +577,11 @@ internal static partial class L
 			["Claude bar height"] = "Altura de las barras de Claude",
 			["Claude bar segments"] = "Segmentos por barra",
 			["solid"] = "continua",
-			["Bar sizes apply to the large Claude style."] = "Los tamaños de las barras se aplican al estilo grande de Claude."
+			["Bar sizes apply to the large Claude style."] = "Los tamaños de las barras se aplican al estilo grande de Claude.",
+			["account open in the Claude app"] = "cuenta abierta en la app de Claude",
+			["Open in the Claude app"] = "Abierta en la app de Claude",
+			["Claude Code sign-in"] = "Inicio de sesión de Claude Code",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "La app de Claude registra el uso de la cuenta abierta en ella. Las horas de restablecimiento vienen de claude.ai y solo se muestran si esa cuenta es también la de Claude Code."
 		},
 		["pt"] = new Dictionary<string, string>
 		{
@@ -672,7 +692,11 @@ internal static partial class L
 			["Claude bar height"] = "Altura das barras do Claude",
 			["Claude bar segments"] = "Segmentos por barra",
 			["solid"] = "contínua",
-			["Bar sizes apply to the large Claude style."] = "Os tamanhos das barras valem para o estilo grande do Claude."
+			["Bar sizes apply to the large Claude style."] = "Os tamanhos das barras valem para o estilo grande do Claude.",
+			["account open in the Claude app"] = "conta aberta no app do Claude",
+			["Open in the Claude app"] = "Aberta no app do Claude",
+			["Claude Code sign-in"] = "Login do Claude Code",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "O app do Claude registra o uso da conta aberta nele. Os horários de reinício vêm do claude.ai e só aparecem quando essa conta também é a do Claude Code."
 		},
 		["it"] = new Dictionary<string, string>
 		{
@@ -783,7 +807,11 @@ internal static partial class L
 			["Claude bar height"] = "Altezza delle barre di Claude",
 			["Claude bar segments"] = "Segmenti per barra",
 			["solid"] = "continua",
-			["Bar sizes apply to the large Claude style."] = "Le dimensioni delle barre valgono per lo stile grande di Claude."
+			["Bar sizes apply to the large Claude style."] = "Le dimensioni delle barre valgono per lo stile grande di Claude.",
+			["account open in the Claude app"] = "account aperto nell’app Claude",
+			["Open in the Claude app"] = "Aperto nell’app Claude",
+			["Claude Code sign-in"] = "Accesso di Claude Code",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "L’app Claude registra l’utilizzo dell’account aperto al suo interno. Gli orari di azzeramento arrivano da claude.ai e compaiono solo se quell’account è anche quello di Claude Code."
 		},
 		["pl"] = new Dictionary<string, string>
 		{
@@ -894,7 +922,11 @@ internal static partial class L
 			["Claude bar height"] = "Wysokość pasków Claude",
 			["Claude bar segments"] = "Segmentów w pasku",
 			["solid"] = "ciągły",
-			["Bar sizes apply to the large Claude style."] = "Rozmiary pasków dotyczą dużego stylu Claude."
+			["Bar sizes apply to the large Claude style."] = "Rozmiary pasków dotyczą dużego stylu Claude.",
+			["account open in the Claude app"] = "konto otwarte w aplikacji Claude",
+			["Open in the Claude app"] = "Otwarte w aplikacji Claude",
+			["Claude Code sign-in"] = "Logowanie Claude Code",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "Aplikacja Claude zapisuje użycie konta, które jest w niej otwarte. Czas resetu pochodzi z claude.ai i jest pokazywany tylko wtedy, gdy to samo konto jest zalogowane w Claude Code."
 		},
 		["zh"] = new Dictionary<string, string>
 		{
@@ -1005,7 +1037,11 @@ internal static partial class L
 			["Claude bar height"] = "Claude 进度条高度",
 			["Claude bar segments"] = "进度条分段数",
 			["solid"] = "连续",
-			["Bar sizes apply to the large Claude style."] = "进度条尺寸适用于 Claude 的大样式。"
+			["Bar sizes apply to the large Claude style."] = "进度条尺寸适用于 Claude 的大样式。",
+			["account open in the Claude app"] = "Claude 应用中当前打开的账户",
+			["Open in the Claude app"] = "Claude 应用中打开的账户",
+			["Claude Code sign-in"] = "Claude Code 登录账户",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "Claude 应用会记录其中当前打开账户的用量。重置时间来自 claude.ai，仅当该账户同时是 Claude Code 的登录账户时显示。"
 		},
 		["ja"] = new Dictionary<string, string>
 		{
@@ -1116,7 +1152,11 @@ internal static partial class L
 			["Claude bar height"] = "Claude バーの高さ",
 			["Claude bar segments"] = "バーの区切り数",
 			["solid"] = "連続",
-			["Bar sizes apply to the large Claude style."] = "バーのサイズは Claude の大スタイルに適用されます。"
+			["Bar sizes apply to the large Claude style."] = "バーのサイズは Claude の大スタイルに適用されます。",
+			["account open in the Claude app"] = "Claude アプリで開いているアカウント",
+			["Open in the Claude app"] = "Claude アプリで開いているもの",
+			["Claude Code sign-in"] = "Claude Code のサインイン",
+			["The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in."] = "Claude アプリは、開いているアカウントの使用量を記録します。リセット時刻は claude.ai から取得し、そのアカウントが Claude Code のサインインと同じ場合にのみ表示されます。"
 		}
 	};
 }

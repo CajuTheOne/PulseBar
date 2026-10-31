@@ -106,5 +106,9 @@
 "Claude bar height": "Claude 进度条高度",
 "Claude bar segments": "进度条分段数",
 "solid": "连续",
-"Bar sizes apply to the large Claude style.": "进度条尺寸适用于 Claude 的大样式。"
+"Bar sizes apply to the large Claude style.": "进度条尺寸适用于 Claude 的大样式。",
+"account open in the Claude app": "Claude 应用中当前打开的账户",
+"Open in the Claude app": "Claude 应用中打开的账户",
+"Claude Code sign-in": "Claude Code 登录账户",
+"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "Claude 应用会记录其中当前打开账户的用量。重置时间来自 claude.ai，仅当该账户同时是 Claude Code 的登录账户时显示。"
 }

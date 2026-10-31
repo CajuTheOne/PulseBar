@@ -106,5 +106,9 @@
 "Claude bar height": "Claude バーの高さ",
 "Claude bar segments": "バーの区切り数",
 "solid": "連続",
-"Bar sizes apply to the large Claude style.": "バーのサイズは Claude の大スタイルに適用されます。"
+"Bar sizes apply to the large Claude style.": "バーのサイズは Claude の大スタイルに適用されます。",
+"account open in the Claude app": "Claude アプリで開いているアカウント",
+"Open in the Claude app": "Claude アプリで開いているもの",
+"Claude Code sign-in": "Claude Code のサインイン",
+"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "Claude アプリは、開いているアカウントの使用量を記録します。リセット時刻は claude.ai から取得し、そのアカウントが Claude Code のサインインと同じ場合にのみ表示されます。"
 }

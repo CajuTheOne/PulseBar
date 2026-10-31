@@ -106,5 +106,9 @@
 "Claude bar height": "Висота смуг Claude",
 "Claude bar segments": "Сегментів у смузі",
 "solid": "суцільна",
-"Bar sizes apply to the large Claude style.": "Розміри смуг діють у великому стилі Claude."
+"Bar sizes apply to the large Claude style.": "Розміри смуг діють у великому стилі Claude.",
+"account open in the Claude app": "обліковий запис, відкритий у застосунку Claude",
+"Open in the Claude app": "Відкритий у застосунку Claude",
+"Claude Code sign-in": "Вхід Claude Code",
+"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "Застосунок Claude записує ліміти облікового запису, відкритого в ньому. Час скидання надходить із claude.ai і показується, лише якщо це той самий обліковий запис входу Claude Code."
 }

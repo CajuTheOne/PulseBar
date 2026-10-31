@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -41,6 +42,38 @@ internal sealed class ClaudeUsage : IDisposable
 
 	// Почта аккаунта Claude Code (пусто — ещё не известна).
 	public volatile string Account = "";
+
+	// true — показывать аккаунт, открытый сейчас в приложении Claude (организация последней записи его истории);
+	// false — аккаунт, в который вошёл Claude Code.
+	public volatile bool FollowApp = true;
+
+	// Организация, чьи лимиты показываются сейчас.
+	private volatile string? _target;
+
+	// История приложения Claude: последняя запись каждой организации и организация самой последней записи.
+	private DateTime _historyTime;
+
+	private string? _historyLatestOrg;
+
+	private readonly Dictionary<string, (long T, float Fh, float Sd)> _historyByOrg = new Dictionary<string, (long, float, float)>();
+
+	// Кому принадлежат показанные лимиты: почта (если это аккаунт Claude Code) или «аккаунт из приложения Claude».
+	public string AccountLabel
+	{
+		get
+		{
+			string target = _target;
+			if (target == null)
+			{
+				return "";
+			}
+			if (!(target == _org) || Account.Length <= 0)
+			{
+				return L.T("account open in the Claude app");
+			}
+			return Account;
+		}
+	}
 
 	private readonly Timer _timer;
 
@@ -87,24 +120,34 @@ internal sealed class ClaudeUsage : IDisposable
 			Snapshot? before = Current;
 			Snapshot? next = before;
 			string? token = ReadToken(out bool loggedIn);
-			if (!loggedIn)
+			if (_api && token != null && EnsureAccount(token))
+			{
+				next = null; // данные прежнего аккаунта больше не подходят
+			}
+			ReadHistory();
+			string? codeOrg = (loggedIn ? _org : null);
+			string? target = (FollowApp ? (_historyLatestOrg ?? codeOrg) : codeOrg);
+			if (target != _target)
+			{
+				_target = target;
+				next = null;
+				if (target != null)
+				{
+					Log.Write((target == _org) ? "claude: showing the Claude Code account" : "claude: showing the account open in the Claude app");
+				}
+			}
+			if (target == null)
 			{
 				next = null;
 			}
 			else
 			{
-				if (_api && token != null && EnsureAccount(token))
-				{
-					next = null; // данные прежнего аккаунта больше не подходят
-				}
-				if (_api && token != null && DateTimeOffset.Now >= _nextApi)
+				// claude.ai отвечает за аккаунт Claude Code — его данные годятся, только если показываем этот же аккаунт.
+				if (_api && token != null && target == _org && DateTimeOffset.Now >= _nextApi)
 				{
 					next = Newer(next, FromApi(token)) ?? next;
 				}
-				if (_org != null)
-				{
-					next = Newer(next, FromHistory(next, _org));
-				}
+				next = Newer(next, FromHistory(target));
 			}
 			Current = next;
 			if (!Equals(before, next))
@@ -349,40 +392,50 @@ internal sealed class ClaudeUsage : IDisposable
 		}
 	}
 
-	// Последняя запись истории приложения Claude для организации org: {"t": мс, "org": …, "u": {"fh": 5 часов %, "sd": 7 дней %}}.
-	private static Snapshot? FromHistory(Snapshot? known, string org)
+	// История приложения Claude: {"samples": [{"t": мс, "org": …, "u": {"fh": 5 часов %, "sd": 7 дней %}}, …]} —
+	// перечитывается, только когда файл изменился.
+	private void ReadHistory()
 	{
 		if (!File.Exists(History))
 		{
-			return null;
+			_historyLatestOrg = null;
+			_historyByOrg.Clear();
+			return;
 		}
-		DateTime modified = File.GetLastWriteTimeUtc(History);
-		if (known != null && modified <= known.Updated.UtcDateTime)
+		DateTime t = File.GetLastWriteTimeUtc(History);
+		if (t == _historyTime)
 		{
-			return null;
+			return;
 		}
 		using FileStream f = new(History, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
 		using JsonDocument doc = JsonDocument.Parse(f);
 		if (!doc.RootElement.TryGetProperty("samples", out JsonElement samples) || samples.ValueKind != JsonValueKind.Array)
 		{
-			return null;
+			return;
 		}
-		JsonElement last = default;
-		for (int i = samples.GetArrayLength() - 1; i >= 0; i--)
+		_historyTime = t;
+		_historyByOrg.Clear();
+		_historyLatestOrg = null;
+		foreach (JsonElement sample in samples.EnumerateArray())
 		{
-			if (samples[i].TryGetProperty("org", out JsonElement o) && o.GetString() == org)
+			if (!sample.TryGetProperty("org", out JsonElement o) || o.GetString() is not string org || !sample.TryGetProperty("t", out JsonElement ts) || !sample.TryGetProperty("u", out JsonElement u))
 			{
-				last = samples[i];
-				break;
+				continue;
 			}
+			float fh = u.TryGetProperty("fh", out JsonElement a) && a.ValueKind == JsonValueKind.Number ? (float)a.GetDouble() : float.NaN;
+			float sd = u.TryGetProperty("sd", out JsonElement b) && b.ValueKind == JsonValueKind.Number ? (float)b.GetDouble() : float.NaN;
+			_historyByOrg[org] = (ts.GetInt64(), fh, sd);
+			_historyLatestOrg = org;
 		}
-		if (last.ValueKind != JsonValueKind.Object || !last.TryGetProperty("t", out JsonElement t) || !last.TryGetProperty("u", out JsonElement u))
+	}
+
+	private Snapshot? FromHistory(string org)
+	{
+		if (!_historyByOrg.TryGetValue(org, out var h))
 		{
 			return null;
 		}
-		float fh = u.TryGetProperty("fh", out JsonElement a) && a.ValueKind == JsonValueKind.Number ? (float)a.GetDouble() : float.NaN;
-		float sd = u.TryGetProperty("sd", out JsonElement b) && b.ValueKind == JsonValueKind.Number ? (float)b.GetDouble() : float.NaN;
-		return new Snapshot(fh, sd, null, null, DateTimeOffset.FromUnixTimeMilliseconds(t.GetInt64()), "claude app");
+		return new Snapshot(h.Fh, h.Sd, null, null, DateTimeOffset.FromUnixTimeMilliseconds(h.T), "claude app");
 	}
 
 	public void Dispose()

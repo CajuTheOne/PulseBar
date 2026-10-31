@@ -717,6 +717,15 @@ internal sealed class SettingsWindow : Window
 	{
 		StackPanel p = Page("Claude");
 		p.Children.Add(ClaudeStyleCombo());
+		p.Children.Add(Combo(L.T("Account"), new string[2]
+		{
+			L.T("Open in the Claude app"),
+			L.T("Claude Code sign-in")
+		}, () => (!_s.ClaudeFollowApp) ? 1 : 0, delegate(int v)
+		{
+			_s.ClaudeFollowApp = v == 0;
+		}));
+		p.Children.Add(Note(L.T("The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.")));
 		TextBlock status = new TextBlock
 		{
 			Margin = new Thickness(0.0, 12.0, 0.0, 12.0),
