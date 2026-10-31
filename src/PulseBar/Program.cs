@@ -42,6 +42,10 @@ internal static class Program
 		{
 			return LogiDiag.Backup(args[1]);
 		}
+		if (args != null && args.Length >= 3 && args[0] == "--logi-call")
+		{
+			return LogiDiag.CallOnce(args[1], args[2], (args.Length > 3) ? args[3] : "");
+		}
 		if (args != null && args.Length >= 1 && args[0] == "--logi-diag")
 		{
 			return LogiDiag.Run((args.Length > 1) ? args[1] : null);
@@ -73,6 +77,7 @@ internal static class Program
 		using (Overlay mainForm = new Overlay(Settings.Load()))
 		{
 			Application.Run(mainForm);
+			mainForm.ReleaseDevices();
 		}
 		mutex.ReleaseMutex();
 		return 0;

@@ -262,6 +262,13 @@ internal sealed class Overlay : Form
 				_logi.DevicesChanged();
 			}
 			break;
+		case 22:
+			// WM_ENDSESSION: выключение или выход из Windows — клавиатуру вернуть её памяти, пока процесс жив.
+			if (m.WParam != IntPtr.Zero)
+			{
+				ReleaseDevices();
+			}
+			break;
 		}
 		if (m.Msg == SettingsProcess.MsgSettingsChanged)
 		{
@@ -904,8 +911,16 @@ internal sealed class Overlay : Form
 		}
 	}
 
+	// Клавиатуру Logitech — её памяти (повторный вызов ничего не делает). Нужен и вне OnFormClosed: WM_CLOSE от taskkill
+	// или установщика закрывает скрытое окно строки без событий формы (проверено 31.10.2026).
+	internal void ReleaseDevices()
+	{
+		_logi.Dispose();
+	}
+
 	protected override void OnFormClosed(FormClosedEventArgs e)
 	{
+		Log.Write($"exit ({e.CloseReason})");
 		Native.KillTimer(base.Handle, 1);
 		Native.KillTimer(base.Handle, 2);
 		if (_hook != IntPtr.Zero)

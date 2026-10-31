@@ -180,6 +180,7 @@ internal sealed class LogiService : IDisposable
 		}
 		if (_started)
 		{
+			Log.Write("logi: stopping");
 			using ManualResetEventSlim done = new ManualResetEventSlim();
 			Post(delegate
 			{

@@ -303,6 +303,26 @@ public class ServiceTests
 	}
 
 	[TestMethod]
+	public void SoftwareLightingControlIsTurnedOnAndGivenBack()
+	{
+		Rig r = new Rig(c => c.Profiles[0].Keyboard.Color = "#102030");
+		Assert.AreEqual(3, r.Kb.SwMode, "effects need bit 0");
+		Assert.AreEqual(new Rgb(0x10, 0x20, 0x30), KeysColor(r.Kb));
+		// Служба LampArray сбросила режим — следующий эффект включает его снова.
+		r.Kb.SwMode = 2;
+		r.Kb.Effects.Clear();
+		LogiConfig c = LogiConfig.Load(r.ConfigPath);
+		c.Profiles[0].Keyboard.Color = "#405060";
+		c.Save(r.ConfigPath);
+		r.Svc.ReloadConfig();
+		r.Settle();
+		Assert.AreEqual(new Rgb(0x40, 0x50, 0x60), KeysColor(r.Kb));
+		r.Dispose();
+		Assert.AreEqual(2, r.Kb.SwMode, "given back on exit");
+		Assert.AreEqual(6, r.Kb.SwFlags);
+	}
+
+	[TestMethod]
 	public void M1PressThatTouchesM2StaysOnM1()
 	{
 		using Rig r = new Rig(c => c.Active = 2);

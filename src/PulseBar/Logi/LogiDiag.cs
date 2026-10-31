@@ -85,6 +85,45 @@ internal sealed class LogiDiag : Form
 		}
 	}
 
+	// --logi-call <функция hex> <fn> [аргументы hex]: один запрос HID++ к клавиатуре Logitech (можно рядом с работающей
+	// строкой); запрос и ответ дописываются в %LOCALAPPDATA%\PulseBar\logi-call.txt. Для разбора ошибок на устройстве.
+	public static int CallOnce(string feature, string fn, string args)
+	{
+		string file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "logi-call.txt");
+		ushort id = Convert.ToUInt16(feature, 16);
+		byte f = byte.Parse(fn);
+		byte[] a = Convert.FromHexString(args);
+		string result = "no keyboard";
+		List<HidppLink> links = HidppLink.OpenAll();
+		try
+		{
+			foreach (HidppLink l in links)
+			{
+				for (int slot = 1; slot <= (l.IsReceiver ? 6 : 1) && result == "no keyboard"; slot++)
+				{
+					byte index = l.IsReceiver ? (byte)slot : (byte)0xFF;
+					string name = l.IsReceiver ? LogiDevice.PairedName(l, index) : "";
+					LogiDevice? d = (name.Length > 0 || !l.IsReceiver) ? LogiDevice.Open(l, index, name) : null;
+					if (d != null && d.Has(LogiDevice.GKeys))
+					{
+						int e = 0;
+						byte[]? r = d.Has(id) ? d.Call(id, f, a, out e, 1) : null;
+						result = !d.Has(id) ? "no such feature" : (r != null) ? Convert.ToHexString(r) : $"error {e}";
+					}
+				}
+			}
+		}
+		finally
+		{
+			foreach (HidppLink l in links)
+			{
+				l.Dispose();
+			}
+		}
+		File.AppendAllText(file, $"{DateTime.Now:HH:mm:ss} {id:X4} fn{f} {Convert.ToHexString(a)} -> {result}{Environment.NewLine}");
+		return (result.StartsWith("error", StringComparison.Ordinal) || result.StartsWith("no ", StringComparison.Ordinal)) ? 1 : 0;
+	}
+
 	public static int Run(string? path)
 	{
 		ApplicationConfiguration.Initialize();

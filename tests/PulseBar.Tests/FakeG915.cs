@@ -70,6 +70,11 @@ internal sealed class FakeG915 : IHidppPort
 
 	public int Brightness = 100;
 
+	// Программное управление подсветкой 0x8071 fn5: после режима PulseBar у настоящей G915 — 02 06 (эффекты отклоняются).
+	public byte SwMode = 2;
+
+	public byte SwFlags = 6;
+
 	public int BatteryMv = 3900;
 
 	public bool Online = true;
@@ -376,11 +381,25 @@ internal sealed class FakeG915 : IHidppPort
 			}
 			if (fn == 1)
 			{
+				if ((SwMode & 1) == 0)
+				{
+					err = 5;
+					return null;
+				}
 				if (a[0] >= ClusterEffects.Length || a[1] >= ClusterEffects[a[0]].Length)
 				{
 					return null;
 				}
 				Effects[a[0]] = (ClusterEffects[a[0]][a[1]], a[2..12]);
+			}
+			if (fn == 5)
+			{
+				if (a[0] == 1)
+				{
+					SwMode = a[1];
+					SwFlags = a[2];
+				}
+				return new byte[3] { a[0], SwMode, SwFlags };
 			}
 			return new byte[0];
 		case 0x8081:

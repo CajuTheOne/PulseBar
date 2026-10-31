@@ -41,6 +41,9 @@ internal sealed class LogiKeyboard
 
 	private bool _setUp;
 
+	// Программное управление подсветкой (0x8071 fn5) до PulseBar: [режим, флаги]; возвращается при отпускании.
+	private byte[]? _swOriginal;
+
 	public LogiDevice Device { get; }
 
 	public KeyEdges Edges { get; } = new KeyEdges();
@@ -89,6 +92,7 @@ internal sealed class LogiKeyboard
 			error = $"G-keys: error {e}";
 			return false;
 		}
+		EnsureSoftwareControl();
 		if (Clusters.Count == 0 || KeyIds.Length == 0)
 		{
 			lock (Known)
@@ -167,12 +171,45 @@ internal sealed class LogiKeyboard
 		{
 			Device.Call(LogiDevice.GKeys, 2, new byte[1], out _, 2);
 		}
+		if (_swOriginal != null && Device.Has(LogiDevice.RgbEffects))
+		{
+			Device.Call(LogiDevice.RgbEffects, 5, new byte[3] { 1, _swOriginal[0], _swOriginal[1] }, out _, 2);
+		}
 		Device.Call(LogiDevice.OnboardProfiles, 1, new byte[1] { OnboardMemory.ModeOnboard }, out _, 2);
 		if (profile > 0)
 		{
 			Device.Call(LogiDevice.OnboardProfiles, 3, new byte[2] { (byte)(profile >> 8), (byte)profile }, out _, 2);
 		}
 		Invalidate();
+	}
+
+	// Программное управление подсветкой, 0x8071 fn5: [0] → [0, режим, флаги]; [1, режим, флаги] — записать.
+	// Эффекты из программы (fn1) G915 принимает только при бите 0 режима, иначе ошибка 5. Журнал 31.10.2026: после
+	// режима PulseBar было 02 06 — эффекты отклонялись; служба Logitech LampArray после смены профиля ставит 03 06, и тогда
+	// они проходили; поэтому в 2.3.0-beta.1 эффекты то работали, то нет. Ставим бит 0, флаги оставляем (0 → 06, как у
+	// LampArray). Служба может сбросить режим снова — тогда при ошибке 5 он ставится заново (SetEffect).
+	private bool EnsureSoftwareControl()
+	{
+		if (!Device.Has(LogiDevice.RgbEffects))
+		{
+			return false;
+		}
+		byte[]? r = Device.Call(LogiDevice.RgbEffects, 5, new byte[1], out int e, 2);
+		if (r == null || r.Length < 3)
+		{
+			Log.Write($"logi: software lighting control: error {e}");
+			return false;
+		}
+		_swOriginal ??= new byte[2] { r[1], r[2] };
+		if ((r[1] & 1) != 0)
+		{
+			return true;
+		}
+		byte mode = (byte)((r[1] == 0) ? 3 : (r[1] | 1));
+		byte flags = (byte)((r[2] == 0) ? 6 : r[2]);
+		bool ok = Device.Call(LogiDevice.RgbEffects, 5, new byte[3] { 1, mode, flags }, out e, 2) != null;
+		Log.Write($"logi: software lighting control {r[1]:X2} {r[2]:X2} -> {mode:X2} {flags:X2}{(ok ? "" : $": error {e}")}");
+		return ok;
 	}
 
 	private bool PaintLighting(KeyFrame f, out string error)
@@ -207,9 +244,9 @@ internal sealed class LogiKeyboard
 		return true;
 	}
 
-	// Эффект кластера через 0x8071: [кластер, индекс эффекта, 10 параметров, 1]. Последний байт — 1, как у OpenRGB и
-	// Solaar: с 0 G915 отвечает ошибкой 5 (проверка 31.10.2026). Параметры — как в записи встроенной памяти.
-	// Яркость здесь всегда 100: общую яркость задаёт 0x8040.
+	// Эффект кластера через 0x8071: [кластер, индекс эффекта, 10 параметров, 0 — не сохранять в памяти клавиатуры].
+	// Параметры — как в записи встроенной памяти. Яркость здесь всегда 100: общую яркость задаёт 0x8040.
+	// Ошибка 5 — выключено программное управление подсветкой (см. EnsureSoftwareControl): включить и повторить.
 	private bool SetEffect(int cluster, Lighting l, out string error)
 	{
 		error = "";
@@ -233,8 +270,12 @@ internal sealed class LogiKeyboard
 		args[0] = (byte)cluster;
 		args[1] = (byte)index;
 		Array.Copy(entry, 1, args, 2, 10);
-		args[12] = 1;
-		if (Device.Call(LogiDevice.RgbEffects, 1, args, out int e, 3) == null)
+		byte[]? reply = Device.Call(LogiDevice.RgbEffects, 1, args, out int e, 3);
+		if (reply == null && e == 5 && EnsureSoftwareControl())
+		{
+			reply = Device.Call(LogiDevice.RgbEffects, 1, args, out e, 3);
+		}
+		if (reply == null)
 		{
 			if (e > 0 && e != HidppLink.ErrBusy)
 			{

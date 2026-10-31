@@ -97,6 +97,7 @@
 | `PulseBar.exe --autostart on` / `off` | включить/выключить автозапуск текущего пользователя |
 | `PulseBar.exe --logi-diag [txt]` | диагностика клавиатуры Logitech: окно просит нажать M1–M3, MR, G1–G5, журнал пакетов в `%LOCALAPPDATA%\PulseBar\logi-diag-*.txt` (G HUB закрыт; строка на это время отпускает клавиатуру) |
 | `PulseBar.exe --logi-backup <json>` | копия встроенной памяти клавиатуры (только чтение) |
+| `PulseBar.exe --logi-call <функция hex> <fn> [аргументы hex]` | один запрос HID++ к клавиатуре (для разбора ошибок; можно при работающей строке), ответ — в `%LOCALAPPDATA%\PulseBar\logi-call.txt` |
 | `PULSEBAR_LOGI_TRACE=1` (переменная окружения) | строка пишет все пакеты HID++ в `%LOCALAPPDATA%\PulseBar\logi-trace-*.txt` |
 | `PulseBar.exe --settings [вкладка]` | окно настроек (вкладки 0–6); без окна строки изменения применятся при её следующем запуске |
 | `PulseBar.exe --shot-settings <png> <вкладка> [expand\|-] [язык]` | нарисовать вкладку настроек в PNG без показа окна (диагностика) |
