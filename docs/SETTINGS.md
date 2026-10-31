@@ -53,13 +53,14 @@
 | `hideFullscreen` | `true` | прятать в полноэкранных приложениях |
 | `showRamGb` | `true` | объём в ГБ у RAM и VRAM |
 | `groupGap` | `20` | 0…80, px при 100 % |
-| `trayGap` | `0` | 0…100, округляется до десятков |
+| `trayGap` | `0` | 0…4000, px при 100 %; меняется и перетаскиванием строки мышью |
 | `gpu` | `""` | `VEN_xxxx&DEV_xxxx` выбранной видеокарты; пусто — автоматически дискретная |
 | `trayIcon` | `true` | значок в трее |
 | `embed` | `true` | внутри панели задач / поверх панели |
 | `beta` | `false` | получать бета-версии |
 | `blocks` | `cpu,gpu,vram,ram,claude,battery` | порядок блоков |
 | `showCpu`, `showGpu`, `showVram`, `showRam`, `showClaude`, `showBattery` | `true` | показ блоков |
+| `hoverTip` / `hoverChart` | `true` / `false` | подсказка при наведении / график за 60 с в ней |
 | `claudeInterval` | `5` | минут между запросами к claude.ai, 1…15 |
 | `cpuLoad` / `cpuTemp` / `gpuLoad` / `gpuTemp` / `vram` / `ram` / `claude` | `[60,85]` / `[75,90]` / `[60,85]` / `[70,83]` / `[70,85]` / `[70,85]` / `[70,90]` | пороги |
 | `kbBattery` / `mouseBattery` | `[20,10]` | заряд: жёлтый при ≤, красный при ≤ |

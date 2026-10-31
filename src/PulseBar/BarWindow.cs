@@ -37,6 +37,19 @@ internal sealed class BarWindow : NativeWindow
 
 	private bool _tracking;
 
+	private bool _down;
+
+	private bool _dragging;
+
+	private int _downX;
+
+	// Перетаскивание строки левой кнопкой: Drag(dx) — сдвиг мыши от нажатия, px экрана; DragEnd — отпустили.
+	public event Action? DragStart;
+
+	public event Action<int>? Drag;
+
+	public event Action? DragEnd;
+
 	public bool Embedded { get; private set; }
 
 	public bool Exists => Handle != IntPtr.Zero && Native.IsWindow(Handle) != 0;
@@ -96,8 +109,24 @@ internal sealed class BarWindow : NativeWindow
 		case 0x21: // WM_MOUSEACTIVATE: не забирать фокус у панели и программ
 			m.Result = 3; // MA_NOACTIVATE
 			return;
-		case 0x201: // WM_LBUTTONDOWN; двойной щелчок считаем сами — класс окна без CS_DBLCLKS
+		case 0x201: // WM_LBUTTONDOWN: начало щелчка или перетаскивания
+			GetCursorPos(out POINT p);
+			_downX = p.X;
+			_down = true;
+			_dragging = false;
+			SetCapture(Handle);
+			return;
+		case 0x202: // WM_LBUTTONUP; двойной щелчок считаем сами — класс окна без CS_DBLCLKS
 		{
+			bool dragged = _dragging;
+			_down = false;
+			_dragging = false;
+			ReleaseCapture();
+			if (dragged)
+			{
+				DragEnd?.Invoke();
+				return;
+			}
 			long now = Environment.TickCount64;
 			if (now - _lastClick <= GetDoubleClickTime())
 			{
@@ -110,10 +139,33 @@ internal sealed class BarWindow : NativeWindow
 			}
 			return;
 		}
+		case 0x215: // WM_CAPTURECHANGED: захват мыши потерян посреди перетаскивания
+			if (_dragging)
+			{
+				_dragging = false;
+				DragEnd?.Invoke();
+			}
+			_down = false;
+			break;
 		case 0x205: // WM_RBUTTONUP
 			RightClick?.Invoke();
 			return;
 		case 0x200: // WM_MOUSEMOVE
+			if (_down)
+			{
+				GetCursorPos(out POINT q);
+				int dx = q.X - _downX;
+				if (!_dragging && Math.Abs(dx) >= GetSystemMetrics(68)) // SM_CXDRAG
+				{
+					_dragging = true;
+					DragStart?.Invoke();
+				}
+				if (_dragging)
+				{
+					Drag?.Invoke(dx);
+				}
+				return;
+			}
 			if (!_tracking)
 			{
 				TRACKMOUSEEVENT t = new TRACKMOUSEEVENT
@@ -150,4 +202,23 @@ internal sealed class BarWindow : NativeWindow
 
 	[DllImport("user32.dll")]
 	private static extern bool TrackMouseEvent(ref TRACKMOUSEEVENT e);
+
+	private struct POINT
+	{
+		public int X;
+
+		public int Y;
+	}
+
+	[DllImport("user32.dll")]
+	private static extern bool GetCursorPos(out POINT p);
+
+	[DllImport("user32.dll")]
+	private static extern nint SetCapture(nint h);
+
+	[DllImport("user32.dll")]
+	private static extern bool ReleaseCapture();
+
+	[DllImport("user32.dll")]
+	private static extern int GetSystemMetrics(int i);
 }

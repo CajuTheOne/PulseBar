@@ -76,6 +76,7 @@ internal static class SettingsProcess
 					w.WriteEndObject();
 				}
 				w.WriteString("claudeApi", claude.ApiStatus);
+				w.WriteString("claudeAccount", claude.Account);
 				w.WriteStartArray("adapters");
 				foreach (GpuSensor.Adapter a in adapters)
 				{
@@ -155,6 +156,8 @@ internal static class SettingsProcess
 
 		private string _claudeApi = "";
 
+		private string _claudeAccount = "";
+
 		private bool _light;
 
 		private List<GpuSensor.Adapter> _adapters = new List<GpuSensor.Adapter>();
@@ -194,6 +197,8 @@ internal static class SettingsProcess
 		}
 
 		public string ClaudeApiStatus => _claudeApi;
+
+		public string ClaudeAccount => _claudeAccount;
 
 		public Updater Updater { get; } = new Updater();
 
@@ -304,6 +309,7 @@ internal static class SettingsProcess
 					_readings.ClaudeStale = _claude.Stale;
 				}
 				_claudeApi = e.TryGetProperty("claudeApi", out JsonElement api) ? (api.GetString() ?? "") : "";
+				_claudeAccount = e.TryGetProperty("claudeAccount", out JsonElement acc) ? (acc.GetString() ?? "") : "";
 				_adapters = new List<GpuSensor.Adapter>();
 				if (e.TryGetProperty("adapters", out JsonElement ad) && ad.ValueKind == JsonValueKind.Array)
 				{

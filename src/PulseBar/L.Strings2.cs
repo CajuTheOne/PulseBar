@@ -91,7 +91,11 @@ internal static partial class L
 			["Version {0} is available."] = "Доступна версия {0}.",
 			["You have the latest version."] = "Установлена последняя версия.",
 			["Check for updates"] = "Проверить обновления",
-			["Settings…"] = "Настройки…"
+			["Settings…"] = "Настройки…",
+			["Account"] = "Аккаунт",
+			["Tooltip on hover"] = "Подсказка при наведении",
+			["Chart in the tooltip"] = "График в подсказке",
+			["You can also drag the bar along the taskbar with the mouse."] = "Строку можно и просто перетащить мышью по панели задач."
 		},
 		["uk"] = new Dictionary<string, string>
 		{
@@ -176,7 +180,11 @@ internal static partial class L
 			["Version {0} is available."] = "Доступна версія {0}.",
 			["You have the latest version."] = "Встановлено останню версію.",
 			["Check for updates"] = "Перевірити оновлення",
-			["Settings…"] = "Налаштування…"
+			["Settings…"] = "Налаштування…",
+			["Account"] = "Обліковий запис",
+			["Tooltip on hover"] = "Підказка під час наведення",
+			["Chart in the tooltip"] = "Графік у підказці",
+			["You can also drag the bar along the taskbar with the mouse."] = "Рядок можна й просто перетягнути мишею по панелі завдань."
 		},
 		["de"] = new Dictionary<string, string>
 		{
@@ -261,7 +269,11 @@ internal static partial class L
 			["Version {0} is available."] = "Version {0} ist verfügbar.",
 			["You have the latest version."] = "Sie haben die neueste Version.",
 			["Check for updates"] = "Nach Updates suchen",
-			["Settings…"] = "Einstellungen…"
+			["Settings…"] = "Einstellungen…",
+			["Account"] = "Konto",
+			["Tooltip on hover"] = "Tooltip beim Darüberfahren",
+			["Chart in the tooltip"] = "Diagramm im Tooltip",
+			["You can also drag the bar along the taskbar with the mouse."] = "Sie können die Leiste auch mit der Maus entlang der Taskleiste ziehen."
 		},
 		["fr"] = new Dictionary<string, string>
 		{
@@ -346,7 +358,11 @@ internal static partial class L
 			["Version {0} is available."] = "La version {0} est disponible.",
 			["You have the latest version."] = "Vous avez la dernière version.",
 			["Check for updates"] = "Rechercher des mises à jour",
-			["Settings…"] = "Paramètres…"
+			["Settings…"] = "Paramètres…",
+			["Account"] = "Compte",
+			["Tooltip on hover"] = "Info-bulle au survol",
+			["Chart in the tooltip"] = "Graphique dans l’info-bulle",
+			["You can also drag the bar along the taskbar with the mouse."] = "Vous pouvez aussi faire glisser la barre le long de la barre des tâches avec la souris."
 		},
 		["es"] = new Dictionary<string, string>
 		{
@@ -431,7 +447,11 @@ internal static partial class L
 			["Version {0} is available."] = "La versión {0} está disponible.",
 			["You have the latest version."] = "Tienes la última versión.",
 			["Check for updates"] = "Buscar actualizaciones",
-			["Settings…"] = "Configuración…"
+			["Settings…"] = "Configuración…",
+			["Account"] = "Cuenta",
+			["Tooltip on hover"] = "Información al pasar el ratón",
+			["Chart in the tooltip"] = "Gráfico en la información",
+			["You can also drag the bar along the taskbar with the mouse."] = "También puedes arrastrar la barra por la barra de tareas con el ratón."
 		},
 		["pt"] = new Dictionary<string, string>
 		{
@@ -516,7 +536,11 @@ internal static partial class L
 			["Version {0} is available."] = "A versão {0} está disponível.",
 			["You have the latest version."] = "Você tem a versão mais recente.",
 			["Check for updates"] = "Verificar atualizações",
-			["Settings…"] = "Configurações…"
+			["Settings…"] = "Configurações…",
+			["Account"] = "Conta",
+			["Tooltip on hover"] = "Dica ao passar o mouse",
+			["Chart in the tooltip"] = "Gráfico na dica",
+			["You can also drag the bar along the taskbar with the mouse."] = "Você também pode arrastar a barra pela barra de tarefas com o mouse."
 		},
 		["it"] = new Dictionary<string, string>
 		{
@@ -601,7 +625,11 @@ internal static partial class L
 			["Version {0} is available."] = "È disponibile la versione {0}.",
 			["You have the latest version."] = "Hai l’ultima versione.",
 			["Check for updates"] = "Cerca aggiornamenti",
-			["Settings…"] = "Impostazioni…"
+			["Settings…"] = "Impostazioni…",
+			["Account"] = "Account",
+			["Tooltip on hover"] = "Suggerimento al passaggio del mouse",
+			["Chart in the tooltip"] = "Grafico nel suggerimento",
+			["You can also drag the bar along the taskbar with the mouse."] = "Puoi anche trascinare la barra lungo la barra delle applicazioni con il mouse."
 		},
 		["pl"] = new Dictionary<string, string>
 		{
@@ -686,7 +714,11 @@ internal static partial class L
 			["Version {0} is available."] = "Dostępna jest wersja {0}.",
 			["You have the latest version."] = "Masz najnowszą wersję.",
 			["Check for updates"] = "Sprawdź aktualizacje",
-			["Settings…"] = "Ustawienia…"
+			["Settings…"] = "Ustawienia…",
+			["Account"] = "Konto",
+			["Tooltip on hover"] = "Podpowiedź po najechaniu",
+			["Chart in the tooltip"] = "Wykres w podpowiedzi",
+			["You can also drag the bar along the taskbar with the mouse."] = "Pasek można też przeciągnąć myszą wzdłuż paska zadań."
 		},
 		["zh"] = new Dictionary<string, string>
 		{
@@ -771,7 +803,11 @@ internal static partial class L
 			["Version {0} is available."] = "有新版本 {0} 可用。",
 			["You have the latest version."] = "已是最新版本。",
 			["Check for updates"] = "检查更新",
-			["Settings…"] = "设置…"
+			["Settings…"] = "设置…",
+			["Account"] = "账户",
+			["Tooltip on hover"] = "悬停提示",
+			["Chart in the tooltip"] = "提示中显示图表",
+			["You can also drag the bar along the taskbar with the mouse."] = "也可以用鼠标沿任务栏拖动此栏。"
 		},
 		["ja"] = new Dictionary<string, string>
 		{
@@ -856,7 +892,11 @@ internal static partial class L
 			["Version {0} is available."] = "バージョン {0} を利用できます。",
 			["You have the latest version."] = "最新バージョンです。",
 			["Check for updates"] = "更新を確認",
-			["Settings…"] = "設定…"
+			["Settings…"] = "設定…",
+			["Account"] = "アカウント",
+			["Tooltip on hover"] = "ホバー時のヒント",
+			["Chart in the tooltip"] = "ヒントにグラフを表示",
+			["You can also drag the bar along the taskbar with the mouse."] = "マウスでバーをタスクバーに沿ってドラッグすることもできます。"
 		}
 	};
 }

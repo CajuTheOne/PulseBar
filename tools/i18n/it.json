@@ -80,5 +80,9 @@
 "Version {0} is available.": "È disponibile la versione {0}.",
 "You have the latest version.": "Hai l’ultima versione.",
 "Check for updates": "Cerca aggiornamenti",
-"Settings…": "Impostazioni…"
+"Settings…": "Impostazioni…",
+"Account": "Account",
+"Tooltip on hover": "Suggerimento al passaggio del mouse",
+"Chart in the tooltip": "Grafico nel suggerimento",
+"You can also drag the bar along the taskbar with the mouse.": "Puoi anche trascinare la barra lungo la barra delle applicazioni con il mouse."
 }

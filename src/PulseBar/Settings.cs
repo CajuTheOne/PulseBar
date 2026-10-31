@@ -64,6 +64,11 @@ internal sealed class Settings
 
 	public bool ShowCpu = true;
 
+	// Подсказка при наведении и график в ней (график копит замеры — по умолчанию выключен, чтобы строка была легче).
+	public bool HoverTip = true;
+
+	public bool HoverChart;
+
 	public bool ShowGpu = true;
 
 	public bool ShowRam = true;
@@ -248,7 +253,7 @@ internal sealed class Settings
 			this.GroupGap = Math.Clamp(result, 0, 80);
 			break;
 		case "trayGap":
-			this.TrayGap = Math.Clamp((int)Math.Round((double)result / 10.0) * 10, 0, 100);
+			this.TrayGap = Math.Clamp(result, 0, 4000);
 			break;
 		case "gpu":
 			this.Gpu = text4;
@@ -267,6 +272,12 @@ internal sealed class Settings
 			break;
 		case "showClaude":
 			this.ShowClaude = result != 0;
+			break;
+		case "hoverTip":
+			this.HoverTip = result != 0;
+			break;
+		case "hoverChart":
+			this.HoverChart = result != 0;
 			break;
 		case "showCpu":
 			this.ShowCpu = result != 0;
@@ -345,6 +356,8 @@ internal sealed class Settings
 				w.WriteBoolean("embed", Embed);
 				w.WriteBoolean("beta", Beta);
 				w.WriteBoolean("showClaude", ShowClaude);
+				w.WriteBoolean("hoverTip", HoverTip);
+				w.WriteBoolean("hoverChart", HoverChart);
 				w.WriteBoolean("showCpu", ShowCpu);
 				w.WriteBoolean("showGpu", ShowGpu);
 				w.WriteBoolean("showRam", ShowRam);

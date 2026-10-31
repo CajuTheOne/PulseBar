@@ -80,5 +80,9 @@
 "Version {0} is available.": "バージョン {0} を利用できます。",
 "You have the latest version.": "最新バージョンです。",
 "Check for updates": "更新を確認",
-"Settings…": "設定…"
+"Settings…": "設定…",
+"Account": "アカウント",
+"Tooltip on hover": "ホバー時のヒント",
+"Chart in the tooltip": "ヒントにグラフを表示",
+"You can also drag the bar along the taskbar with the mouse.": "マウスでバーをタスクバーに沿ってドラッグすることもできます。"
 }

@@ -26,6 +26,8 @@ internal static class SettingsShot
 
 		public string ClaudeApiStatus => "";
 
+		public string ClaudeAccount { get; init; } = "";
+
 		public Updater Updater { get; } = new Updater();
 
 		public IReadOnlyList<GpuSensor.Adapter> Adapters { get; init; } = Array.Empty<GpuSensor.Adapter>();
@@ -65,6 +67,7 @@ internal static class SettingsShot
 		{
 			Settings = s,
 			Claude = claude.Current,
+			ClaudeAccount = claude.Account,
 			Readings = new Readings
 			{
 				CpuLoad = 7f,

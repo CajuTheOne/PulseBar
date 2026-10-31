@@ -80,5 +80,9 @@
 "Version {0} is available.": "Доступна версія {0}.",
 "You have the latest version.": "Встановлено останню версію.",
 "Check for updates": "Перевірити оновлення",
-"Settings…": "Налаштування…"
+"Settings…": "Налаштування…",
+"Account": "Обліковий запис",
+"Tooltip on hover": "Підказка під час наведення",
+"Chart in the tooltip": "Графік у підказці",
+"You can also drag the bar along the taskbar with the mouse.": "Рядок можна й просто перетягнути мишею по панелі завдань."
 }

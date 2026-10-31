@@ -105,6 +105,13 @@ internal sealed class Overlay : Form
 
 	private int _hoverX = -1;
 
+	// Перетаскивание строки: отступ от трея при нажатии и наибольший допустимый (строка не уходит за левый край панели).
+	private int _dragGap0;
+
+	private int _maxGap = 4000;
+
+	private float _scale = 1f;
+
 	private long _updateCheckAt = Environment.TickCount64 + 60000;
 
 	// Сама форма — невидимое окно для сообщений, таймеров и меню; строку рисует _bar.
@@ -162,6 +169,9 @@ internal sealed class Overlay : Form
 		_bar.DoubleClick += OpenTaskManager;
 		_bar.Hover += OnBarHover;
 		_bar.Leave += HideTip;
+		_bar.DragStart += OnDragStart;
+		_bar.Drag += OnDrag;
+		_bar.DragEnd += OnDragEnd;
 		StartTimer();
 		BeginInvoke(Tick);
 		UpdateTrayIcon();
@@ -387,7 +397,9 @@ internal sealed class Overlay : Form
 		{
 			num3 = r2.Left;
 		}
-		num3 -= (int)MathF.Round((float)_s.TrayGap * num2);
+		_scale = num2;
+		_maxGap = Math.Max(0, (int)((float)(num3 - r.Left - _renderer.Width) / num2));
+		num3 -= (int)MathF.Round((float)Math.Min(_s.TrayGap, _maxGap) * num2);
 		target = new Native.RECT
 		{
 			Left = num3 - _renderer.Width,
@@ -892,8 +904,35 @@ internal sealed class Overlay : Form
 		UpdateOverlay();
 	}
 
+	private void OnDragStart()
+	{
+		HideTip();
+		_dragGap0 = Math.Min(_s.TrayGap, _maxGap);
+	}
+
+	// Мышь вправо — строка ближе к трею (отступ меньше).
+	private void OnDrag(int dx)
+	{
+		int gap = Math.Clamp(_dragGap0 - (int)MathF.Round((float)dx / _scale), 0, _maxGap);
+		if (gap != _s.TrayGap)
+		{
+			_s.TrayGap = gap;
+			UpdateOverlay();
+		}
+	}
+
+	private void OnDragEnd()
+	{
+		_s.Save();
+		Log.Write($"bar: moved, {_s.TrayGap} px from the tray");
+	}
+
 	private void RecordHistory()
 	{
+		if (!_s.HoverChart)
+		{
+			return;
+		}
 		long t = Environment.TickCount64;
 		_hCpuLoad.Add(t, _r.CpuLoad);
 		_hCpuTemp.Add(t, _r.CpuTemp);
@@ -906,6 +945,10 @@ internal sealed class Overlay : Form
 	// Подсказка: через 0,45 с после наведения; дальше обновляется вместе со строкой и следует за мышью по блокам.
 	private void OnBarHover(int x)
 	{
+		if (!_s.HoverTip)
+		{
+			return;
+		}
 		_hoverX = x;
 		if (_tip != null && _tip.Visible)
 		{
@@ -962,6 +1005,10 @@ internal sealed class Overlay : Form
 		List<(string, string, Color?)> rows = new List<(string, string, Color?)>();
 		List<TooltipForm.Series> series = new List<TooltipForm.Series>();
 		string title = TipContent(key, rows, series);
+		if (!_s.HoverChart)
+		{
+			series.Clear();
+		}
 		_tip.SetContent(title, rows, series, !_lightTaskbar);
 		Native.GetWindowRect(_bar.Handle, out var bar);
 		Screen screen = Screen.FromHandle(_bar.Handle);
@@ -1009,6 +1056,10 @@ internal sealed class Overlay : Form
 		case "claude":
 		{
 			ClaudeUsage.Snapshot c = _claude.Current;
+			if (_claude.Account.Length > 0)
+			{
+				rows.Add((L.T("Account"), _claude.Account, null));
+			}
 			if (c != null)
 			{
 				rows.Add((L.T("5 hours"), Pct(c.FiveHour) + Resets(c.FiveHourReset), c.Stale ? _palette.NoData : _palette.Level(c.FiveHour, _s.Claude)));

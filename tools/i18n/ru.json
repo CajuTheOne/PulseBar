@@ -80,5 +80,9 @@
 "Version {0} is available.": "Доступна версия {0}.",
 "You have the latest version.": "Установлена последняя версия.",
 "Check for updates": "Проверить обновления",
-"Settings…": "Настройки…"
+"Settings…": "Настройки…",
+"Account": "Аккаунт",
+"Tooltip on hover": "Подсказка при наведении",
+"Chart in the tooltip": "График в подсказке",
+"You can also drag the bar along the taskbar with the mouse.": "Строку можно и просто перетащить мышью по панели задач."
 }

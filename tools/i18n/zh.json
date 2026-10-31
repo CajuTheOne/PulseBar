@@ -80,5 +80,9 @@
 "Version {0} is available.": "有新版本 {0} 可用。",
 "You have the latest version.": "已是最新版本。",
 "Check for updates": "检查更新",
-"Settings…": "设置…"
+"Settings…": "设置…",
+"Account": "账户",
+"Tooltip on hover": "悬停提示",
+"Chart in the tooltip": "提示中显示图表",
+"You can also drag the bar along the taskbar with the mouse.": "也可以用鼠标沿任务栏拖动此栏。"
 }

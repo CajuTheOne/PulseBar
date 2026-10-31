@@ -34,6 +34,9 @@ internal interface ISettingsHost
 
 	string ClaudeApiStatus { get; }
 
+	// Почта аккаунта Claude Code, для которого показаны лимиты.
+	string ClaudeAccount { get; }
+
 	Updater Updater { get; }
 
 	IReadOnlyList<GpuSensor.Adapter> Adapters { get; }
@@ -245,10 +248,13 @@ internal sealed class SettingsWindow : Window
 		{
 			_s.GroupGap = gaps[v];
 		}));
-		more.Children.Add(SliderRow(L.T("Spacing from tray"), 0.0, 100.0, 10.0, () => _s.TrayGap, delegate(int v)
+		more.Children.Add(SliderRow(L.T("Spacing from tray"), 0.0, 1500.0, 10.0, () => _s.TrayGap, delegate(int v)
 		{
 			_s.TrayGap = v;
 		}, (int v) => $"{v} px"));
+		TextBlock dragNote = Note(L.T("You can also drag the bar along the taskbar with the mouse."));
+		dragNote.Margin = new Thickness(200.0, 0.0, 0.0, 8.0);
+		more.Children.Add(dragNote);
 		int[] intervals = new int[4] { 500, 1000, 2000, 5000 };
 		more.Children.Add(Combo(L.T("Update interval"), intervals.Select((int ms) => (ms < 1000) ? L.T("0.5 s") : L.F("{0} s", ms / 1000)).ToArray(), () => Math.Max(0, Array.IndexOf(intervals, _s.IntervalMs)), delegate(int v)
 		{
@@ -263,6 +269,14 @@ internal sealed class SettingsWindow : Window
 				_host.SelectGpu((v == 0) ? "" : adapters[v - 1].Key);
 			}));
 		}
+		more.Children.Add(Check(L.T("Tooltip on hover"), () => _s.HoverTip, delegate(bool v)
+		{
+			_s.HoverTip = v;
+		}));
+		more.Children.Add(Check(L.T("Chart in the tooltip"), () => _s.HoverChart, delegate(bool v)
+		{
+			_s.HoverChart = v;
+		}));
 		more.Children.Add(Check(L.T("Show memory amount (GB)"), () => _s.ShowRamGb, delegate(bool v)
 		{
 			_s.ShowRamGb = v;
@@ -740,13 +754,14 @@ internal sealed class SettingsWindow : Window
 		void Refresh()
 		{
 			ClaudeUsage.Snapshot c = _host.Claude;
+			string account = (_host.ClaudeAccount.Length > 0) ? (L.T("Account") + ": " + _host.ClaudeAccount + "\n") : "";
 			if (c == null)
 			{
-				status.Text = L.T("No data: Claude Code is not signed in on this PC.");
+				status.Text = account + L.T("No data: Claude Code is not signed in on this PC.");
 				return;
 			}
 			int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - c.Updated).TotalMinutes);
-			status.Text = L.T("5 hours") + ": " + Pct(c.FiveHour) + Reset(c.FiveHourReset) + "\n" + L.T("7 days") + ": " + Pct(c.SevenDay) + Reset(c.SevenDayReset) + "\n" + L.T("Updated") + ": " + L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")" + (c.Stale ? (" — " + L.T("out of date")) : "") + ((_host.ClaudeApiStatus.Length > 0) ? ("\nclaude.ai: " + _host.ClaudeApiStatus) : "");
+			status.Text = account + L.T("5 hours") + ": " + Pct(c.FiveHour) + Reset(c.FiveHourReset) + "\n" + L.T("7 days") + ": " + Pct(c.SevenDay) + Reset(c.SevenDayReset) + "\n" + L.T("Updated") + ": " + L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")" + (c.Stale ? (" — " + L.T("out of date")) : "") + ((_host.ClaudeApiStatus.Length > 0) ? ("\nclaude.ai: " + _host.ClaudeApiStatus) : "");
 		}
 	}
 
