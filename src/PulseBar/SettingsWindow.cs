@@ -119,7 +119,7 @@ internal sealed partial class SettingsWindow : Window
 		MinHeight = 480.0;
 		WindowStartupLocation = WindowStartupLocation.CenterScreen;
 		_pages.Add((L.T("Appearance"), AppearancePage));
-		_pages.Add((L.T("Thresholds"), ThresholdsPage));
+		_pages.Add((L.T("Thresholds and colours"), ThresholdsPage));
 		_pages.Add((L.T("Keyboard"), KeyboardPage));
 		_pages.Add((L.T("Mouse"), MousePage));
 		_pages.Add(("Claude", ClaudePage));
@@ -226,30 +226,52 @@ internal sealed partial class SettingsWindow : Window
 			_s.Layout = 1;
 		}, reset: true));
 		p.Children.Add(presets);
+		// Показатели и строка ИИ — плитками: включена — цвет акцента (2.4).
 		p.Children.Add(Caption(L.T("Elements")));
+		WrapPanel tiles = new WrapPanel();
 		foreach (string block in new string[5] { "cpu", "gpu", "vram", "ram", "battery" })
 		{
 			string b = block;
-			p.Children.Add(Check(BlockName(b), () => _s.IsShown(b), delegate(bool v)
+			tiles.Children.Add(Tile(TileTitle(b), TileSub(b), () => _s.IsShown(b), delegate(bool v)
 			{
 				_s.SetShown(b, v);
 			}));
 		}
-		p.Children.Add(ClaudeStyleCombo());
-		p.Children.Add(SliderRow(L.T("Claude bar length"), 40.0, 240.0, 2.0, () => _s.ClaudeBarLength, delegate(int v)
+		p.Children.Add(tiles);
+		p.Children.Add(Caption(L.T("AI")));
+		WrapPanel ai = new WrapPanel();
+		foreach (string block in _s.AiTileList())
 		{
-			_s.ClaudeBarLength = v;
-		}, (int v) => $"{v} px"));
-		p.Children.Add(SliderRow(L.T("Claude bar height"), 4.0, 16.0, 1.0, () => _s.ClaudeBarHeight, delegate(int v)
+			string b = block;
+			ai.Children.Add(Tile(TileTitle(b), TileSub(b), () => _s.IsShown(b), delegate(bool v)
+			{
+				_s.SetShown(b, v);
+			}));
+		}
+		Button aiMore = new Button
 		{
-			_s.ClaudeBarHeight = v;
-		}, (int v) => $"{v} px"));
-		p.Children.Add(SliderRow(L.T("Claude bar segments"), 4.0, 20.0, 1.0, () => (_s.ClaudeSegments == 0) ? 4 : _s.ClaudeSegments, delegate(int v)
+			Content = "…",
+			Width = 44.0,
+			Height = 52.0,
+			Margin = new Thickness(0.0, 0.0, 8.0, 8.0),
+			ToolTip = L.T("Add or remove AI tiles")
+		};
+		aiMore.Click += delegate
 		{
-			_s.ClaudeSegments = (v <= 4) ? 0 : v;
-		}, (int v) => (v <= 4) ? L.T("solid") : v.ToString()));
-		p.Children.Add(Note(L.T("Bar sizes apply to the large Claude style.")));
-		p.Children.Add(Caption(L.T("Layout on the taskbar")));
+			ContextMenu m = AiMenu();
+			m.PlacementTarget = aiMore;
+			m.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+			m.IsOpen = true;
+		};
+		ai.Children.Add(aiMore);
+		p.Children.Add(ai);
+		StackPanel layout = new StackPanel();
+		p.Children.Add(new Expander
+		{
+			Header = L.T("Layout on the taskbar"),
+			Content = layout,
+			IsExpanded = _host.EditMode
+		});
 		CheckBox edit = new CheckBox
 		{
 			Content = L.T("Edit mode"),
@@ -260,17 +282,17 @@ internal sealed partial class SettingsWindow : Window
 		{
 			_host.SetEditMode(edit.IsChecked == true);
 		};
-		p.Children.Add(edit);
-		p.Children.Add(Note(L.T("In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.")));
-		p.Children.Add(Check(L.T("Snap to neighbours"), () => _s.Snap, delegate(bool v)
+		layout.Children.Add(edit);
+		layout.Children.Add(Note(L.T("In edit mode drag elements on the taskbar; with Shift all of them move together. Esc or this switch ends editing and saves the layout.")));
+		layout.Children.Add(Check(L.T("Snap to neighbours"), () => _s.Snap, delegate(bool v)
 		{
 			_s.Snap = v;
 		}));
-		p.Children.Add(SliderRow(L.T("Snap distance"), 0.0, 60.0, 1.0, () => _s.SnapGap, delegate(int v)
+		layout.Children.Add(SliderRow(L.T("Snap distance"), 0.0, 60.0, 1.0, () => _s.SnapGap, delegate(int v)
 		{
 			_s.SnapGap = v;
 		}, (int v) => $"{v} px"));
-		p.Children.Add(SliderRow(L.T("Separator snap distance"), 0.0, 40.0, 1.0, () => _s.SepGap, delegate(int v)
+		layout.Children.Add(SliderRow(L.T("Separator snap distance"), 0.0, 40.0, 1.0, () => _s.SepGap, delegate(int v)
 		{
 			_s.SepGap = v;
 		}, (int v) => $"{v} px"));
@@ -297,7 +319,7 @@ internal sealed partial class SettingsWindow : Window
 		};
 		buttons.Children.Add(add);
 		buttons.Children.Add(reset);
-		p.Children.Add(buttons);
+		layout.Children.Add(buttons);
 		_refresh = delegate
 		{
 			edit.IsChecked = _host.EditMode;
@@ -319,14 +341,6 @@ internal sealed partial class SettingsWindow : Window
 		}, () => _s.TextSize, delegate(int v)
 		{
 			_s.TextSize = v;
-		}));
-		more.Children.Add(Combo(L.T("Normal color"), new string[2]
-		{
-			L.T("Green"),
-			L.T("Blue")
-		}, () => _s.BlueNormal ? 1 : 0, delegate(int v)
-		{
-			_s.BlueNormal = v == 1;
 		}));
 		int[] intervals = new int[4] { 500, 1000, 2000, 5000 };
 		more.Children.Add(Combo(L.T("Update interval"), intervals.Select((int ms) => (ms < 1000) ? L.T("0.5 s") : L.F("{0} s", ms / 1000)).ToArray(), () => Math.Max(0, Array.IndexOf(intervals, _s.IntervalMs)), delegate(int v)
@@ -395,6 +409,124 @@ internal sealed partial class SettingsWindow : Window
 			IsExpanded = false
 		});
 		return p;
+	}
+
+	// Плитка показателя: название и пояснение, нажата — показатель на строке.
+	private System.Windows.Controls.Primitives.ToggleButton Tile(string title, string sub, Func<bool> get, Action<bool> set)
+	{
+		StackPanel content = new StackPanel();
+		content.Children.Add(new TextBlock
+		{
+			Text = title,
+			FontWeight = FontWeights.SemiBold
+		});
+		content.Children.Add(new TextBlock
+		{
+			Text = sub,
+			FontSize = 11.0,
+			Opacity = 0.75,
+			TextTrimming = TextTrimming.CharacterEllipsis
+		});
+		System.Windows.Controls.Primitives.ToggleButton b = new System.Windows.Controls.Primitives.ToggleButton
+		{
+			Content = content,
+			Width = 112.0,
+			Height = 52.0,
+			Margin = new Thickness(0.0, 0.0, 8.0, 8.0),
+			HorizontalContentAlignment = HorizontalAlignment.Left,
+			Padding = new Thickness(10.0, 4.0, 8.0, 4.0),
+			IsChecked = get()
+		};
+		b.Click += delegate
+		{
+			set(b.IsChecked == true);
+			Changed();
+		};
+		return b;
+	}
+
+	private static string TileTitle(string key)
+	{
+		return key switch
+		{
+			"cpu" => "CPU",
+			"gpu" => "GPU",
+			"vram" => "VRAM",
+			"ram" => "RAM",
+			"battery" => L.T("Battery"),
+			"claude" => "Claude",
+			"chatgpt" => "ChatGPT",
+			"grok" => "Grok",
+			"gemini" => "Gemini",
+			"deepseek" => "DeepSeek",
+			_ => key
+		};
+	}
+
+	private static string TileSub(string key)
+	{
+		return key switch
+		{
+			"cpu" or "gpu" => L.T("load and °C"),
+			"vram" => L.T("video memory"),
+			"ram" => L.T("memory"),
+			"battery" => L.T("keyboard, mouse"),
+			"claude" or "chatgpt" => L.T("5 h and 7 days"),
+			"grok" => L.T("usage"),
+			"gemini" => L.T("no data yet"),
+			"deepseek" => L.T("API balance"),
+			_ => ""
+		};
+	}
+
+	// Меню «…» строки ИИ: какие плитки в строке, ключ DeepSeek.
+	private ContextMenu AiMenu()
+	{
+		ContextMenu m = new ContextMenu();
+		List<string> tiles = _s.AiTileList();
+		foreach (string id in Settings.AiBlocks)
+		{
+			string b = id;
+			MenuItem it = new MenuItem
+			{
+				Header = TileTitle(b) + ((b == "gemini") ? (" — " + L.T("no data yet")) : ""),
+				IsCheckable = true,
+				IsChecked = tiles.Contains(b)
+			};
+			it.Click += delegate
+			{
+				List<string> now = _s.AiTileList();
+				if (now.Contains(b))
+				{
+					now.Remove(b);
+					_s.SetShown(b, shown: false);
+				}
+				else
+				{
+					now.Add(b);
+				}
+				_s.AiTiles = string.Join(",", Settings.AiBlocks.Where(now.Contains));
+				Changed();
+				ShowPage(_nav.SelectedIndex);
+			};
+			m.Items.Add(it);
+		}
+		m.Items.Add(new Separator());
+		MenuItem key = new MenuItem
+		{
+			Header = L.T("DeepSeek API key…")
+		};
+		key.Click += delegate
+		{
+			string? v = AskText(L.T("DeepSeek API key"), L.T("Paste the key from platform.deepseek.com (API keys). It is stored encrypted for this Windows user and is sent only to api.deepseek.com. Empty — remove the key."), "");
+			if (v != null)
+			{
+				_s.DeepSeekKey = (v.Length > 0) ? Ai.Secret.Protect(v) : "";
+				Changed();
+			}
+		};
+		m.Items.Add(key);
+		return m;
 	}
 
 	private UIElement ClaudeStyleCombo()
@@ -477,7 +609,7 @@ internal sealed partial class SettingsWindow : Window
 		using (Graphics g = Graphics.FromImage(bmp))
 		{
 			g.Clear(System.Drawing.Color.Transparent);
-			_previewRenderer.DrawRow(g, ids, in r, _s, Palette.Create(_host.LightTaskbar, _s.BlueNormal));
+			_previewRenderer.DrawRow(g, ids, in r, _s, Palette.Create(_host.LightTaskbar, _s));
 		}
 		BitmapData data = bmp.LockBits(new System.Drawing.Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppPArgb);
 		try
@@ -510,24 +642,80 @@ internal sealed partial class SettingsWindow : Window
 
 	private UIElement ThresholdsPage()
 	{
-		StackPanel p = Page(L.T("Thresholds"));
+		StackPanel p = Page(L.T("Thresholds and colours"));
+		p.MaxWidth = 680.0;
+		// Палитра показателей (2.4): одна на всё — норма, предупреждение, перегрузка; клик по образцу — выбрать цвет.
+		Palette theme = Palette.Create(_host.LightTaskbar, _s.BlueNormal);
+		WrapPanel colours = new WrapPanel
+		{
+			Margin = new Thickness(0.0, 0.0, 0.0, 8.0)
+		};
+		void ColourChip(string label, Func<string> get, Action<string> set, System.Drawing.Color fallback)
+		{
+			Border sw = new Border
+			{
+				Width = 26.0,
+				Height = 26.0,
+				CornerRadius = new CornerRadius(4.0),
+				BorderThickness = new Thickness(1.0),
+				BorderBrush = Brushes.Gray,
+				Cursor = Cursors.Hand,
+				Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
+			};
+			void Show()
+			{
+				string v = get();
+				sw.Background = (v.Length == 7) ? new SolidColorBrush((Color)ColorConverter.ConvertFromString(v)) : new SolidColorBrush(Color.FromRgb(fallback.R, fallback.G, fallback.B));
+			}
+			sw.MouseLeftButtonDown += delegate
+			{
+				SolidColorBrush cur = (SolidColorBrush)sw.Background;
+				if (PickColor(new Logi.Rgb(cur.Color.R, cur.Color.G, cur.Color.B), out Logi.Rgb picked))
+				{
+					set(picked.ToString());
+					Show();
+					Changed();
+				}
+			};
+			Show();
+			StackPanel chip = new StackPanel
+			{
+				Orientation = Orientation.Horizontal,
+				Margin = new Thickness(0.0, 0.0, 20.0, 0.0)
+			};
+			chip.Children.Add(sw);
+			chip.Children.Add(new TextBlock
+			{
+				Text = label,
+				VerticalAlignment = VerticalAlignment.Center
+			});
+			colours.Children.Add(chip);
+		}
+		ColourChip(L.T("Normal level"), () => _s.NormalColor, delegate(string v)
+		{
+			_s.NormalColor = v;
+		}, theme.Ok);
+		ColourChip(L.T("Warning"), () => _s.WarnColor, delegate(string v)
+		{
+			_s.WarnColor = v;
+		}, theme.Warn);
+		ColourChip(L.T("Overload"), () => _s.HotColor, delegate(string v)
+		{
+			_s.HotColor = v;
+		}, theme.Hot);
+		p.Children.Add(colours);
 		p.Children.Add(Note(L.T("Below yellow is normal, from red is overload.")));
-		Grid g = new Grid
+		Grid cols = new Grid
 		{
 			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
 		};
-		g.ColumnDefinitions.Add(new ColumnDefinition
+		cols.ColumnDefinitions.Add(new ColumnDefinition());
+		cols.ColumnDefinitions.Add(new ColumnDefinition
 		{
-			Width = new GridLength(1.0, GridUnitType.Star)
+			Width = new GridLength(24.0)
 		});
-		g.ColumnDefinitions.Add(new ColumnDefinition
-		{
-			Width = new GridLength(110.0)
-		});
-		g.ColumnDefinitions.Add(new ColumnDefinition
-		{
-			Width = new GridLength(110.0)
-		});
+		cols.ColumnDefinitions.Add(new ColumnDefinition());
+		Grid g = Column(0);
 		AddHeader(L.T("Yellow from"), L.T("Red from"));
 		Row(L.T("CPU load, %"), () => _s.CpuLoad, delegate(Limit l)
 		{
@@ -553,9 +741,19 @@ internal sealed partial class SettingsWindow : Window
 		{
 			_s.Ram = l;
 		}, low: false);
+		g = Column(2);
+		AddHeader(L.T("Yellow from"), L.T("Red from"));
 		Row(L.T("Claude limits, %"), () => _s.Claude, delegate(Limit l)
 		{
 			_s.Claude = l;
+		}, low: false);
+		Row(L.T("ChatGPT limits, %"), () => _s.ChatGpt, delegate(Limit l)
+		{
+			_s.ChatGpt = l;
+		}, low: false);
+		Row(L.T("Grok usage, %"), () => _s.Grok, delegate(Limit l)
+		{
+			_s.Grok = l;
 		}, low: false);
 		AddHeader(L.T("Yellow at or below"), L.T("Red at or below"));
 		Row(L.T("Keyboard charge, %"), () => _s.KbBattery, delegate(Limit l)
@@ -566,7 +764,11 @@ internal sealed partial class SettingsWindow : Window
 		{
 			_s.MouseBattery = l;
 		}, low: true);
-		p.Children.Add(g);
+		Row(L.T("DeepSeek balance"), () => _s.DeepSeek, delegate(Limit l)
+		{
+			_s.DeepSeek = l;
+		}, low: true);
+		p.Children.Add(cols);
 		Button defaults = new Button
 		{
 			Content = L.T("Defaults"),
@@ -584,11 +786,37 @@ internal sealed partial class SettingsWindow : Window
 			_s.Claude = Settings.Defaults.Claude;
 			_s.KbBattery = Settings.Defaults.KbBattery;
 			_s.MouseBattery = Settings.Defaults.MouseBattery;
+			_s.ChatGpt = Settings.Defaults.ChatGpt;
+			_s.Grok = Settings.Defaults.Grok;
+			_s.DeepSeek = Settings.Defaults.DeepSeek;
+			_s.NormalColor = _s.WarnColor = _s.HotColor = "";
 			Changed();
 			ShowPage(_nav.SelectedIndex);
 		};
 		p.Children.Add(defaults);
 		return p;
+		Grid Column(int col)
+		{
+			Grid c = new Grid
+			{
+				VerticalAlignment = VerticalAlignment.Top
+			};
+			c.ColumnDefinitions.Add(new ColumnDefinition
+			{
+				Width = GridLength.Auto
+			});
+			c.ColumnDefinitions.Add(new ColumnDefinition
+			{
+				Width = new GridLength(74.0)
+			});
+			c.ColumnDefinitions.Add(new ColumnDefinition
+			{
+				Width = new GridLength(74.0)
+			});
+			Grid.SetColumn(c, col);
+			cols.Children.Add(c);
+			return c;
+		}
 		void AddHeader(string a, string b)
 		{
 			int row = g.RowDefinitions.Count;
@@ -610,17 +838,19 @@ internal sealed partial class SettingsWindow : Window
 			TextBlock name = new TextBlock
 			{
 				Text = label,
-				VerticalAlignment = VerticalAlignment.Center
+				VerticalAlignment = VerticalAlignment.Center,
+				FontSize = 13.0,
+				Margin = new Thickness(0.0, 0.0, 10.0, 0.0)
 			};
 			TextBox warn = new TextBox
 			{
 				Text = get().Warn.ToString(),
-				Margin = new Thickness(0.0, 3.0, 10.0, 3.0)
+				Margin = new Thickness(0.0, 2.0, 8.0, 2.0)
 			};
 			TextBox hot = new TextBox
 			{
 				Text = get().Hot.ToString(),
-				Margin = new Thickness(0.0, 3.0, 10.0, 3.0)
+				Margin = new Thickness(0.0, 2.0, 8.0, 2.0)
 			};
 			Brush normal = warn.BorderBrush;
 			warn.TextChanged += delegate
@@ -687,6 +917,19 @@ internal sealed partial class SettingsWindow : Window
 	{
 		StackPanel p = Page("Claude");
 		p.Children.Add(ClaudeStyleCombo());
+		p.Children.Add(SliderRow(L.T("Claude bar length"), 40.0, 240.0, 2.0, () => _s.ClaudeBarLength, delegate(int v)
+		{
+			_s.ClaudeBarLength = v;
+		}, (int v) => $"{v} px"));
+		p.Children.Add(SliderRow(L.T("Claude bar height"), 4.0, 16.0, 1.0, () => _s.ClaudeBarHeight, delegate(int v)
+		{
+			_s.ClaudeBarHeight = v;
+		}, (int v) => $"{v} px"));
+		p.Children.Add(SliderRow(L.T("Claude bar segments"), 4.0, 20.0, 1.0, () => (_s.ClaudeSegments == 0) ? 4 : _s.ClaudeSegments, delegate(int v)
+		{
+			_s.ClaudeSegments = (v <= 4) ? 0 : v;
+		}, (int v) => (v <= 4) ? L.T("solid") : v.ToString()));
+		p.Children.Add(Note(L.T("Bar sizes apply to the large Claude style.")));
 		p.Children.Add(Combo(L.T("Account"), new string[2]
 		{
 			L.T("Open in the Claude app"),

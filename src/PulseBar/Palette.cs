@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 
 namespace PulseBar;
@@ -47,6 +48,25 @@ internal sealed class Palette
 			Warn = C(11817737),
 			Hot = C(14427686)
 		};
+	}
+
+	// Палитра с цветами показателей из настроек (норма, предупреждение, перегрузка); пусто — цвета темы.
+	public static Palette Create(bool lightTaskbar, Settings s)
+	{
+		Palette p = Create(lightTaskbar, s.BlueNormal);
+		p.Ok = Hex(s.NormalColor) ?? p.Ok;
+		p.Warn = Hex(s.WarnColor) ?? p.Warn;
+		p.Hot = Hex(s.HotColor) ?? p.Hot;
+		return p;
+	}
+
+	private static Color? Hex(string v)
+	{
+		if (v.Length == 7 && v[0] == '#' && int.TryParse(v.AsSpan(1), System.Globalization.NumberStyles.HexNumber, null, out int rgb))
+		{
+			return C(rgb);
+		}
+		return null;
 	}
 
 	private static Color C(int rgb)

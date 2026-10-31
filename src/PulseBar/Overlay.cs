@@ -87,6 +87,8 @@ internal sealed class Overlay : Form
 
 	private readonly ClaudeUsage _claude;
 
+	private readonly Ai.AiUsage _ai;
+
 	private const int TipTimerId = 3;
 
 	private readonly History _hCpuLoad = new History();
@@ -175,8 +177,11 @@ internal sealed class Overlay : Form
 		_claude = new ClaudeUsage(s.ClaudeIntervalMin);
 		_claude.FollowApp = s.ClaudeFollowApp;
 		_claude.Changed += OnClaudeChanged;
+		// Строка ИИ: опрашиваются только включённые сервисы; ключ DeepSeek хранится зашифрованным.
+		_ai = new Ai.AiUsage((string id) => _s.IsShown(id), () => Ai.Secret.Unprotect(_s.DeepSeekKey));
+		_ai.Changed += OnAiChanged;
 		_lightTaskbar = ReadLightTaskbar();
-		_palette = Palette.Create(_lightTaskbar, s.BlueNormal);
+		_palette = Palette.Create(_lightTaskbar, s);
 		_foregroundProc = OnForegroundChanged;
 		_msgTaskbarCreated = Native.RegisterWindowMessageW("TaskbarCreated");
 		_logi = new LogiService(LogiConfig.Load());
@@ -333,6 +338,7 @@ internal sealed class Overlay : Form
 		_r = _sensors.Read();
 		FillBattery();
 		FillClaude();
+		FillAi();
 		RecordHistory();
 		if (SettingsOpen)
 		{
@@ -356,7 +362,7 @@ internal sealed class Overlay : Form
 			if (flag != _lightTaskbar)
 			{
 				_lightTaskbar = flag;
-				_palette = Palette.Create(flag, _s.BlueNormal);
+				_palette = Palette.Create(flag, _s);
 				_dirty = true;
 			}
 		}
@@ -809,7 +815,7 @@ internal sealed class Overlay : Form
 	private void Changed()
 	{
 		_s.Save();
-		_palette = Palette.Create(_lightTaskbar, _s.BlueNormal);
+		_palette = Palette.Create(_lightTaskbar, _s);
 		_dirty = true;
 		UpdateOverlay();
 	}
@@ -947,6 +953,8 @@ internal sealed class Overlay : Form
 		}
 		_claude.Changed -= OnClaudeChanged;
 		_claude.Dispose();
+		_ai.Changed -= OnAiChanged;
+		_ai.Dispose();
 		_bar.Destroy();
 		_sensors.Dispose();
 		_renderer.Dispose();
@@ -1026,7 +1034,9 @@ internal sealed class Overlay : Form
 			_visible = false;
 		}
 		FillClaude();
-		_palette = Palette.Create(_lightTaskbar, _s.BlueNormal);
+		FillAi();
+		_ai.PollNow();
+		_palette = Palette.Create(_lightTaskbar, _s);
 		_dirty = true;
 		UpdateOverlay();
 	}
@@ -1555,6 +1565,50 @@ internal sealed class Overlay : Form
 			}
 			return "Claude";
 		}
+		case "chatgpt":
+		case "grok":
+		case "deepseek":
+		{
+			Ai.AiSnapshot? a = _ai.Current.GetValueOrDefault(key);
+			if (a == null)
+			{
+				rows.Add((L.T("Status"), L.T("waiting for data…"), _palette.NoData));
+			}
+			else
+			{
+				if (key == "deepseek")
+				{
+					rows.Add((L.T("Balance"), BarRenderer.Money(a.Balance is decimal b ? (float)b : float.NaN, a.Currency), a.Stale ? _palette.NoData : null));
+				}
+				else if (key == "grok")
+				{
+					rows.Add((L.T("Usage"), Pct(a.First) + Resets(a.FirstReset), a.Stale ? _palette.NoData : _palette.Level(a.First, _s.Grok)));
+				}
+				else
+				{
+					rows.Add((L.T("5 hours"), Pct(a.First) + Resets(a.FirstReset), a.Stale ? _palette.NoData : _palette.Level(a.First, _s.ChatGpt)));
+					rows.Add((L.T("7 days"), Pct(a.Second) + Resets(a.SecondReset), a.Stale ? _palette.NoData : _palette.Level(a.Second, _s.ChatGpt)));
+				}
+				int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - a.Updated).TotalMinutes);
+				string source = a.Source switch
+				{
+					"codex logs" => L.T("Codex logs"),
+					"api" => (key == "chatgpt") ? "chatgpt.com" : ((key == "deepseek") ? "api.deepseek.com" : "api"),
+					_ => a.Source
+				};
+				rows.Add((L.T("Updated"), L.F("{0} min ago", ago) + ((source.Length > 0) ? (" (" + source + ")") : ""), a.Stale ? _palette.Warn : null));
+				if (a.Status.Length > 0)
+				{
+					rows.Add((L.T("Status"), L.T(a.Status), _palette.Warn));
+				}
+			}
+			return key switch
+			{
+				"chatgpt" => "ChatGPT (Codex)",
+				"grok" => "Grok",
+				_ => "DeepSeek"
+			};
+		}
 		default:
 			foreach (string part in _logi.ShortStatus().Split(", "))
 			{
@@ -1623,6 +1677,36 @@ internal sealed class Overlay : Form
 		_r.ClaudeStale = current?.Stale ?? false;
 		_r.ClaudeFiveHourLeft = MinutesLeft(current?.FiveHourReset);
 		_r.ClaudeSevenDayLeft = MinutesLeft(current?.SevenDayReset);
+	}
+
+	// Строка ИИ → показания для отрисовки.
+	private void FillAi()
+	{
+		IReadOnlyDictionary<string, Ai.AiSnapshot> cur = _ai.Current;
+		Ai.AiSnapshot? gpt = cur.GetValueOrDefault("chatgpt");
+		Ai.AiSnapshot? grok = cur.GetValueOrDefault("grok");
+		Ai.AiSnapshot? ds = cur.GetValueOrDefault("deepseek");
+		_r.GptFirst = gpt?.First ?? float.NaN;
+		_r.GptSecond = gpt?.Second ?? float.NaN;
+		_r.GptStale = gpt?.Stale ?? false;
+		_r.GrokUsed = grok?.First ?? float.NaN;
+		_r.GrokStale = grok?.Stale ?? false;
+		_r.DsBalance = (ds?.Balance is decimal b) ? (float)b : float.NaN;
+		_r.DsCurrency = ds?.Currency;
+		_r.DsStale = ds?.Stale ?? false;
+	}
+
+	private void OnAiChanged()
+	{
+		if (base.IsHandleCreated && !base.IsDisposed)
+		{
+			BeginInvoke(delegate
+			{
+				FillAi();
+				_dirty = true;
+				UpdateOverlay();
+			});
+		}
 	}
 
 	private void OnClaudeChanged()

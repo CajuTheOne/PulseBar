@@ -92,6 +92,12 @@ internal static class SettingsShot
 			System.IO.File.Copy(Logi.LogiConfig.FilePath, copy, overwrite: true);
 		}
 		Logi.LogiConfig.PathOverride = copy;
+		// PULSEBAR_SHOT_AI=1 — показать в превью строку ИИ (только в памяти, файл настроек не меняется).
+		if (Environment.GetEnvironmentVariable("PULSEBAR_SHOT_AI") == "1")
+		{
+			s.ShowChatGpt = s.ShowGrok = s.ShowDeepSeek = true;
+			s.ClaudeStyle = 1;
+		}
 		if (subTab >= 0)
 		{
 			SettingsWindow.KeyboardTab = subTab;
@@ -118,7 +124,12 @@ internal static class SettingsShot
 				MouseBattery = float.NaN,
 				ClaudeFiveHour = claude.Current?.FiveHour ?? float.NaN,
 				ClaudeSevenDay = claude.Current?.SevenDay ?? float.NaN,
-				ClaudeStale = claude.Current?.Stale ?? false
+				ClaudeStale = claude.Current?.Stale ?? false,
+				GptFirst = 31f,
+				GptSecond = 12f,
+				GrokUsed = 48f,
+				DsBalance = 7.42f,
+				DsCurrency = "USD"
 			},
 			Adapters = new GpuSensor.Adapter[2]
 			{

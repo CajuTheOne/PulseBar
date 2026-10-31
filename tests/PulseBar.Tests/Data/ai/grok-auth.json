@@ -1,0 +1,20 @@
+{
+  "https://accounts.x.ai/sign-in": {
+    "key": "test-legacy-key",
+    "expires_at": "2026-01-01T00:00:00Z"
+  },
+  "https://auth.x.ai::00000000-test-client": {
+    "key": "test-oidc-key",
+    "refresh_token": "test-refresh-token",
+    "expires_at": "2026-11-08T12:00:00Z",
+    "auth_mode": "oidc",
+    "email": "user@example.com",
+    "team_id": "team-test",
+    "user_id": "user-test",
+    "first_name": "Test",
+    "last_name": "User"
+  },
+  "https://auth.x.ai::broken-entry": {
+    "refresh_token": "no-key-here"
+  }
+}

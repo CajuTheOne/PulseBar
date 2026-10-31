@@ -71,6 +71,11 @@ internal static class SettingsProcess
 				Num(w, "mouse", r.MouseBattery);
 				w.WriteBoolean("kbCharging", r.KbCharging);
 				w.WriteBoolean("mouseCharging", r.MouseCharging);
+				Num(w, "gpt1", r.GptFirst);
+				Num(w, "gpt2", r.GptSecond);
+				Num(w, "grok", r.GrokUsed);
+				Num(w, "ds", r.DsBalance);
+				w.WriteString("dsCur", r.DsCurrency ?? "");
 				ClaudeUsage.Snapshot c = claude.Current;
 				if (c != null)
 				{
@@ -384,7 +389,12 @@ internal static class SettingsProcess
 					KbBattery = F(e, "kb"),
 					MouseBattery = F(e, "mouse"),
 					KbCharging = e.TryGetProperty("kbCharging", out JsonElement kc) && kc.GetBoolean(),
-					MouseCharging = e.TryGetProperty("mouseCharging", out JsonElement mc) && mc.GetBoolean()
+					MouseCharging = e.TryGetProperty("mouseCharging", out JsonElement mc) && mc.GetBoolean(),
+					GptFirst = F(e, "gpt1"),
+					GptSecond = F(e, "gpt2"),
+					GrokUsed = F(e, "grok"),
+					DsBalance = F(e, "ds"),
+					DsCurrency = e.TryGetProperty("dsCur", out JsonElement dc) ? dc.GetString() : null
 				};
 				_claude = null;
 				if (e.TryGetProperty("claude", out JsonElement c) && c.ValueKind == JsonValueKind.Object)

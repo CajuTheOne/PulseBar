@@ -28,6 +28,13 @@ internal sealed class Settings
 		public static readonly Limit MouseBattery = new Limit(20, 10);
 
 		public static readonly Limit Claude = new Limit(70, 90);
+
+		public static readonly Limit ChatGpt = new Limit(70, 90);
+
+		public static readonly Limit Grok = new Limit(70, 90);
+
+		// Баланс DeepSeek: жёлтый при остатке не больше 5, красный — не больше 1 (в валюте счёта).
+		public static readonly Limit DeepSeek = new Limit(5, 1);
 	}
 
 	public int Layout;
@@ -130,7 +137,37 @@ internal sealed class Settings
 
 	public bool ShowRam = true;
 
-	public static readonly string[] AllBlocks = new string[6] { "cpu", "gpu", "vram", "ram", "claude", "battery" };
+	// Строка ИИ (2.4): ChatGPT (лимиты Codex), Grok (Grok CLI), DeepSeek (баланс API); Gemini — пока без данных.
+	public bool ShowChatGpt;
+
+	public bool ShowGrok;
+
+	public bool ShowDeepSeek;
+
+	public bool ShowGemini;
+
+	// Ключ API DeepSeek, зашифрованный DPAPI текущего пользователя (Ai.Secret).
+	public string DeepSeekKey = "";
+
+	// Палитра показателей: норма, предупреждение, перегрузка (#RRGGBB; пусто — цвета темы).
+	public string NormalColor = "";
+
+	public string WarnColor = "";
+
+	public string HotColor = "";
+
+	public static readonly string[] AllBlocks = new string[9] { "cpu", "gpu", "vram", "ram", "claude", "chatgpt", "grok", "deepseek", "battery" };
+
+	// Плитки строки ИИ в окне настроек (Gemini — без данных, только в меню «…»).
+	public static readonly string[] AiBlocks = new string[5] { "claude", "chatgpt", "grok", "gemini", "deepseek" };
+
+	// Какие плитки стоят в строке ИИ окна настроек (меню «…»).
+	public string AiTiles = "claude,chatgpt,grok,deepseek";
+
+	public List<string> AiTileList()
+	{
+		return AiTiles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(AiBlocks.Contains).Distinct().ToList();
+	}
 
 	// Порядок блоков на строке (через запятую); неизвестные ключи пропускаются, недостающие добавляются в конец.
 	public string BlockOrder = string.Join(",", AllBlocks);
@@ -154,6 +191,12 @@ internal sealed class Settings
 	public Limit MouseBattery = Defaults.MouseBattery;
 
 	public Limit Claude = Defaults.Claude;
+
+	public Limit ChatGpt = Defaults.ChatGpt;
+
+	public Limit Grok = Defaults.Grok;
+
+	public Limit DeepSeek = Defaults.DeepSeek;
 
 	public float TextScale => TextSize switch
 	{
@@ -187,6 +230,10 @@ internal sealed class Settings
 			"vram" => ShowVram,
 			"ram" => ShowRam,
 			"claude" => ShowClaude,
+			"chatgpt" => ShowChatGpt,
+			"grok" => ShowGrok,
+			"deepseek" => ShowDeepSeek,
+			"gemini" => ShowGemini,
 			"battery" => ShowBattery,
 			_ => false,
 		};
@@ -210,6 +257,18 @@ internal sealed class Settings
 			break;
 		case "claude":
 			ShowClaude = shown;
+			break;
+		case "chatgpt":
+			ShowChatGpt = shown;
+			break;
+		case "grok":
+			ShowGrok = shown;
+			break;
+		case "deepseek":
+			ShowDeepSeek = shown;
+			break;
+		case "gemini":
+			ShowGemini = shown;
 			break;
 		case "battery":
 			ShowBattery = shown;
@@ -515,6 +574,42 @@ internal sealed class Settings
 		case "mouseBattery":
 			this.MouseBattery = ParseLow(text4, this.MouseBattery);
 			break;
+		case "showChatGpt":
+			this.ShowChatGpt = result != 0;
+			break;
+		case "showGrok":
+			this.ShowGrok = result != 0;
+			break;
+		case "showDeepSeek":
+			this.ShowDeepSeek = result != 0;
+			break;
+		case "showGemini":
+			this.ShowGemini = result != 0;
+			break;
+		case "deepSeekKey":
+			this.DeepSeekKey = text4;
+			break;
+		case "aiTiles":
+			this.AiTiles = text4;
+			break;
+		case "chatgpt":
+			this.ChatGpt = ParseLimit(text4, this.ChatGpt);
+			break;
+		case "grok":
+			this.Grok = ParseLimit(text4, this.Grok);
+			break;
+		case "deepseek":
+			this.DeepSeek = ParseLow(text4, this.DeepSeek);
+			break;
+		case "normalColor":
+			this.NormalColor = ColorOrEmpty(text4);
+			break;
+		case "warnColor":
+			this.WarnColor = ColorOrEmpty(text4);
+			break;
+		case "hotColor":
+			this.HotColor = ColorOrEmpty(text4);
+			break;
 		}
 	}
 
@@ -588,6 +683,18 @@ internal sealed class Settings
 				WriteLimit(w, "kbBattery", KbBattery);
 				WriteLimit(w, "mouseBattery", MouseBattery);
 				WriteLimit(w, "claude", Claude);
+				w.WriteBoolean("showChatGpt", ShowChatGpt);
+				w.WriteBoolean("showGrok", ShowGrok);
+				w.WriteBoolean("showDeepSeek", ShowDeepSeek);
+				w.WriteBoolean("showGemini", ShowGemini);
+				w.WriteString("deepSeekKey", DeepSeekKey);
+				w.WriteString("aiTiles", AiTiles);
+				WriteLimit(w, "chatgpt", ChatGpt);
+				WriteLimit(w, "grok", Grok);
+				WriteLimit(w, "deepseek", DeepSeek);
+				w.WriteString("normalColor", NormalColor);
+				w.WriteString("warnColor", WarnColor);
+				w.WriteString("hotColor", HotColor);
 				w.WriteEndObject();
 			}
 			File.WriteAllBytes(JsonPath, memoryStream.ToArray());
@@ -611,6 +718,17 @@ internal sealed class Settings
 	private static string Format(Limit l)
 	{
 		return $"{l.Warn},{l.Hot}";
+	}
+
+	// #RRGGBB или пусто (цвет темы).
+	public static string ColorOrEmpty(string v)
+	{
+		v = v.Trim();
+		if (v.Length == 7 && v[0] == '#' && int.TryParse(v.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _))
+		{
+			return v.ToUpperInvariant();
+		}
+		return "";
 	}
 
 	private static Limit ParseLow(string v, Limit fallback)

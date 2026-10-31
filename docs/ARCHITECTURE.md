@@ -73,6 +73,14 @@
   через 4 с после изменения профилей; перерисовка после чужой записи подсветки (не больше 5 раз в минуту).
   Окружение (`LogiEnv`) подменяется в тестах моделью G915 (`tests\PulseBar.Tests\FakeG915.cs`).
 
+## Версия 2.4 (01.11.2026): строка ИИ
+
+`src\PulseBar\Ai\`: `AiUsage` — таймер раз в минуту, каждый включённый сервис не чаще раза в 5 минут; `CodexUsage`
+(ChatGPT: wham/usage с токеном Codex CLI, запасной путь — журналы `~/.codex/sessions`), `GrokUsage` (биллинг Grok CLI),
+`DeepSeekBalance` (баланс API), `Secret` (DPAPI для ключа). Показание — `AiSnapshot` (проценты двух окон, сброс,
+баланс, источник, состояние). `Overlay.FillAi` переносит показания в `Readings`, `BarRenderer` рисует блоки
+`chatgpt`, `grok`, `deepseek` (как компактный Claude), цвета — `Palette.Create(light, settings)` с палитрой из настроек.
+
 ## Общая схема
 
 Один процесс .NET 9 (WinForms), без сторонних библиотек: всё остальное — прямые вызовы Windows API.

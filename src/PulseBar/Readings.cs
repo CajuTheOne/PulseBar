@@ -40,4 +40,21 @@ internal struct Readings
 	public float ClaudeFiveHourLeft;
 
 	public float ClaudeSevenDayLeft;
+
+	// Строка ИИ: ChatGPT (5 ч и неделя, %), Grok (расход, %), DeepSeek (баланс и валюта); Stale — данные устарели.
+	public float GptFirst;
+
+	public float GptSecond;
+
+	public bool GptStale;
+
+	public float GrokUsed;
+
+	public bool GrokStale;
+
+	public float DsBalance;
+
+	public string? DsCurrency;
+
+	public bool DsStale;
 }

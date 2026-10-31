@@ -41,6 +41,14 @@ internal sealed class BarRenderer : IDisposable
 
 	private float _wClaude;
 
+	private float _wGpt;
+
+	private float _wGrok;
+
+	private float _wDs;
+
+	private float _wBalance;
+
 	private float _wTag;
 
 	private float _wIcon;
@@ -170,6 +178,10 @@ internal sealed class BarRenderer : IDisposable
 		_wBatPct = W("100%", _value);
 		_wBatSmall = W("100%", _small);
 		_wClaude = W("CLAUDE", _label);
+		_wGpt = W("GPT", _label);
+		_wGrok = W("GROK", _label);
+		_wDs = W("DS", _label);
+		_wBalance = W("$999.99", _value);
 		_wTag = Math.Max(W("5h", _label), W("7d", _label));
 		_wClaudeText = W("100% · 23h", _small);
 		return true;
@@ -206,6 +218,9 @@ internal sealed class BarRenderer : IDisposable
 			"vram" => two ? (HeadWidth(_wVLabelVram) + _colMem) : (_wVram + num),
 			"ram" => two ? (HeadWidth(_wVLabel) + _colMem) : (_wRam + num),
 			"claude" => (_claudeStyle == 2) ? (_wVLabelVram + 8f * _k + _wTag + ClaudeBarWidth + 6f * _k + _wClaudeText) : (two ? (_wVLabelVram + 7f * _k + _wTag + _wPct) : (_wClaude + (_gap2 + _wTag + 3f * _k + _wPct) * 2f)),
+			"chatgpt" => two ? (_wVLabelVram + 7f * _k + _wTag + _wPct) : (_wGpt + (_gap2 + _wTag + 3f * _k + _wPct) * 2f),
+			"grok" => two ? (_wVLabelVram + 7f * _k + _wPct) : (_wGrok + _gap2 + _wPct),
+			"deepseek" => two ? (_wVLabelVram + 7f * _k + _wBalance) : (_wDs + _gap2 + _wBalance),
 			"battery" => two ? (_wIcon + _gap1 + _wBatSmall) : ((_wIcon + _gap1 + _wBatPct) * 2f + _gap2 * 2f),
 			_ => 0f,
 		};
@@ -248,7 +263,8 @@ internal sealed class BarRenderer : IDisposable
 
 	public static int Signature(in Readings r, Settings s, bool light)
 	{
-		int value = HashCode.Combine(Round(r.KbBattery), Round(r.MouseBattery), r.KbCharging, r.MouseCharging, Round(r.ClaudeFiveHour), Round(r.ClaudeSevenDay), r.ClaudeStale, HashCode.Combine(r.ClaudeShown, ShortLeft(r.ClaudeFiveHourLeft), ShortLeft(r.ClaudeSevenDayLeft)));
+		int ai = HashCode.Combine(Round(r.GptFirst), Round(r.GptSecond), r.GptStale, Round(r.GrokUsed), r.GrokStale, Round(r.DsBalance * 100f), r.DsCurrency, r.DsStale);
+		int value = HashCode.Combine(Round(r.KbBattery), Round(r.MouseBattery), r.KbCharging, r.MouseCharging, Round(r.ClaudeFiveHour), Round(r.ClaudeSevenDay), r.ClaudeStale, HashCode.Combine(r.ClaudeShown, ShortLeft(r.ClaudeFiveHourLeft), ShortLeft(r.ClaudeSevenDayLeft), ai));
 		return HashCode.Combine(HashCode.Combine(Round(r.CpuLoad), Round(r.CpuTemp), Round(r.GpuLoad), Round(r.GpuTemp), r.GpuAsleep), Round(r.VramLoad), Round(r.VramUsedGb * 10f), Round(r.RamLoad), Round(r.RamUsedGb * 10f), s.Version, light, value);
 	}
 
@@ -332,6 +348,49 @@ internal sealed class BarRenderer : IDisposable
 			x += _wClaude + _gap2;
 			x = ClaudeValue(g, x, "5h", r.ClaudeFiveHour, r.ClaudeStale, s, p, _h / 2f) + _gap2;
 			return ClaudeValue(g, x, "7d", r.ClaudeSevenDay, r.ClaudeStale, s, p, _h / 2f);
+		case "chatgpt":
+			if (two)
+			{
+				VerticalText(g, "GPT", _vlabelVram, p.Label, x, _wVLabelVram);
+				x += _wVLabelVram + 4f * _k;
+				float d = 8f * _k;
+				AiValue(g, x, "5h", r.GptFirst, r.GptStale, s.ChatGpt, p, _h / 2f - d);
+				return AiValue(g, x, "7d", r.GptSecond, r.GptStale, s.ChatGpt, p, _h / 2f + d);
+			}
+			Text(g, "GPT", _label, p.Label, x, _wGpt, _near);
+			x += _wGpt + _gap2;
+			x = AiValue(g, x, "5h", r.GptFirst, r.GptStale, s.ChatGpt, p, _h / 2f) + _gap2;
+			return AiValue(g, x, "7d", r.GptSecond, r.GptStale, s.ChatGpt, p, _h / 2f);
+		case "grok":
+			if (two)
+			{
+				VerticalText(g, "GROK", _vlabelVram, p.Label, x, _wVLabelVram);
+				x += _wVLabelVram + 4f * _k;
+			}
+			else
+			{
+				Text(g, "GROK", _label, p.Label, x, _wGrok, _near);
+				x += _wGrok + _gap2;
+			}
+			Text(g, Pct(r.GrokUsed), _value, r.GrokStale ? p.NoData : p.Level(r.GrokUsed, s.Grok), x, _wPct, _far, _h / 2f);
+			return x + _wPct;
+		case "deepseek":
+		{
+			if (two)
+			{
+				VerticalText(g, "DS", _vlabelVram, p.Label, x, _wVLabelVram);
+				x += _wVLabelVram + 4f * _k;
+			}
+			else
+			{
+				Text(g, "DS", _label, p.Label, x, _wDs, _near);
+				x += _wDs + _gap2;
+			}
+			float b = r.DsBalance;
+			Color c = (float.IsNaN(b) || r.DsStale) ? p.NoData : ((b <= (float)s.DeepSeek.Hot) ? p.Hot : ((b <= (float)s.DeepSeek.Warn) ? p.Warn : p.Ok));
+			Text(g, Money(b, r.DsCurrency), _value, c, x, _wBalance, _far, _h / 2f);
+			return x + _wBalance;
+		}
 		case "battery":
 			if (two)
 			{
@@ -467,6 +526,31 @@ internal sealed class BarRenderer : IDisposable
 			return $"{(int)(minutes / 60f)}h";
 		}
 		return $"{(int)MathF.Ceiling(minutes)}m";
+	}
+
+	// Значение лимита сервиса ИИ: «5h 23%», цвет по его порогам; устаревшие данные — серым.
+	private float AiValue(Graphics g, float x, string tag, float v, bool stale, Limit limit, Palette p, float cy)
+	{
+		Text(g, tag, _label, p.Label, x, _wTag, _near, cy);
+		x += _wTag + 3f * _k;
+		Text(g, Pct(v), _value, stale ? p.NoData : p.Level(v, limit), x, _wPct, _far, cy);
+		return x + _wPct;
+	}
+
+	// Баланс: $12.34, ¥30.1; неизвестно — «—».
+	internal static string Money(float v, string? currency)
+	{
+		if (float.IsNaN(v))
+		{
+			return "—";
+		}
+		string sign = currency switch
+		{
+			"USD" => "$",
+			"CNY" => "¥",
+			_ => (currency ?? "") + " "
+		};
+		return sign + v.ToString((v >= 100f) ? "0" : "0.00", System.Globalization.CultureInfo.InvariantCulture);
 	}
 
 	// «5h 23%»: процент лимита Claude, цвет по порогам; устаревшие данные — серым.
