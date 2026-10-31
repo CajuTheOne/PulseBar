@@ -28,6 +28,13 @@ internal static class SettingsShot
 
 		public string ClaudeAppStatus => "";
 
+		public IReadOnlyDictionary<string, Ai.AiSnapshot> Ai { get; init; } = new Dictionary<string, Ai.AiSnapshot>
+		{
+			["chatgpt"] = new Ai.AiSnapshot("chatgpt", 31f, 12f, DateTimeOffset.Now.AddHours(2.5), DateTimeOffset.Now.AddDays(3), null, "", DateTimeOffset.Now.AddMinutes(-2), "api", ""),
+			["grok"] = new Ai.AiSnapshot("grok", float.NaN, float.NaN, null, null, null, "", DateTimeOffset.Now, "", "not logged in to Grok CLI"),
+			["deepseek"] = new Ai.AiSnapshot("deepseek", float.NaN, float.NaN, null, null, 7.42m, "USD", DateTimeOffset.Now.AddMinutes(-1), "api", "")
+		};
+
 		public string ClaudeAccount { get; init; } = "";
 
 		public Updater Updater { get; } = new Updater();
@@ -101,6 +108,7 @@ internal static class SettingsShot
 		if (subTab >= 0)
 		{
 			SettingsWindow.KeyboardTab = subTab;
+			SettingsWindow.AiTab = subTab;
 		}
 		L.Set(language ?? s.Language);
 		using ClaudeUsage claude = new ClaudeUsage(s.ClaudeIntervalMin, api: false);

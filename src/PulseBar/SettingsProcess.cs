@@ -48,7 +48,7 @@ internal static class SettingsProcess
 
 	// ---------- сторона строки ----------
 
-	public static void WriteStatus(in Readings r, ClaudeUsage claude, bool light, IReadOnlyList<GpuSensor.Adapter> adapters, bool edit, Logi.LogiService logi)
+	public static void WriteStatus(in Readings r, ClaudeUsage claude, bool light, IReadOnlyList<GpuSensor.Adapter> adapters, bool edit, Logi.LogiService logi, Ai.AiUsage? ai = null)
 	{
 		try
 		{
@@ -95,6 +95,34 @@ internal static class SettingsProcess
 					w.WriteEndObject();
 				}
 				w.WriteString("claudeApi", claude.ApiStatus);
+				if (ai != null)
+				{
+					w.WriteStartObject("ai");
+					foreach (var (id, a) in ai.Current)
+					{
+						w.WriteStartObject(id);
+						Num(w, "first", a.First);
+						Num(w, "second", a.Second);
+						if (a.FirstReset.HasValue)
+						{
+							w.WriteNumber("firstReset", a.FirstReset.Value.ToUnixTimeSeconds());
+						}
+						if (a.SecondReset.HasValue)
+						{
+							w.WriteNumber("secondReset", a.SecondReset.Value.ToUnixTimeSeconds());
+						}
+						if (a.Balance.HasValue)
+						{
+							w.WriteNumber("balance", a.Balance.Value);
+						}
+						w.WriteString("currency", a.Currency);
+						w.WriteNumber("updated", a.Updated.ToUnixTimeSeconds());
+						w.WriteString("source", a.Source);
+						w.WriteString("status", a.Status);
+						w.WriteEndObject();
+					}
+					w.WriteEndObject();
+				}
 				w.WriteString("claudeApp", claude.AppStatus);
 				w.WriteString("claudeAccount", claude.AccountLabel);
 				w.WriteStartObject("logi");
@@ -189,6 +217,10 @@ internal static class SettingsProcess
 		private string _claudeApi = "";
 
 		private string _claudeApp = "";
+
+		private Dictionary<string, Ai.AiSnapshot> _ai = new Dictionary<string, Ai.AiSnapshot>();
+
+		public IReadOnlyDictionary<string, Ai.AiSnapshot> Ai => _ai;
 
 		private string _claudeAccount = "";
 
@@ -407,6 +439,16 @@ internal static class SettingsProcess
 				}
 				_claudeApi = e.TryGetProperty("claudeApi", out JsonElement api) ? (api.GetString() ?? "") : "";
 				_claudeApp = e.TryGetProperty("claudeApp", out JsonElement app) ? (app.GetString() ?? "") : "";
+				_ai = new Dictionary<string, Ai.AiSnapshot>();
+				if (e.TryGetProperty("ai", out JsonElement aiEl) && aiEl.ValueKind == JsonValueKind.Object)
+				{
+					foreach (JsonProperty a in aiEl.EnumerateObject())
+					{
+						JsonElement v = a.Value;
+						decimal? balance = (v.TryGetProperty("balance", out JsonElement bal) && bal.TryGetDecimal(out decimal dv)) ? dv : null;
+						_ai[a.Name] = new Ai.AiSnapshot(a.Name, F(v, "first"), F(v, "second"), Time(v, "firstReset"), Time(v, "secondReset"), balance, v.TryGetProperty("currency", out JsonElement cur) ? (cur.GetString() ?? "") : "", Time(v, "updated") ?? DateTimeOffset.Now, v.TryGetProperty("source", out JsonElement so) ? (so.GetString() ?? "") : "", v.TryGetProperty("status", out JsonElement st) ? (st.GetString() ?? "") : "");
+					}
+				}
 				if (e.TryGetProperty("logi", out JsonElement lg) && lg.ValueKind == JsonValueKind.Object)
 				{
 					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""), lg.TryGetProperty("foreign", out JsonElement fl) ? (fl.GetString() ?? "") : "");

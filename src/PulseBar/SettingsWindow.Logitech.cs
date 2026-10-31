@@ -150,34 +150,16 @@ internal sealed partial class SettingsWindow
 		top.Children.Add(more);
 		top.Children.Add(status);
 		p.Children.Add(top);
-		TabControl tabs = new TabControl
+		UIElement[] pages = new UIElement[3]
 		{
-			Margin = new Thickness(0.0, 0.0, 0.0, 0.0)
+			GeneralTab(c, out Action refreshGeneral),
+			LightingTab(c, pr, st),
+			KeysTab(pr)
 		};
-		tabs.Items.Add(new TabItem
+		p.Children.Add(Segmented(new string[3] { L.T("General"), L.T("Lighting"), L.T("G-keys") }, pages, _keyboardTab, delegate(int i)
 		{
-			Header = L.T("General"),
-			Content = GeneralTab(c, out Action refreshGeneral)
-		});
-		tabs.Items.Add(new TabItem
-		{
-			Header = L.T("Lighting"),
-			Content = LightingTab(c, pr, st)
-		});
-		tabs.Items.Add(new TabItem
-		{
-			Header = L.T("G-keys"),
-			Content = KeysTab(pr)
-		});
-		tabs.SelectedIndex = Math.Clamp(_keyboardTab, 0, 2);
-		tabs.SelectionChanged += (object s, SelectionChangedEventArgs e) =>
-		{
-			if (e.Source == tabs)
-			{
-				_keyboardTab = tabs.SelectedIndex;
-			}
-		};
-		p.Children.Add(tabs);
+			_keyboardTab = i;
+		}));
 		_refresh = Refresh;
 		Refresh();
 		return p;

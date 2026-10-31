@@ -21,7 +21,7 @@ internal sealed class BarRenderer : IDisposable
 
 	private readonly Graphics _mg;
 
-	private (float, int, int, int, bool, int, int, int, string, int, int, int) _key = (-1f, -1, -1, -1, false, -1, -1, -1, "", -1, -1, -1);
+	private (float, int, int, int, bool, int, int, int, string, int, int, int, int, int, int, int) _key = (-1f, -1, -1, -1, false, -1, -1, -1, "", -1, -1, -1, -1, -1, -1, -1);
 
 	private int _claudeBarLength;
 
@@ -32,6 +32,15 @@ internal sealed class BarRenderer : IDisposable
 	private bool _showRamGb;
 
 	private int _claudeStyle;
+
+	// Блок ChatGPT: стиль и полосы большого стиля (как у Claude).
+	private int _gptStyle;
+
+	private int _gptBarLength;
+
+	private int _gptBarHeight;
+
+	private int _gptSegments;
 
 	private float _snapGap;
 
@@ -135,7 +144,7 @@ internal sealed class BarRenderer : IDisposable
 	// Элементы: cpu, gpu, vram, ram, claude, battery и разделители sep…; раскладку по панели делает Overlay.
 	public bool Configure(float dpiScale, int height, Settings s)
 	{
-		(float, int, int, int, bool, int, int, int, string, int, int, int) tuple = (dpiScale, height, s.Layout, s.TextSize, s.ShowRamGb, s.ClaudeStyle, s.SnapGap, s.SepGap, L.Code, s.ClaudeBarLength, s.ClaudeBarHeight, s.ClaudeSegments);
+		(float, int, int, int, bool, int, int, int, string, int, int, int, int, int, int, int) tuple = (dpiScale, height, s.Layout, s.TextSize, s.ShowRamGb, s.ClaudeStyle, s.SnapGap, s.SepGap, L.Code, s.ClaudeBarLength, s.ClaudeBarHeight, s.ClaudeSegments, s.GptStyle, s.GptBarLength, s.GptBarHeight, s.GptSegments);
 		if (tuple == _key)
 		{
 			return false;
@@ -148,6 +157,10 @@ internal sealed class BarRenderer : IDisposable
 		_claudeBarLength = s.ClaudeBarLength;
 		_claudeBarHeight = s.ClaudeBarHeight;
 		_claudeSegments = s.ClaudeSegments;
+		_gptStyle = s.GptStyle;
+		_gptBarLength = s.GptBarLength;
+		_gptBarHeight = s.GptBarHeight;
+		_gptSegments = s.GptSegments;
 		bool flag = _style != 0;
 		float num = (_k = dpiScale * s.TextScale);
 		_h = height;
@@ -218,7 +231,7 @@ internal sealed class BarRenderer : IDisposable
 			"vram" => two ? (HeadWidth(_wVLabelVram) + _colMem) : (_wVram + num),
 			"ram" => two ? (HeadWidth(_wVLabel) + _colMem) : (_wRam + num),
 			"claude" => (_claudeStyle == 2) ? (_wVLabelVram + 8f * _k + _wTag + ClaudeBarWidth + 6f * _k + _wClaudeText) : (two ? (_wVLabelVram + 7f * _k + _wTag + _wPct) : (_wClaude + (_gap2 + _wTag + 3f * _k + _wPct) * 2f)),
-			"chatgpt" => two ? (_wVLabelVram + 7f * _k + _wTag + _wPct) : (_wGpt + (_gap2 + _wTag + 3f * _k + _wPct) * 2f),
+			"chatgpt" => (_gptStyle == 2) ? (_wVLabelVram + 8f * _k + _wTag + BarWidth(_gptBarLength) + 6f * _k + _wClaudeText) : (two ? (_wVLabelVram + 7f * _k + _wTag + _wPct) : (_wGpt + (_gap2 + _wTag + 3f * _k + _wPct) * 2f)),
 			"grok" => two ? (_wVLabelVram + 7f * _k + _wPct) : (_wGrok + _gap2 + _wPct),
 			"deepseek" => two ? (_wVLabelVram + 7f * _k + _wBalance) : (_wDs + _gap2 + _wBalance),
 			"battery" => two ? (_wIcon + _gap1 + _wBatSmall) : ((_wIcon + _gap1 + _wBatPct) * 2f + _gap2 * 2f),
@@ -263,7 +276,7 @@ internal sealed class BarRenderer : IDisposable
 
 	public static int Signature(in Readings r, Settings s, bool light)
 	{
-		int ai = HashCode.Combine(Round(r.GptFirst), Round(r.GptSecond), r.GptStale, Round(r.GrokUsed), r.GrokStale, Round(r.DsBalance * 100f), r.DsCurrency, r.DsStale);
+		int ai = HashCode.Combine(Round(r.GptFirst), Round(r.GptSecond), r.GptStale, Round(r.GrokUsed), r.GrokStale, Round(r.DsBalance * 100f), r.DsCurrency, HashCode.Combine(r.DsStale, ShortLeft(r.GptFirstLeft), ShortLeft(r.GptSecondLeft)));
 		int value = HashCode.Combine(Round(r.KbBattery), Round(r.MouseBattery), r.KbCharging, r.MouseCharging, Round(r.ClaudeFiveHour), Round(r.ClaudeSevenDay), r.ClaudeStale, HashCode.Combine(r.ClaudeShown, ShortLeft(r.ClaudeFiveHourLeft), ShortLeft(r.ClaudeSevenDayLeft), ai));
 		return HashCode.Combine(HashCode.Combine(Round(r.CpuLoad), Round(r.CpuTemp), Round(r.GpuLoad), Round(r.GpuTemp), r.GpuAsleep), Round(r.VramLoad), Round(r.VramUsedGb * 10f), Round(r.RamLoad), Round(r.RamUsedGb * 10f), s.Version, light, value);
 	}
@@ -349,6 +362,10 @@ internal sealed class BarRenderer : IDisposable
 			x = ClaudeValue(g, x, "5h", r.ClaudeFiveHour, r.ClaudeStale, s, p, _h / 2f) + _gap2;
 			return ClaudeValue(g, x, "7d", r.ClaudeSevenDay, r.ClaudeStale, s, p, _h / 2f);
 		case "chatgpt":
+			if (_gptStyle == 2)
+			{
+				return LargeLimits(g, x, "GPT", r.GptFirst, r.GptFirstLeft, r.GptSecond, r.GptSecondLeft, r.GptStale, s.ChatGpt, _gptBarLength, _gptBarHeight, _gptSegments, p);
+			}
 			if (two)
 			{
 				VerticalText(g, "GPT", _vlabelVram, p.Label, x, _wVLabelVram);
@@ -454,31 +471,42 @@ internal sealed class BarRenderer : IDisposable
 		return x + col;
 	}
 
-	private float ClaudeBarWidth => MathF.Round((float)_claudeBarLength * _k);
+	private float ClaudeBarWidth => BarWidth(_claudeBarLength);
+
+	private float BarWidth(int length)
+	{
+		return MathF.Round((float)length * _k);
+	}
 
 	// Большой стиль Claude: вертикальная подпись, две строки «5h ▮▮▮▮▯▯▯▯▯▯ 40% · 2h» (как у Claude Code Usage Monitor).
 	private float ClaudeLarge(Graphics g, float x, in Readings r, Settings s, Palette p)
 	{
-		VerticalText(g, "CLAUDE", _vlabelVram, p.Label, x, _wVLabelVram);
-		x += _wVLabelVram + 4f * _k;
-		float num = 8f * _k;
-		ClaudeLargeRow(g, x, "5h", r.ClaudeFiveHour, r.ClaudeFiveHourLeft, r.ClaudeStale, s, p, _h / 2f - num);
-		return ClaudeLargeRow(g, x, "7d", r.ClaudeSevenDay, r.ClaudeSevenDayLeft, r.ClaudeStale, s, p, _h / 2f + num);
+		return LargeLimits(g, x, "CLAUDE", r.ClaudeFiveHour, r.ClaudeFiveHourLeft, r.ClaudeSevenDay, r.ClaudeSevenDayLeft, r.ClaudeStale, s.Claude, _claudeBarLength, _claudeBarHeight, _claudeSegments, p);
 	}
 
-	private float ClaudeLargeRow(Graphics g, float x, string tag, float v, float leftMin, bool stale, Settings s, Palette p, float cy)
+	// Большой стиль лимитов (Claude, ChatGPT): подпись и две строки с полосами 5h и 7d, процентом и временем до сброса.
+	private float LargeLimits(Graphics g, float x, string label, float v1, float left1, float v2, float left2, bool stale, Limit limit, int length, int height, int segments, Palette p)
+	{
+		VerticalText(g, label, _vlabelVram, p.Label, x, _wVLabelVram);
+		x += _wVLabelVram + 4f * _k;
+		float num = 8f * _k;
+		LargeRow(g, x, "5h", v1, left1, stale, limit, length, height, segments, p, _h / 2f - num);
+		return LargeRow(g, x, "7d", v2, left2, stale, limit, length, height, segments, p, _h / 2f + num);
+	}
+
+	private float LargeRow(Graphics g, float x, string tag, float v, float leftMin, bool stale, Limit limit, int length, int height, int segments, Palette p, float cy)
 	{
 		Text(g, tag, _label, p.Label, x, _wTag, _near, cy);
 		x += _wTag + 4f * _k;
-		Color c = (stale ? p.NoData : p.Level(v, s.Claude));
-		float len = ClaudeBarWidth;
-		float h = Math.Max(2f, MathF.Round((float)_claudeBarHeight * _k));
+		Color c = (stale ? p.NoData : p.Level(v, limit));
+		float len = BarWidth(length);
+		float h = Math.Max(2f, MathF.Round((float)height * _k));
 		float y = MathF.Round(cy - h / 2f);
 		float pct = (float.IsNaN(v) ? 0f : Math.Clamp(v, 0f, 100f));
 		using (SolidBrush on = new SolidBrush(c))
 		{
 			using SolidBrush off = new SolidBrush(p.Track);
-			int n = _claudeSegments;
+			int n = segments;
 			if (n <= 0)
 			{
 				g.FillRectangle(off, MathF.Round(x), y, len, h);
@@ -499,7 +527,7 @@ internal sealed class BarRenderer : IDisposable
 				}
 			}
 		}
-		x += ClaudeBarWidth + 6f * _k;
+		x += len + 6f * _k;
 		string text = Pct(v);
 		string left = ShortLeft(leftMin);
 		if (left.Length > 0)

@@ -342,7 +342,7 @@ internal sealed class Overlay : Form
 		RecordHistory();
 		if (SettingsOpen)
 		{
-			SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit, _logi);
+			SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit, _logi, _ai);
 		}
 		long tickCount = Environment.TickCount64;
 		if (tickCount >= _updateCheckAt)
@@ -985,7 +985,7 @@ internal sealed class Overlay : Form
 			}
 			return;
 		}
-		SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit, _logi);
+		SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit, _logi, _ai);
 		try
 		{
 			_settingsProcess = Process.Start(new ProcessStartInfo(Environment.ProcessPath, $"--settings {page} {base.Handle.ToInt64()}")
@@ -1689,6 +1689,8 @@ internal sealed class Overlay : Form
 		_r.GptFirst = gpt?.First ?? float.NaN;
 		_r.GptSecond = gpt?.Second ?? float.NaN;
 		_r.GptStale = gpt?.Stale ?? false;
+		_r.GptFirstLeft = MinutesLeft(gpt?.FirstReset);
+		_r.GptSecondLeft = MinutesLeft(gpt?.SecondReset);
 		_r.GrokUsed = grok?.First ?? float.NaN;
 		_r.GrokStale = grok?.Stale ?? false;
 		_r.DsBalance = (ds?.Balance is decimal b) ? (float)b : float.NaN;

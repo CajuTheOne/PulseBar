@@ -37,6 +37,8 @@ internal interface ISettingsHost
 
 	string ClaudeAppStatus { get; }
 
+	IReadOnlyDictionary<string, Ai.AiSnapshot> Ai { get; }
+
 	// Почта аккаунта Claude Code, для которого показаны лимиты.
 	string ClaudeAccount { get; }
 
@@ -122,7 +124,7 @@ internal sealed partial class SettingsWindow : Window
 		_pages.Add((L.T("Thresholds and colours"), ThresholdsPage));
 		_pages.Add((L.T("Keyboard"), KeyboardPage));
 		_pages.Add((L.T("Mouse"), MousePage));
-		_pages.Add(("Claude", ClaudePage));
+		_pages.Add((L.T("AI"), AiPage));
 		_pages.Add((L.T("About"), AboutPage));
 		foreach (var (title, _) in _pages)
 		{
@@ -215,7 +217,7 @@ internal sealed partial class SettingsWindow : Window
 		p.Children.Add(Caption(L.T("Presets")));
 		WrapPanel presets = new WrapPanel
 		{
-			Margin = new Thickness(0.0, 0.0, 0.0, 12.0)
+			Margin = new Thickness(0.0, 0.0, 0.0, 0.0)
 		};
 		presets.Children.Add(Preset(L.T("One line"), L.T("blocks in a row, separators between them"), delegate
 		{
@@ -226,6 +228,7 @@ internal sealed partial class SettingsWindow : Window
 			_s.Layout = 1;
 		}, reset: true));
 		p.Children.Add(presets);
+		p.Children.Add(OwnLooks());
 		// Показатели и строка ИИ — плитками: включена — цвет акцента (2.4).
 		p.Children.Add(Caption(L.T("Elements")));
 		WrapPanel tiles = new WrapPanel();
@@ -409,6 +412,99 @@ internal sealed partial class SettingsWindow : Window
 			IsExpanded = false
 		});
 		return p;
+	}
+
+	private static int _lookIndex = -1;
+
+	// Свои пресеты вида: сохранить текущий, попробовать другое, при желании загрузить сохранённый обратно.
+	private UIElement OwnLooks()
+	{
+		StackPanel row = new StackPanel
+		{
+			Orientation = Orientation.Horizontal,
+			Margin = new Thickness(0.0, 0.0, 0.0, 8.0)
+		};
+		row.Children.Add(new TextBlock
+		{
+			Text = L.T("Your looks"),
+			VerticalAlignment = VerticalAlignment.Center,
+			Margin = new Thickness(0.0, 0.0, 10.0, 0.0)
+		});
+		ComboBox looks = new ComboBox
+		{
+			ItemsSource = _s.Presets.Select((Settings.LookPreset x) => x.Name).ToArray(),
+			Width = 190.0,
+			IsEnabled = _s.Presets.Count > 0
+		};
+		looks.SelectedIndex = (_s.Presets.Count == 0) ? (-1) : Math.Clamp((_lookIndex < 0) ? (_s.Presets.Count - 1) : _lookIndex, 0, _s.Presets.Count - 1);
+		looks.SelectionChanged += delegate
+		{
+			_lookIndex = looks.SelectedIndex;
+		};
+		Button load = new Button
+		{
+			Content = L.T("Load"),
+			Margin = new Thickness(8.0, 0.0, 0.0, 0.0),
+			IsEnabled = _s.Presets.Count > 0
+		};
+		Button save = new Button
+		{
+			Content = L.T("Save current…"),
+			Margin = new Thickness(8.0, 0.0, 0.0, 0.0)
+		};
+		Button delete = new Button
+		{
+			Content = L.T("Delete"),
+			Margin = new Thickness(8.0, 0.0, 0.0, 0.0),
+			IsEnabled = _s.Presets.Count > 0
+		};
+		load.Click += delegate
+		{
+			if (looks.SelectedIndex >= 0)
+			{
+				_s.ApplyAppearance(_s.Presets[looks.SelectedIndex].Json);
+				Changed();
+				ShowPage(_nav.SelectedIndex);
+			}
+		};
+		save.Click += delegate
+		{
+			string? name = AskText(L.T("Save the current look"), L.T("Name (the same name replaces that look)"), (looks.SelectedIndex >= 0) ? _s.Presets[looks.SelectedIndex].Name : L.F("My look {0}", _s.Presets.Count + 1));
+			if (string.IsNullOrWhiteSpace(name))
+			{
+				return;
+			}
+			Settings.LookPreset look = new Settings.LookPreset(name, _s.AppearanceJson());
+			int same = _s.Presets.FindIndex((Settings.LookPreset x) => string.Equals(x.Name, name, StringComparison.CurrentCultureIgnoreCase));
+			if (same >= 0)
+			{
+				_s.Presets[same] = look;
+				_lookIndex = same;
+			}
+			else
+			{
+				_s.Presets.Add(look);
+				_lookIndex = _s.Presets.Count - 1;
+			}
+			Changed();
+			ShowPage(_nav.SelectedIndex);
+		};
+		delete.Click += delegate
+		{
+			int i = looks.SelectedIndex;
+			if (i >= 0 && MessageBox.Show(this, L.F("Delete the look «{0}»?", _s.Presets[i].Name), "PulseBar", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK)
+			{
+				_s.Presets.RemoveAt(i);
+				_lookIndex = -1;
+				Changed();
+				ShowPage(_nav.SelectedIndex);
+			}
+		};
+		row.Children.Add(looks);
+		row.Children.Add(load);
+		row.Children.Add(save);
+		row.Children.Add(delete);
+		return row;
 	}
 
 	// Плитка показателя: название и пояснение, нажата — показатель на строке.
@@ -913,9 +1009,257 @@ internal sealed partial class SettingsWindow : Window
 
 	// ---------- Claude ----------
 
-	private UIElement ClaudePage()
+	// ---------- ИИ: Claude, ChatGPT, Grok, DeepSeek ----------
+
+	private static int _aiTab;
+
+	private UIElement AiPage()
 	{
-		StackPanel p = Page("Claude");
+		StackPanel p = Page(L.T("AI"));
+		p.Children[0].SetValue(FrameworkElement.MarginProperty, new Thickness(0.0, 0.0, 0.0, 8.0));
+		UIElement[] pages = new UIElement[4]
+		{
+			ClaudeTab(out Action claude),
+			GptTab(out Action gpt),
+			SimpleAiTab("grok", L.T("Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."), out Action grok),
+			DeepSeekTab(out Action ds)
+		};
+		p.Children.Add(Segmented(new string[4] { "Claude", "ChatGPT", "Grok", "DeepSeek" }, pages, _aiTab, delegate(int i)
+		{
+			_aiTab = i;
+		}));
+		_refresh = delegate
+		{
+			claude();
+			gpt();
+			grok();
+			ds();
+		};
+		_refresh();
+		return p;
+	}
+
+	// Внутренние вкладки: ряд кнопок-переключателей и содержимое выбранной (TabControl темы Fluent растягивает
+	// заголовки и переносит их в два ряда).
+	private static UIElement Segmented(string[] headers, UIElement[] pages, int selected, Action<int> changed)
+	{
+		selected = Math.Clamp(selected, 0, pages.Length - 1);
+		StackPanel root = new StackPanel();
+		StackPanel bar = new StackPanel
+		{
+			Orientation = Orientation.Horizontal,
+			Margin = new Thickness(0.0, 0.0, 0.0, 2.0)
+		};
+		ContentControl content = new ContentControl
+		{
+			Content = pages[selected]
+		};
+		List<System.Windows.Controls.Primitives.ToggleButton> buttons = new List<System.Windows.Controls.Primitives.ToggleButton>();
+		for (int i = 0; i < headers.Length; i++)
+		{
+			int n = i;
+			System.Windows.Controls.Primitives.ToggleButton b = new System.Windows.Controls.Primitives.ToggleButton
+			{
+				Content = headers[i],
+				IsChecked = i == selected,
+				Padding = new Thickness(16.0, 5.0, 16.0, 5.0),
+				Margin = new Thickness(0.0, 0.0, 6.0, 0.0)
+			};
+			b.Click += delegate
+			{
+				foreach (System.Windows.Controls.Primitives.ToggleButton other in buttons)
+				{
+					other.IsChecked = other == b;
+				}
+				content.Content = pages[n];
+				changed(n);
+			};
+			buttons.Add(b);
+			bar.Children.Add(b);
+		}
+		root.Children.Add(bar);
+		root.Children.Add(content);
+		return root;
+	}
+
+	// Для снимков: какая вкладка «ИИ» открыта.
+	internal static int AiTab
+	{
+		set
+		{
+			_aiTab = value;
+		}
+	}
+
+	private static StackPanel TabPanel()
+	{
+		return new StackPanel
+		{
+			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
+		};
+	}
+
+	private TextBlock StatusText()
+	{
+		return new TextBlock
+		{
+			Margin = new Thickness(0.0, 6.0, 0.0, 6.0),
+			TextWrapping = TextWrapping.Wrap,
+			LineHeight = 21.0
+		};
+	}
+
+	// Состояние сервиса ИИ: проценты со сбросом или баланс, когда обновлено, откуда, что не так.
+	private string AiStatus(string id)
+	{
+		if (!_host.Ai.TryGetValue(id, out Ai.AiSnapshot? a))
+		{
+			return _s.IsShown(id) ? L.T("waiting for data…") : L.T("Turn the tile on in Appearance to start asking.");
+		}
+		List<string> lines = new List<string>();
+		if (id == "deepseek")
+		{
+			lines.Add(L.T("Balance") + ": " + BarRenderer.Money(a.Balance is decimal b ? (float)b : float.NaN, a.Currency));
+		}
+		else if (id == "grok")
+		{
+			lines.Add(L.T("Usage") + ": " + Pct(a.First) + Reset(a.FirstReset));
+		}
+		else
+		{
+			lines.Add(L.T("5 hours") + ": " + Pct(a.First) + Reset(a.FirstReset));
+			lines.Add(L.T("7 days") + ": " + Pct(a.Second) + Reset(a.SecondReset));
+		}
+		int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - a.Updated).TotalMinutes);
+		string source = (a.Source == "codex logs") ? L.T("Codex logs") : a.Source;
+		lines.Add(L.T("Updated") + ": " + L.F("{0} min ago", ago) + ((source.Length > 0) ? (" (" + source + ")") : "") + (a.Stale ? (" — " + L.T("out of date")) : ""));
+		if (a.Status.Length > 0)
+		{
+			lines.Add(L.T("Status") + ": " + L.T(a.Status));
+		}
+		return string.Join("\n", lines);
+	}
+
+	// Полосы большого стиля: длина, высота, сегменты.
+	private void BarSliders(StackPanel p, Func<int> len, Action<int> setLen, Func<int> height, Action<int> setHeight, Func<int> segs, Action<int> setSegs)
+	{
+		p.Children.Add(SliderRow(L.T("Bar length"), 40.0, 240.0, 2.0, len, setLen, (int v) => $"{v} px"));
+		p.Children.Add(SliderRow(L.T("Bar height"), 4.0, 16.0, 1.0, height, setHeight, (int v) => $"{v} px"));
+		p.Children.Add(SliderRow(L.T("Bar segments"), 4.0, 20.0, 1.0, () => (segs() == 0) ? 4 : segs(), delegate(int v)
+		{
+			setSegs((v <= 4) ? 0 : v);
+		}, (int v) => (v <= 4) ? L.T("solid") : v.ToString()));
+	}
+
+	private UIElement GptTab(out Action refresh)
+	{
+		StackPanel p = TabPanel();
+		p.Children.Add(Combo(L.T("ChatGPT limits"), new string[3]
+		{
+			L.T("Off"),
+			L.T("Compact (between blocks)"),
+			L.T("Large (bars)")
+		}, () => _s.GptStyle, delegate(int v)
+		{
+			_s.GptStyle = v;
+		}));
+		BarSliders(p, () => _s.GptBarLength, delegate(int v)
+		{
+			_s.GptBarLength = v;
+		}, () => _s.GptBarHeight, delegate(int v)
+		{
+			_s.GptBarHeight = v;
+		}, () => _s.GptSegments, delegate(int v)
+		{
+			_s.GptSegments = v;
+		});
+		TextBlock status = StatusText();
+		p.Children.Add(status);
+		p.Children.Add(Note(L.T("Codex limits of your ChatGPT plan: every 5 minutes from chatgpt.com with the Codex CLI sign-in (the token is only read and sent only to chatgpt.com); if that fails — the latest numbers from the Codex logs.")));
+		refresh = delegate
+		{
+			status.Text = AiStatus("chatgpt");
+		};
+		return p;
+	}
+
+	private UIElement SimpleAiTab(string id, string note, out Action refresh)
+	{
+		StackPanel p = TabPanel();
+		p.Children.Add(Check(L.T("Show on the taskbar"), () => _s.IsShown(id), delegate(bool v)
+		{
+			_s.SetShown(id, v);
+		}));
+		TextBlock status = StatusText();
+		p.Children.Add(status);
+		p.Children.Add(Note(note));
+		refresh = delegate
+		{
+			status.Text = AiStatus(id);
+		};
+		return p;
+	}
+
+	private UIElement DeepSeekTab(out Action refresh)
+	{
+		StackPanel p = TabPanel();
+		p.Children.Add(Check(L.T("Show on the taskbar"), () => _s.IsShown("deepseek"), delegate(bool v)
+		{
+			_s.SetShown("deepseek", v);
+		}));
+		TextBlock key = new TextBlock
+		{
+			Margin = new Thickness(0.0, 6.0, 0.0, 6.0)
+		};
+		p.Children.Add(key);
+		WrapPanel buttons = new WrapPanel();
+		Button set = new Button
+		{
+			Content = L.T("DeepSeek API key…"),
+			Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
+		};
+		Button remove = new Button
+		{
+			Content = L.T("Remove the key")
+		};
+		set.Click += delegate
+		{
+			string? v = AskText(L.T("DeepSeek API key"), L.T("Paste the key from platform.deepseek.com (API keys). It is stored encrypted for this Windows user and is sent only to api.deepseek.com. Empty — remove the key."), "");
+			if (v != null)
+			{
+				_s.DeepSeekKey = (v.Length > 0) ? Ai.Secret.Protect(v) : "";
+				Changed();
+				Key();
+			}
+		};
+		remove.Click += delegate
+		{
+			_s.DeepSeekKey = "";
+			Changed();
+			Key();
+		};
+		buttons.Children.Add(set);
+		buttons.Children.Add(remove);
+		p.Children.Add(buttons);
+		TextBlock status = StatusText();
+		p.Children.Add(status);
+		p.Children.Add(Note(L.T("Balance of the DeepSeek API account (documented API), every 5 minutes. Yellow and red levels are on the Thresholds and colours tab.")));
+		Key();
+		refresh = delegate
+		{
+			status.Text = AiStatus("deepseek");
+		};
+		return p;
+		void Key()
+		{
+			key.Text = (_s.DeepSeekKey.Length > 0) ? L.T("The API key is set.") : L.T("No API key.");
+			remove.IsEnabled = _s.DeepSeekKey.Length > 0;
+		}
+	}
+
+	private UIElement ClaudeTab(out Action refresh)
+	{
+		StackPanel p = TabPanel();
 		p.Children.Add(ClaudeStyleCombo());
 		p.Children.Add(SliderRow(L.T("Claude bar length"), 40.0, 240.0, 2.0, () => _s.ClaudeBarLength, delegate(int v)
 		{
@@ -929,7 +1273,6 @@ internal sealed partial class SettingsWindow : Window
 		{
 			_s.ClaudeSegments = (v <= 4) ? 0 : v;
 		}, (int v) => (v <= 4) ? L.T("solid") : v.ToString()));
-		p.Children.Add(Note(L.T("Bar sizes apply to the large Claude style.")));
 		p.Children.Add(Combo(L.T("Account"), new string[2]
 		{
 			L.T("Open in the Claude app"),
@@ -939,20 +1282,14 @@ internal sealed partial class SettingsWindow : Window
 			_s.ClaudeFollowApp = v == 0;
 		}));
 		p.Children.Add(Note(L.T("The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.")));
-		TextBlock status = new TextBlock
-		{
-			Margin = new Thickness(0.0, 12.0, 0.0, 12.0),
-			TextWrapping = TextWrapping.Wrap,
-			LineHeight = 22.0
-		};
+		TextBlock status = StatusText();
 		p.Children.Add(status);
 		p.Children.Add(SliderRow(L.T("Ask claude.ai every"), 1.0, 15.0, 1.0, () => _s.ClaudeIntervalMin, delegate(int v)
 		{
 			_s.ClaudeIntervalMin = v;
 		}, (int v) => L.F("{0} min", v)));
 		p.Children.Add(Note(L.T("Usage comes from the Claude app history (about every 15 min, no limits) and from claude.ai with your Claude Code sign-in. claude.ai rejects frequent requests, so PulseBar asks it rarely and waits as long as it is told. The token is only read, never refreshed; no quota is spent.")));
-		_refresh = Refresh;
-		Refresh();
+		refresh = Refresh;
 		return p;
 		void Refresh()
 		{

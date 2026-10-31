@@ -48,6 +48,11 @@ internal struct Readings
 
 	public bool GptStale;
 
+	// Минут до сброса окон ChatGPT (NaN — неизвестно).
+	public float GptFirstLeft;
+
+	public float GptSecondLeft;
+
 	public float GrokUsed;
 
 	public bool GrokStale;

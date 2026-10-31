@@ -138,7 +138,93 @@ internal sealed class Settings
 	public bool ShowRam = true;
 
 	// Строка ИИ (2.4): ChatGPT (лимиты Codex), Grok (Grok CLI), DeepSeek (баланс API); Gemini — пока без данных.
-	public bool ShowChatGpt;
+	// Блок ChatGPT — как Claude: 0 — выключен, 1 — компактный, 2 — большой (полосы 5h и 7d); свои размеры полос.
+	public int GptStyle;
+
+	public int GptBarLength = 78;
+
+	public int GptBarHeight = 8;
+
+	public int GptSegments = 10;
+
+	public bool ShowChatGpt
+	{
+		get
+		{
+			return GptStyle != 0;
+		}
+		set
+		{
+			if (!value)
+			{
+				GptStyle = 0;
+			}
+			else if (GptStyle == 0)
+			{
+				GptStyle = 1;
+			}
+		}
+	}
+
+	// Свои пресеты вида: имя и снимок настроек вида (JSON с ключами AppearanceKeys).
+	public sealed record LookPreset(string Name, string Json);
+
+	public List<LookPreset> Presets = new List<LookPreset>();
+
+	// Что входит в «вид»: раскладка, элементы, размеры, цвета; язык, видеокарта, ключи и пороги — нет.
+	private static readonly HashSet<string> AppearanceKeys = new HashSet<string>
+	{
+		"layout", "blueNormal", "textSize", "showRamGb", "showVram", "groupGap", "trayGap", "showBattery", "claudeStyle",
+		"claudeBarLength", "claudeBarHeight", "claudeSegments", "snap", "snapGap", "sepGap", "groups", "hoverTip", "hoverChart",
+		"showCpu", "showGpu", "showRam", "blocks", "showChatGpt", "gptStyle", "gptBarLength", "gptBarHeight", "gptSegments",
+		"showGrok", "showDeepSeek", "showGemini", "aiTiles", "normalColor", "warnColor", "hotColor"
+	};
+
+	// Снимок вида для пресета.
+	public string AppearanceJson()
+	{
+		using JsonDocument doc = JsonDocument.Parse(ToJson(presets: false));
+		using MemoryStream ms = new MemoryStream();
+		using (Utf8JsonWriter w = new Utf8JsonWriter(ms))
+		{
+			w.WriteStartObject();
+			foreach (JsonProperty p in doc.RootElement.EnumerateObject())
+			{
+				if (AppearanceKeys.Contains(p.Name))
+				{
+					p.WriteTo(w);
+				}
+			}
+			w.WriteEndObject();
+		}
+		return System.Text.Encoding.UTF8.GetString(ms.ToArray());
+	}
+
+	// Загрузить вид из пресета (остальные настройки не меняются).
+	public void ApplyAppearance(string json)
+	{
+		using JsonDocument doc = JsonDocument.Parse(json);
+		foreach (JsonProperty p in doc.RootElement.EnumerateObject())
+		{
+			if (!AppearanceKeys.Contains(p.Name))
+			{
+				continue;
+			}
+			if (p.Name == "groups")
+			{
+				Groups = ReadGroups(p.Value);
+			}
+			else
+			{
+				Apply(p.Name, JsonText(p.Value));
+			}
+		}
+		if (!doc.RootElement.TryGetProperty("groups", out _))
+		{
+			Groups = null;
+		}
+		NormalizeGroups();
+	}
 
 	public bool ShowGrok;
 
@@ -375,6 +461,11 @@ internal sealed class Settings
 						settings.Groups = ReadGroups(item.Value);
 						continue;
 					}
+					if (item.Name == "presets")
+					{
+						settings.Presets = ReadPresets(item.Value);
+						continue;
+					}
 					snapGap |= item.Name == "snapGap";
 					settings.Apply(item.Name, JsonText(item.Value));
 				}
@@ -406,6 +497,23 @@ internal sealed class Settings
 			Log.Write("settings load: " + ex.Message);
 		}
 		return settings;
+	}
+
+	private static List<LookPreset> ReadPresets(JsonElement v)
+	{
+		List<LookPreset> list = new List<LookPreset>();
+		if (v.ValueKind != JsonValueKind.Array)
+		{
+			return list;
+		}
+		foreach (JsonElement item in v.EnumerateArray())
+		{
+			if (item.TryGetProperty("name", out JsonElement n) && item.TryGetProperty("look", out JsonElement look) && look.ValueKind == JsonValueKind.Object)
+			{
+				list.Add(new LookPreset(n.GetString() ?? "", look.GetRawText()));
+			}
+		}
+		return list;
 	}
 
 	private static List<Group>? ReadGroups(JsonElement v)
@@ -592,6 +700,18 @@ internal sealed class Settings
 		case "aiTiles":
 			this.AiTiles = text4;
 			break;
+		case "gptStyle":
+			this.GptStyle = Math.Clamp(result, 0, 2);
+			break;
+		case "gptBarLength":
+			this.GptBarLength = Math.Clamp(result, 40, 240);
+			break;
+		case "gptBarHeight":
+			this.GptBarHeight = Math.Clamp(result, 4, 16);
+			break;
+		case "gptSegments":
+			this.GptSegments = (result <= 0) ? 0 : Math.Clamp(result, 5, 20);
+			break;
 		case "chatgpt":
 			this.ChatGpt = ParseLimit(text4, this.ChatGpt);
 			break;
@@ -619,85 +739,7 @@ internal sealed class Settings
 		try
 		{
 			Directory.CreateDirectory(Dir);
-			using MemoryStream memoryStream = new MemoryStream();
-			using (Utf8JsonWriter w = new Utf8JsonWriter(memoryStream, new JsonWriterOptions
-			{
-				Indented = true,
-				Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-			}))
-			{
-				w.WriteStartObject();
-				w.WriteNumber("layout", Layout);
-				w.WriteBoolean("blueNormal", BlueNormal);
-				w.WriteNumber("textSize", TextSize);
-				w.WriteNumber("intervalMs", IntervalMs);
-				w.WriteBoolean("hideFullscreen", HideFullscreen);
-				w.WriteBoolean("showRamGb", ShowRamGb);
-				w.WriteBoolean("showVram", ShowVram);
-				w.WriteNumber("groupGap", GroupGap);
-				w.WriteNumber("trayGap", TrayGap);
-				w.WriteString("gpu", Gpu);
-				w.WriteBoolean("trayIcon", TrayIcon);
-				w.WriteBoolean("showBattery", ShowBattery);
-				w.WriteBoolean("embed", Embed);
-				w.WriteBoolean("beta", Beta);
-				w.WriteNumber("claudeStyle", ClaudeStyle);
-				w.WriteBoolean("claudeFollowApp", ClaudeFollowApp);
-				w.WriteNumber("claudeBarLength", ClaudeBarLength);
-				w.WriteNumber("claudeBarHeight", ClaudeBarHeight);
-				w.WriteNumber("claudeSegments", ClaudeSegments);
-				w.WriteBoolean("snap", Snap);
-				w.WriteNumber("snapGap", SnapGap);
-				w.WriteNumber("sepGap", SepGap);
-				if (Groups != null)
-				{
-					w.WriteStartArray("groups");
-					foreach (Group group in Groups)
-					{
-						w.WriteStartObject();
-						w.WriteNumber("x", group.X);
-						w.WriteStartArray("items");
-						foreach (string item in group.Items)
-						{
-							w.WriteStringValue(item);
-						}
-						w.WriteEndArray();
-						w.WriteEndObject();
-					}
-					w.WriteEndArray();
-				}
-				w.WriteBoolean("hoverTip", HoverTip);
-				w.WriteBoolean("hoverChart", HoverChart);
-				w.WriteBoolean("showCpu", ShowCpu);
-				w.WriteBoolean("showGpu", ShowGpu);
-				w.WriteBoolean("showRam", ShowRam);
-				w.WriteString("blocks", string.Join(",", Order()));
-				w.WriteNumber("claudeInterval", ClaudeIntervalMin);
-				w.WriteString("language", Language);
-				WriteLimit(w, "cpuLoad", CpuLoad);
-				WriteLimit(w, "cpuTemp", CpuTemp);
-				WriteLimit(w, "gpuLoad", GpuLoad);
-				WriteLimit(w, "gpuTemp", GpuTemp);
-				WriteLimit(w, "vram", Vram);
-				WriteLimit(w, "ram", Ram);
-				WriteLimit(w, "kbBattery", KbBattery);
-				WriteLimit(w, "mouseBattery", MouseBattery);
-				WriteLimit(w, "claude", Claude);
-				w.WriteBoolean("showChatGpt", ShowChatGpt);
-				w.WriteBoolean("showGrok", ShowGrok);
-				w.WriteBoolean("showDeepSeek", ShowDeepSeek);
-				w.WriteBoolean("showGemini", ShowGemini);
-				w.WriteString("deepSeekKey", DeepSeekKey);
-				w.WriteString("aiTiles", AiTiles);
-				WriteLimit(w, "chatgpt", ChatGpt);
-				WriteLimit(w, "grok", Grok);
-				WriteLimit(w, "deepseek", DeepSeek);
-				w.WriteString("normalColor", NormalColor);
-				w.WriteString("warnColor", WarnColor);
-				w.WriteString("hotColor", HotColor);
-				w.WriteEndObject();
-			}
-			File.WriteAllBytes(JsonPath, memoryStream.ToArray());
+			File.WriteAllBytes(JsonPath, ToJson(presets: true));
 			return true;
 		}
 		catch (Exception ex)
@@ -705,6 +747,110 @@ internal sealed class Settings
 			Log.Write("settings save: " + ex.Message);
 			return false;
 		}
+	}
+
+	// Настройки в JSON; presets = false — без своих пресетов вида (для снимка вида в пресет).
+	private byte[] ToJson(bool presets)
+	{
+		using MemoryStream memoryStream = new MemoryStream();
+		using (Utf8JsonWriter w = new Utf8JsonWriter(memoryStream, new JsonWriterOptions
+		{
+			Indented = true,
+			Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+		}))
+		{
+			w.WriteStartObject();
+			w.WriteNumber("layout", Layout);
+			w.WriteBoolean("blueNormal", BlueNormal);
+			w.WriteNumber("textSize", TextSize);
+			w.WriteNumber("intervalMs", IntervalMs);
+			w.WriteBoolean("hideFullscreen", HideFullscreen);
+			w.WriteBoolean("showRamGb", ShowRamGb);
+			w.WriteBoolean("showVram", ShowVram);
+			w.WriteNumber("groupGap", GroupGap);
+			w.WriteNumber("trayGap", TrayGap);
+			w.WriteString("gpu", Gpu);
+			w.WriteBoolean("trayIcon", TrayIcon);
+			w.WriteBoolean("showBattery", ShowBattery);
+			w.WriteBoolean("embed", Embed);
+			w.WriteBoolean("beta", Beta);
+			w.WriteNumber("claudeStyle", ClaudeStyle);
+			w.WriteBoolean("claudeFollowApp", ClaudeFollowApp);
+			w.WriteNumber("claudeBarLength", ClaudeBarLength);
+			w.WriteNumber("claudeBarHeight", ClaudeBarHeight);
+			w.WriteNumber("claudeSegments", ClaudeSegments);
+			w.WriteBoolean("snap", Snap);
+			w.WriteNumber("snapGap", SnapGap);
+			w.WriteNumber("sepGap", SepGap);
+			if (Groups != null)
+			{
+				w.WriteStartArray("groups");
+				foreach (Group group in Groups)
+				{
+					w.WriteStartObject();
+					w.WriteNumber("x", group.X);
+					w.WriteStartArray("items");
+					foreach (string item in group.Items)
+					{
+						w.WriteStringValue(item);
+					}
+					w.WriteEndArray();
+					w.WriteEndObject();
+				}
+				w.WriteEndArray();
+			}
+			w.WriteBoolean("hoverTip", HoverTip);
+			w.WriteBoolean("hoverChart", HoverChart);
+			w.WriteBoolean("showCpu", ShowCpu);
+			w.WriteBoolean("showGpu", ShowGpu);
+			w.WriteBoolean("showRam", ShowRam);
+			w.WriteString("blocks", string.Join(",", Order()));
+			w.WriteNumber("claudeInterval", ClaudeIntervalMin);
+			w.WriteString("language", Language);
+			WriteLimit(w, "cpuLoad", CpuLoad);
+			WriteLimit(w, "cpuTemp", CpuTemp);
+			WriteLimit(w, "gpuLoad", GpuLoad);
+			WriteLimit(w, "gpuTemp", GpuTemp);
+			WriteLimit(w, "vram", Vram);
+			WriteLimit(w, "ram", Ram);
+			WriteLimit(w, "kbBattery", KbBattery);
+			WriteLimit(w, "mouseBattery", MouseBattery);
+			WriteLimit(w, "claude", Claude);
+			w.WriteBoolean("showChatGpt", ShowChatGpt);
+			w.WriteNumber("gptStyle", GptStyle);
+			w.WriteNumber("gptBarLength", GptBarLength);
+			w.WriteNumber("gptBarHeight", GptBarHeight);
+			w.WriteNumber("gptSegments", GptSegments);
+			w.WriteBoolean("showGrok", ShowGrok);
+			w.WriteBoolean("showDeepSeek", ShowDeepSeek);
+			w.WriteBoolean("showGemini", ShowGemini);
+			w.WriteString("deepSeekKey", DeepSeekKey);
+			w.WriteString("aiTiles", AiTiles);
+			WriteLimit(w, "chatgpt", ChatGpt);
+			WriteLimit(w, "grok", Grok);
+			WriteLimit(w, "deepseek", DeepSeek);
+			w.WriteString("normalColor", NormalColor);
+			w.WriteString("warnColor", WarnColor);
+			w.WriteString("hotColor", HotColor);
+			if (presets && Presets.Count > 0)
+			{
+				w.WriteStartArray("presets");
+				foreach (LookPreset lp in Presets)
+				{
+					w.WriteStartObject();
+					w.WriteString("name", lp.Name);
+					w.WritePropertyName("look");
+					using (JsonDocument look = JsonDocument.Parse(lp.Json))
+					{
+						look.RootElement.WriteTo(w);
+					}
+					w.WriteEndObject();
+				}
+				w.WriteEndArray();
+			}
+			w.WriteEndObject();
+		}
+		return memoryStream.ToArray();
 	}
 
 	private static void WriteLimit(Utf8JsonWriter w, string name, Limit l)
