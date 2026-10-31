@@ -14,13 +14,11 @@ namespace PulseBar;
 // а строка должна оставаться лёгкой. Связь со строкой:
 //  - окно сохраняет settings.json и посылает окну строки SettingsChanged — строка перечитывает настройки
 //    (рассылка HWND_BROADCAST не подходит: скрытое окно WinForms принадлежит служебному и её не получает);
-//  - пока окно открыто, строка раз в секунду пишет status.json (показания, данные Claude, видеокарты) — для превью;
-//  - OpenLogitech — открыть окно Logitech (оно живёт в строке до 2.2).
+//  - пока окно открыто, строка раз в секунду пишет status.json (показания, данные Claude, видеокарты, клавиатура) — для превью;
+//  - команды Logitech (перечитать logitech.json, вернуть заводские профили, копия памяти) выполняет строка.
 internal static class SettingsProcess
 {
 	public static readonly uint MsgSettingsChanged = RegisterWindowMessageW("PulseBar.SettingsChanged");
-
-	public static readonly uint MsgOpenLogitech = RegisterWindowMessageW("PulseBar.OpenLogitech");
 
 	// Режим правки (wParam 1/0), сброс расположения, новый разделитель — делает строка: расположением владеет она.
 	public static readonly uint MsgEditMode = RegisterWindowMessageW("PulseBar.EditMode");
@@ -29,10 +27,8 @@ internal static class SettingsProcess
 
 	public static readonly uint MsgAddSeparator = RegisterWindowMessageW("PulseBar.AddSeparator");
 
-	// Logitech: перечитать logitech.json, записать профили в клавиатуру, вернуть заводские, сделать копию памяти.
+	// Logitech: перечитать logitech.json, вернуть заводские профили, сделать копию памяти.
 	public static readonly uint MsgLogiReload = RegisterWindowMessageW("PulseBar.LogiReload");
-
-	public static readonly uint MsgLogiWrite = RegisterWindowMessageW("PulseBar.LogiWrite");
 
 	public static readonly uint MsgLogiRestore = RegisterWindowMessageW("PulseBar.LogiRestore");
 
@@ -95,14 +91,16 @@ internal static class SettingsProcess
 				}
 				w.WriteString("claudeApi", claude.ApiStatus);
 				w.WriteString("claudeAccount", claude.AccountLabel);
-				Logi.HidppDevice kb = logi.Keyboard ?? logi.Devices.FirstOrDefault((Logi.HidppDevice d) => d.IsKeyboard);
 				w.WriteStartObject("logi");
-				w.WriteString("device", kb?.Name ?? "");
-				w.WriteBoolean("online", kb?.Online ?? false);
+				w.WriteString("device", logi.KeyboardName);
+				w.WriteBoolean("online", logi.KeyboardOnline);
 				w.WriteNumber("battery", float.IsNaN(logi.KeyboardBattery) ? (-1) : ((int)logi.KeyboardBattery));
-				w.WriteString("mode", (kb != null) ? logi.ModeText(kb) : "");
+				w.WriteString("mode", logi.Mode);
 				w.WriteBoolean("ghub", logi.GHubActive);
 				w.WriteString("result", logi.LastResult);
+				w.WriteString("keyEffects", string.Join(",", logi.Effects(0)));
+				w.WriteString("logoEffects", string.Join(",", logi.Effects(1)));
+				w.WriteString("keyIds", Convert.ToHexString(logi.KeyIds.ToArray()));
 				w.WriteEndObject();
 				w.WriteStartArray("adapters");
 				foreach (GpuSensor.Adapter a in adapters)
@@ -254,7 +252,7 @@ internal static class SettingsProcess
 			Notify(MsgAddSeparator);
 		}
 
-		private ISettingsHost.Logitech _logi = new ISettingsHost.Logitech("", Online: false, -1, "", GHub: false, "");
+		private ISettingsHost.Logitech _logi = ISettingsHost.Logitech.Empty;
 
 		public ISettingsHost.Logitech LogiStatus
 		{
@@ -268,11 +266,6 @@ internal static class SettingsProcess
 		public void LogiReload()
 		{
 			Notify(MsgLogiReload);
-		}
-
-		public void LogiWrite()
-		{
-			Notify(MsgLogiWrite);
 		}
 
 		public void LogiRestore()
@@ -328,11 +321,6 @@ internal static class SettingsProcess
 			Apply();
 		}
 
-		public void OpenLogitech()
-		{
-			Notify(MsgOpenLogitech);
-		}
-
 		public async void CheckForUpdates()
 		{
 			await Updater.CheckAsync(Settings.Beta);
@@ -350,6 +338,11 @@ internal static class SettingsProcess
 			_window = null;
 			Show(page);
 			old?.Close();
+		}
+
+		private static string[] List(JsonElement e, string name)
+		{
+			return e.TryGetProperty(name, out JsonElement v) ? (v.GetString() ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries) : Array.Empty<string>();
 		}
 
 		private void ReadStatus()
@@ -399,7 +392,7 @@ internal static class SettingsProcess
 				_claudeApi = e.TryGetProperty("claudeApi", out JsonElement api) ? (api.GetString() ?? "") : "";
 				if (e.TryGetProperty("logi", out JsonElement lg) && lg.ValueKind == JsonValueKind.Object)
 				{
-					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "");
+					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""));
 				}
 				_claudeAccount = e.TryGetProperty("claudeAccount", out JsonElement acc) ? (acc.GetString() ?? "") : "";
 				_adapters = new List<GpuSensor.Adapter>();

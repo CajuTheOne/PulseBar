@@ -78,7 +78,8 @@ internal sealed class Overlay : Form
 
 	private Icon? _trayIco;
 
-	private LogiForm? _logiForm;
+	// Уведомления о включении и выключении экрана (для подсветки клавиатуры).
+	private nint _powerNotify;
 
 	private readonly BarWindow _bar = new BarWindow();
 
@@ -206,6 +207,8 @@ internal sealed class Overlay : Form
 		BeginInvoke(Tick);
 		UpdateTrayIcon();
 		_logi.Start();
+		Guid display = DisplayStateGuid;
+		_powerNotify = RegisterPowerSettingNotification(base.Handle, ref display, 0);
 	}
 
 	private void StartTimer()
@@ -246,6 +249,13 @@ internal sealed class Overlay : Form
 		case 26:
 			_themeCheckAt = 0L;
 			break;
+		case 536:
+			// WM_POWERBROADCAST / PBT_POWERSETTINGCHANGE: экран 0 — выключен, 1 — включён, 2 — притушен.
+			if (m.WParam == 0x8013 && m.LParam != IntPtr.Zero)
+			{
+				_logi.DisplayChanged(Marshal.ReadInt32(m.LParam, 20) != 0);
+			}
+			break;
 		case 537:
 			if (m.WParam == 32768 || m.WParam == 32772 || m.WParam == 7)
 			{
@@ -256,11 +266,6 @@ internal sealed class Overlay : Form
 		if (m.Msg == SettingsProcess.MsgSettingsChanged)
 		{
 			ReloadSettings();
-			return;
-		}
-		if (m.Msg == SettingsProcess.MsgOpenLogitech)
-		{
-			OpenLogi();
 			return;
 		}
 		if (m.Msg == SettingsProcess.MsgEditMode)
@@ -281,11 +286,6 @@ internal sealed class Overlay : Form
 		if (m.Msg == SettingsProcess.MsgLogiReload)
 		{
 			_logi.ReloadConfig();
-			return;
-		}
-		if (m.Msg == SettingsProcess.MsgLogiWrite)
-		{
-			_logi.WriteOnboard();
 			return;
 		}
 		if (m.Msg == SettingsProcess.MsgLogiRestore)
@@ -913,8 +913,11 @@ internal sealed class Overlay : Form
 			Native.UnhookWinEvent(_hook);
 		}
 		_menu?.Dispose();
+		if (_powerNotify != IntPtr.Zero)
+		{
+			UnregisterPowerSettingNotification(_powerNotify);
+		}
 		_logi.Changed -= OnLogiChanged;
-		_logiForm?.Close();
 		if (_trayIcon != null)
 		{
 			_trayIcon.Visible = false;
@@ -1387,6 +1390,14 @@ internal sealed class Overlay : Form
 	[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
 	private static extern nint GetModuleHandleW(string? name);
 
+	private static readonly Guid DisplayStateGuid = new Guid("6FE69556-704A-47A0-8F24-C28D936FDA47");
+
+	[DllImport("user32.dll")]
+	private static extern nint RegisterPowerSettingNotification(nint recipient, ref Guid setting, int flags);
+
+	[DllImport("user32.dll")]
+	private static extern bool UnregisterPowerSettingNotification(nint handle);
+
 	private void RecordHistory()
 	{
 		if (!_s.HoverChart)
@@ -1644,7 +1655,8 @@ internal sealed class Overlay : Form
 			{
 				if (e.Button == MouseButtons.Left)
 				{
-					OpenLogi();
+					// Значок в трее (настройка «Значок в трее»): клик — вкладка Logitech окна настроек.
+					OpenSettings(4);
 				}
 				else if (e.Button == MouseButtons.Right)
 				{
@@ -1663,27 +1675,6 @@ internal sealed class Overlay : Form
 			}
 		}
 		_trayIcon.Text = ((text.Length > 127) ? text.Substring(0, 127) : text);
-	}
-
-	private void OpenLogi()
-	{
-		if (_logiForm != null && !_logiForm.IsDisposed)
-		{
-			if (_logiForm.WindowState == FormWindowState.Minimized)
-			{
-				_logiForm.WindowState = FormWindowState.Normal;
-			}
-			_logiForm.Activate();
-			return;
-		}
-		_logiForm = new LogiForm(_logi, !_lightTaskbar);
-		_logiForm.FormClosed += delegate
-		{
-			_logiForm = null;
-			_trimAt = Environment.TickCount64 + 3000;
-		};
-		_logiForm.Show();
-		_logiForm.Activate();
 	}
 
 	private static Icon MakeTrayIcon()

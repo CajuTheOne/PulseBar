@@ -1,13 +1,24 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace PulseBar.Logi;
 
+// Настройки модуля Logitech: %APPDATA%\PulseBar\logitech.json (2.3, версия 2).
+// Active — профиль, выбранный вручную последним (M1–M3 или в окне настроек); автопереключение по программе его не меняет.
+// Файл 2.2 и раньше (без "version") переносится: цвета клавиш → режим «по клавишам», ровно 3 профиля; прежний файл
+// сохраняется как logitech.v1.json.
 internal sealed class LogiConfig
 {
+	public const int CurrentVersion = 2;
+
+	public const int ProfileCount = 3;
+
 	public static readonly string[] KeyNames = new string[6] { "G1", "G2", "G3", "G4", "G5", "MR" };
+
+	public int Version { get; set; }
 
 	public bool Enabled { get; set; } = true;
 
@@ -21,90 +32,119 @@ internal sealed class LogiConfig
 
 	private static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PulseBar");
 
-	private static string FilePath => Path.Combine(Dir, "logitech.json");
+	public static string FilePath => Path.Combine(Dir, "logitech.json");
 
 	public static LogiConfig Load()
 	{
-		LogiConfig logiConfig = null;
+		return Load(FilePath);
+	}
+
+	public static LogiConfig Load(string path)
+	{
+		LogiConfig? c = null;
 		try
 		{
-			if (File.Exists(FilePath))
+			if (File.Exists(path))
 			{
-				logiConfig = JsonSerializer.Deserialize(File.ReadAllText(FilePath), LogiJson.Default.LogiConfig);
+				c = JsonSerializer.Deserialize(File.ReadAllText(path), LogiJson.Default.LogiConfig);
 			}
 		}
 		catch (Exception ex)
 		{
 			Log.Write("logi: config load: " + ex.Message);
 		}
-		if (logiConfig == null)
+		bool migrate = c != null && c.Version < CurrentVersion;
+		c ??= new LogiConfig
 		{
-			logiConfig = new LogiConfig();
+			Version = CurrentVersion
+		};
+		if (migrate)
+		{
+			try
+			{
+				File.Copy(path, Path.Combine(Path.GetDirectoryName(path)!, "logitech.v1.json"), overwrite: false);
+			}
+			catch (IOException)
+			{
+			}
+			foreach (Profile p in c.Profiles)
+			{
+				p.PerKey = p.KeyColors.Count > 0;
+			}
+			c.Version = CurrentVersion;
+			Log.Write("logi: logitech.json migrated to version 2");
 		}
-		if (logiConfig.Profiles.Count == 0)
+		c.Normalize();
+		if (migrate)
 		{
-			logiConfig.Profiles.Add(new Profile
+			c.Save(path);
+		}
+		return c;
+	}
+
+	// Ровно 3 профиля, известные эффекты, разумные числа.
+	public void Normalize()
+	{
+		string[] defaults = new string[3] { "#00A0FF", "#FF4000", "#FFFFFF" };
+		if (Profiles.Count > ProfileCount)
+		{
+			Profiles.RemoveRange(ProfileCount, Profiles.Count - ProfileCount);
+		}
+		while (Profiles.Count < ProfileCount)
+		{
+			string color = defaults[Profiles.Count];
+			Profiles.Add(new Profile
 			{
-				Name = "M1",
-				Keyboard = 
+				Name = "M" + (Profiles.Count + 1),
+				Keyboard = new Lighting
 				{
-					Color = "#00A0FF"
+					Color = color
 				},
-				Logo = 
+				Logo = new Lighting
 				{
-					Color = "#00A0FF"
-				}
-			});
-			logiConfig.Profiles.Add(new Profile
-			{
-				Name = "M2",
-				Keyboard = 
-				{
-					Color = "#FF4000"
-				},
-				Logo = 
-				{
-					Color = "#FF4000"
-				}
-			});
-			logiConfig.Profiles.Add(new Profile
-			{
-				Name = "M3",
-				Keyboard = 
-				{
-					Color = "#FFFFFF"
-				},
-				Logo = 
-				{
-					Color = "#FFFFFF"
+					Color = color
 				}
 			});
 		}
-		foreach (Profile profile in logiConfig.Profiles)
+		foreach (Profile p in Profiles)
 		{
-			Lighting[] array = new Lighting[2] { profile.Keyboard, profile.Logo };
-			foreach (Lighting lighting in array)
+			p.Keyboard ??= new Lighting();
+			p.Logo ??= new Lighting();
+			p.Keys ??= new Dictionary<string, KeyAction>();
+			p.KeyColors ??= new Dictionary<string, string>();
+			p.Brightness = Math.Clamp(p.Brightness, 1, 100);
+			foreach (Lighting l in new Lighting[2] { p.Keyboard, p.Logo })
 			{
-				if (lighting.Effect != "off")
+				l.Effect = string.IsNullOrWhiteSpace(l.Effect) ? "static" : l.Effect.Trim().ToLowerInvariant();
+				l.Color = Rgb.Parse(l.Color, new Rgb(0, 0xA0, 0xFF)).ToString();
+				l.Period = Math.Clamp(l.Period, 0, 60000);
+			}
+			foreach (string k in p.KeyColors.Keys.ToList())
+			{
+				if (!byte.TryParse(k, System.Globalization.NumberStyles.HexNumber, null, out _) || Rgb.Parse(p.KeyColors[k], new Rgb(1, 2, 3)) == new Rgb(1, 2, 3))
 				{
-					lighting.Effect = "static";
+					p.KeyColors.Remove(k);
 				}
 			}
 		}
-		logiConfig.IdleMinutes = Math.Clamp(logiConfig.IdleMinutes, 0, 240);
-		logiConfig.IdleBrightness = Math.Clamp(logiConfig.IdleBrightness, 0, 100);
-		logiConfig.Active = Math.Clamp(logiConfig.Active, 0, logiConfig.Profiles.Count - 1);
-		return logiConfig;
+		IdleMinutes = Math.Clamp(IdleMinutes, 0, 240);
+		IdleBrightness = Math.Clamp(IdleBrightness, 0, 100);
+		Active = Math.Clamp(Active, 0, ProfileCount - 1);
 	}
 
 	public void Save()
 	{
+		Save(FilePath);
+	}
+
+	public void Save(string path)
+	{
 		try
 		{
-			Directory.CreateDirectory(Dir);
-			string text = FilePath + ".tmp";
-			File.WriteAllText(text, JsonSerializer.Serialize(this, LogiJson.Default.LogiConfig));
-			File.Move(text, FilePath, overwrite: true);
+			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+			string tmp = path + ".tmp";
+			File.WriteAllText(tmp, JsonSerializer.Serialize(this, LogiJson.Default.LogiConfig));
+			File.Move(tmp, path, overwrite: true);
 		}
 		catch (Exception ex)
 		{

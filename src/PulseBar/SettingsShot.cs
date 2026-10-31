@@ -40,10 +40,6 @@ internal static class SettingsShot
 		{
 		}
 
-		public void OpenLogitech()
-		{
-		}
-
 		public void CheckForUpdates()
 		{
 		}
@@ -70,13 +66,9 @@ internal static class SettingsShot
 		{
 		}
 
-		public ISettingsHost.Logitech LogiStatus => new ISettingsHost.Logitech("G915 WIRELESS RGB MECHANICAL GAMING KEYBOARD", Online: true, 64, "onboard", GHub: false, "");
+		public ISettingsHost.Logitech LogiStatus => new ISettingsHost.Logitech("G915 WIRELESS RGB MECHANICAL GAMING KEYBOARD", Online: true, 64, "host", GHub: false, "", new string[5] { "off", "static", "breathing", "cycle", "wave" }, new string[4] { "off", "static", "breathing", "cycle" }, Array.Empty<byte>());
 
 		public void LogiReload()
-		{
-		}
-
-		public void LogiWrite()
 		{
 		}
 

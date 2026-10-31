@@ -1,35 +1,64 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace PulseBar.Logi;
 
+// Раскладка G915/G913 для редактора цветов клавиш (2.3): номер клавиши 0x8081 (= код HID − 3 у обычных клавиш),
+// подпись, положение и размер в ширинах клавиши. ANSI или ISO выбирается по клавишам, которые сообщила клавиатура:
+// ISO — есть клавиша 0x61 (лишняя слева от Z) и Enter в две строки; ANSI — длинный левый Shift и «\» над Enter.
 internal static class KeyLayout
 {
-	public static readonly KeyDef[] G915 = Build();
+	public const byte Logo = 210;
 
-	private static KeyDef[] Build()
+	public const byte IsoExtra = 97;
+
+	public const byte AnsiBackslash = 46;
+
+	public const byte IsoHash = 47;
+
+	public static KeyDef[] For(IReadOnlyCollection<byte> ids)
+	{
+		bool iso = ids.Contains(IsoExtra);
+		KeyDef[] all = Build(iso, ids.Contains(AnsiBackslash) || !ids.Contains(IsoHash));
+		// Логотип — отдельная зона (своя подсветка); остальные — только подсвечиваемые клавиши, если список известен.
+		return all.Where(k => k.Id != Logo && (ids.Count == 0 || ids.Contains(k.Id))).ToArray();
+	}
+
+	// Быстрые группы редактора.
+	public static readonly (string Name, byte[] Ids)[] Groups = new (string, byte[])[]
+	{
+		("WASD", new byte[4] { 23, 1, 19, 4 }),
+		("Arrows", new byte[4] { 76, 77, 78, 79 }),
+		("F1–F12", Enumerable.Range(55, 12).Select(i => (byte)i).ToArray()),
+		("Digits", Enumerable.Range(27, 10).Select(i => (byte)i).ToArray()),
+		("NumPad", Enumerable.Range(80, 17).Select(i => (byte)i).ToArray()),
+		("Media", new byte[5] { 153, 155, 156, 157, 158 }),
+		("G-keys", new byte[5] { 180, 181, 182, 183, 184 })
+	};
+
+	private static KeyDef[] Build(bool iso, bool ansiBackslash)
 	{
 		List<KeyDef> k = new List<KeyDef>();
-		Add(210, "G", 0f, -1.25f);
+		Add(Logo, "G", 0f, -1.25f);
 		Add(153, "☼", 12.5f, -1.25f);
-		string[] array = new string[4] { "⏮", "⏯", "⏭", "Mute" };
+		string[] media = new string[4] { "⏮", "⏯", "⏭", "🔇" };
 		for (int i = 0; i < 4; i++)
 		{
-			Add(155 + i, array[i], 20 + i, -1.25f);
+			Add(155 + i, media[i], 20 + i, -1.25f);
 		}
 		Add(38, "Esc", 1.5f, 0f);
 		for (int j = 0; j < 12; j++)
 		{
-			Add(55 + j, "F" + (j + 1), 3.5f + (float)j + (float)(j / 4) * 0.5f, 0f);
+			Add(55 + j, "F" + (j + 1), 3.5f + j + j / 4 * 0.5f, 0f);
 		}
 		Add(67, "PrtSc", 16.75f, 0f);
 		Add(68, "ScrLk", 17.75f, 0f);
 		Add(69, "Pause", 18.75f, 0f);
 		float y = 1.25f;
 		Add(50, "`", 1.5f, y);
-		string text = "1234567890";
 		for (int l = 0; l < 10; l++)
 		{
-			Add(27 + l, text[l].ToString(), 2.5f + (float)l, y);
+			Add(27 + l, "1234567890"[l].ToString(), 2.5f + l, y);
 		}
 		Add(42, "-", 12.5f, y);
 		Add(43, "=", 13.5f, y);
@@ -43,14 +72,21 @@ internal static class KeyLayout
 		Add(83, "-", 23f, y);
 		y = 2.25f;
 		Add(40, "Tab", 1.5f, y, 1.5f);
-		string text2 = "QWERTYUIOP";
-		for (int m = 0; m < text2.Length; m++)
+		string row1 = "QWERTYUIOP";
+		for (int m = 0; m < row1.Length; m++)
 		{
-			Add(L(text2[m]), text2[m].ToString(), 3 + m, y);
+			Add(Letter(row1[m]), row1[m].ToString(), 3 + m, y);
 		}
 		Add(44, "[", 13f, y);
 		Add(45, "]", 14f, y);
-		Add(37, "Enter", 15.25f, y, 1.25f, 2f);
+		if (iso)
+		{
+			Add(37, "Enter", 15.25f, y, 1.25f, 2f);
+		}
+		else
+		{
+			Add(ansiBackslash ? AnsiBackslash : IsoHash, "\\", 15f, y, 1.5f);
+		}
 		Add(73, "Del", 16.75f, y);
 		Add(74, "End", 17.75f, y);
 		Add(75, "PgDn", 18.75f, y);
@@ -60,23 +96,38 @@ internal static class KeyLayout
 		Add(84, "+", 23f, y, 1f, 2f);
 		y = 3.25f;
 		Add(54, "Caps", 1.5f, y, 1.75f);
-		string text3 = "ASDFGHJKL";
-		for (int n = 0; n < text3.Length; n++)
+		string row2 = "ASDFGHJKL";
+		for (int n = 0; n < row2.Length; n++)
 		{
-			Add(L(text3[n]), text3[n].ToString(), 3.25f + (float)n, y);
+			Add(Letter(row2[n]), row2[n].ToString(), 3.25f + n, y);
 		}
 		Add(48, ";", 12.25f, y);
 		Add(49, "'", 13.25f, y);
-		Add(47, "\\", 14.25f, y);
+		if (iso)
+		{
+			Add(IsoHash, "#", 14.25f, y);
+		}
+		else
+		{
+			Add(37, "Enter", 14.25f, y, 2.25f);
+		}
 		Add(89, "4", 20f, y);
 		Add(90, "5", 21f, y);
 		Add(91, "6", 22f, y);
 		y = 4.25f;
-		Add(105, "Shift", 1.5f, y, 2.25f);
-		string text4 = "ZXCVBNM";
-		for (int num = 0; num < text4.Length; num++)
+		if (iso)
 		{
-			Add(L(text4[num]), text4[num].ToString(), 3.75f + (float)num, y);
+			Add(105, "Shift", 1.5f, y, 1.25f);
+			Add(IsoExtra, "\\", 2.75f, y);
+		}
+		else
+		{
+			Add(105, "Shift", 1.5f, y, 2.25f);
+		}
+		string row3 = "ZXCVBNM";
+		for (int o = 0; o < row3.Length; o++)
+		{
+			Add(Letter(row3[o]), row3[o].ToString(), 3.75f + o, y);
 		}
 		Add(51, ",", 10.75f, y);
 		Add(52, ".", 11.75f, y);
@@ -101,18 +152,18 @@ internal static class KeyLayout
 		Add(76, "→", 18.75f, y);
 		Add(95, "0", 20f, y, 2f);
 		Add(96, ".", 22f, y);
-		for (int num2 = 0; num2 < 5; num2++)
+		for (int g = 0; g < 5; g++)
 		{
-			Add(180 + num2, "G" + (num2 + 1), 0f, 1.25f + (float)num2);
+			Add(180 + g, "G" + (g + 1), 0f, 1.25f + g);
 		}
 		return k.ToArray();
 		void Add(int id, string label, float x, float y2, float w = 1f, float h = 1f)
 		{
 			k.Add(new KeyDef((byte)id, label, x, y2, w, h));
 		}
-		static int L(char c)
+		static int Letter(char c)
 		{
-			return c - 65 + 1;
+			return c - 'A' + 1;
 		}
 	}
 }

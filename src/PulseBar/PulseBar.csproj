@@ -31,4 +31,8 @@
     <RuntimeHostConfigurationOption Include="System.Globalization.UseNls" Value="true" />
     <Compile Include="..\Shared\*.cs" LinkBase="Shared" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Тесты модуля Logitech (tests\PulseBar.Tests) работают с внутренними классами. -->
+    <InternalsVisibleTo Include="PulseBar.Tests" />
+  </ItemGroup>
 </Project>

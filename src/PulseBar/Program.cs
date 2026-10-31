@@ -40,19 +40,11 @@ internal static class Program
 		}
 		if (args != null && args.Length == 2 && args[0] == "--logi-backup")
 		{
-			return LogiProbe.Backup(args[1]);
+			return LogiDiag.Backup(args[1]);
 		}
-		if (args != null && args.Length == 3 && args[0] == "--logi-build")
+		if (args != null && args.Length >= 1 && args[0] == "--logi-diag")
 		{
-			return LogiProbe.BuildPreview(args[1], args[2]);
-		}
-		if (args != null && args.Length == 3 && args[0] == "--logi-parse")
-		{
-			return LogiProbe.Parse(args[1], args[2]);
-		}
-		if (args != null && args.Length == 2 && args[0] == "--logi-probe")
-		{
-			return LogiProbe.Run(args[1]);
+			return LogiDiag.Run((args.Length > 1) ? args[1] : null);
 		}
 		if (args != null && args.Length >= 1 && args[0] == "--settings")
 		{
@@ -61,10 +53,6 @@ internal static class Program
 		if (args != null && args.Length >= 3 && args[0] == "--shot-settings")
 		{
 			return SettingsShot.Run(args[1], int.Parse(args[2]), args.Length > 3 && args[3] == "expand", (args.Length > 4) ? args[4] : null);
-		}
-		if (args != null && args.Length == 3 && args[0] == "--shot-logi")
-		{
-			return ShotLogi(args[1], args[2] == "mouse");
 		}
 		using Mutex mutex = AcquireSingleInstance();
 		if (mutex == null)
@@ -114,46 +102,6 @@ internal static class Program
 		}
 		mutex.Dispose();
 		return null;
-	}
-
-	private static int ShotLogi(string png, bool mouseTab)
-	{
-		try
-		{
-			return ShotLogiCore(png, mouseTab);
-		}
-		catch (Exception ex)
-		{
-			Log.Write("shot: " + ex);
-			return 1;
-		}
-	}
-
-	private static int ShotLogiCore(string png, bool mouseTab)
-	{
-		L.Set(Settings.Load().Language);
-		ApplicationConfiguration.Initialize();
-		using LogiService logiService = new LogiService(LogiConfig.Load())
-		{
-			ReadOnly = true
-		};
-		logiService.Start();
-		Thread.Sleep(5000);
-		using LogiForm logiForm = new LogiForm(logiService, dark: true);
-		logiForm.StartPosition = FormStartPosition.Manual;
-		logiForm.Location = new Point(-5000, -5000);
-		logiForm.Show();
-		if (mouseTab)
-		{
-			logiForm.ShowTab(1);
-		}
-		Application.DoEvents();
-		Thread.Sleep(300);
-		Application.DoEvents();
-		using Bitmap bitmap = new Bitmap(logiForm.Width, logiForm.Height);
-		logiForm.DrawToBitmap(bitmap, new Rectangle(0, 0, logiForm.Width, logiForm.Height));
-		bitmap.Save(png);
-		return 0;
 	}
 
 	private static int Dump()
