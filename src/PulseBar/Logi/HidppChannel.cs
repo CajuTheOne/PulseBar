@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace PulseBar.Logi;
 
+// Канал HID++ к приёмнику или устройству. С 2.2: у каждого запроса свой программный id (2–15 по кругу) — ответы
+// другим программам (G HUB) и запоздавшие ответы на прошлые запросы не принимаются за свои; уведомления и события
+// подключения обрабатывает отдельный поток, чтобы долгий обработчик (макрос) не задерживал чтение ответов.
 internal sealed class HidppChannel : IDisposable
 {
 	private sealed class Pending
@@ -26,7 +30,14 @@ internal sealed class HidppChannel : IDisposable
 		public int Error;
 	}
 
-	private const byte SwId = 11;
+	private int _swid;
+
+	private readonly BlockingCollection<Action> _events = new BlockingCollection<Action>();
+
+	// Ошибки HID++ 2.0, после которых имеет смысл повторить: 8 — устройство занято; -1 — нет ответа.
+	public const int ErrBusy = 8;
+
+	public const int ErrTimeout = -1;
 
 	private readonly FileStream? _short;
 
@@ -62,9 +73,51 @@ internal sealed class HidppChannel : IDisposable
 		_long = lg;
 		if (_short != null)
 		{
-			ReadLoop(_short, 7);
+			_ = ReadLoop(_short, 7);
 		}
-		ReadLoop(_long, 20);
+		_ = ReadLoop(_long, 20);
+		new Thread(DispatchEvents)
+		{
+			IsBackground = true,
+			Name = $"HID++ {pid:X4} events"
+		}.Start();
+	}
+
+	private void DispatchEvents()
+	{
+		try
+		{
+			foreach (Action item in _events.GetConsumingEnumerable())
+			{
+				try
+				{
+					item();
+				}
+				catch (Exception ex)
+				{
+					Log.Write($"logi: event {Pid:X4}: {ex.Message}");
+				}
+			}
+		}
+		catch (ObjectDisposedException)
+		{
+		}
+	}
+
+	private void Raise(Action a)
+	{
+		try
+		{
+			_events.Add(a);
+		}
+		catch (InvalidOperationException)
+		{
+		}
+	}
+
+	private byte NextSwId()
+	{
+		return (byte)(Interlocked.Increment(ref _swid) % 14 + 2);
 	}
 
 	public static List<HidppChannel> OpenAll(IEnumerable<ushort> skipPids)
@@ -158,11 +211,19 @@ internal sealed class HidppChannel : IDisposable
 		}
 		if (r[0] == 16 && b2 == 65 && r.Length >= 5)
 		{
-			this.Connection?.Invoke(b, (r[4] & 0x40) == 0);
+			bool linked = (r[4] & 0x40) == 0;
+			Raise(delegate
+			{
+				this.Connection?.Invoke(b, linked);
+			});
 		}
 		else if (b2 < 128 && (b3 & 0xF) == 0)
 		{
-			this.Notification?.Invoke(b, b2, (byte)(b3 >> 4), r[4..]);
+			byte[] data = r[4..];
+			Raise(delegate
+			{
+				this.Notification?.Invoke(b, b2, (byte)(b3 >> 4), data);
+			});
 		}
 	}
 
@@ -173,7 +234,7 @@ internal sealed class HidppChannel : IDisposable
 			17,
 			dev,
 			feat,
-			(byte)((fn << 4) | 0xB),
+			(byte)((fn << 4) | NextSwId()),
 			0,
 			0,
 			0,
@@ -199,6 +260,27 @@ internal sealed class HidppChannel : IDisposable
 	{
 		int error;
 		return Call(dev, feat, fn, args, out error);
+	}
+
+	// Запрос с повторами при «занято» и отсутствии ответа (пауза 60, 180, … мс). Только для запросов, которые можно
+	// безопасно повторить (чтение, установка значения целиком).
+	public byte[]? CallRetry(byte dev, byte feat, byte fn, ReadOnlySpan<byte> args, out int error, int attempts = 3, int timeoutMs = 1000)
+	{
+		byte[] array = args.ToArray();
+		error = ErrTimeout;
+		for (int i = 0; i < attempts; i++)
+		{
+			byte[] array2 = Call(dev, feat, fn, array, out error, timeoutMs);
+			if (array2 != null || (error != ErrBusy && error != ErrTimeout))
+			{
+				return array2;
+			}
+			if (i + 1 < attempts)
+			{
+				Thread.Sleep(60 * (2 * i + 1));
+			}
+		}
+		return null;
 	}
 
 	public byte[]? Register(byte dev, byte sub, byte reg, params byte[] args)
@@ -268,6 +350,7 @@ internal sealed class HidppChannel : IDisposable
 	public void Dispose()
 	{
 		_cts.Cancel();
+		_events.CompleteAdding();
 		try
 		{
 			_short?.Dispose();

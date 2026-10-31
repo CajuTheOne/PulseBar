@@ -38,6 +38,14 @@ internal static class Program
 			bitmap.Save(args[1]);
 			return 0;
 		}
+		if (args != null && args.Length == 2 && args[0] == "--logi-backup")
+		{
+			return LogiProbe.Backup(args[1]);
+		}
+		if (args != null && args.Length == 3 && args[0] == "--logi-parse")
+		{
+			return LogiProbe.Parse(args[1], args[2]);
+		}
 		if (args != null && args.Length == 2 && args[0] == "--logi-probe")
 		{
 			return LogiProbe.Run(args[1]);

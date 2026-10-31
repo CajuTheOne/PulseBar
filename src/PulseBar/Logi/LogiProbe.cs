@@ -52,6 +52,93 @@ internal static class LogiProbe
 		return 0;
 	}
 
+	// PulseBar.exe --logi-backup <файл.json> — копия всей встроенной памяти каждого устройства с 0x8100 (только чтение).
+	public static int Backup(string path)
+	{
+		int n = 0;
+		foreach (HidppChannel ch in HidppChannel.OpenAll(Array.Empty<ushort>()))
+		{
+			using (ch)
+			{
+				for (byte slot = 1; slot <= (ch.IsReceiver ? 6 : 1); slot++)
+				{
+					string name = ch.IsReceiver ? LogiService.PairedName(ch, slot) : "";
+					if (ch.IsReceiver && name.Length == 0)
+					{
+						continue;
+					}
+					HidppDevice? d = HidppDevice.Probe(ch, ch.IsReceiver ? slot : byte.MaxValue, name);
+					Onboard? o = (d != null && d.Online) ? Onboard.Open(d) : null;
+					if (o == null)
+					{
+						continue;
+					}
+					string file = (n == 0) ? path : Path.ChangeExtension(path, $".{n}.json");
+					Console.WriteLine($"{d!.Name}: {o.Backup(file)} -> {file}");
+					Log.Write($"logi: backup {d.Name} -> {file}");
+					n++;
+				}
+			}
+		}
+		return (n > 0) ? 0 : 1;
+	}
+
+	// PulseBar.exe --logi-parse <копия.json> <отчёт.txt> — разбор копии без устройства: каталог, профили, CRC и проверка,
+	// что разбор и сборка профиля дают те же байты.
+	public static int Parse(string backup, string report)
+	{
+		StringBuilder sb = new StringBuilder();
+		using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(backup));
+		var root = doc.RootElement;
+		sb.AppendLine($"{root.GetProperty("device").GetString()} {root.GetProperty("date").GetString()}, description {root.GetProperty("description").GetString()}");
+		var sectors = root.GetProperty("sectors");
+		if (sectors.TryGetProperty("0000", out var dirHex))
+		{
+			byte[] dir = Convert.FromHexString(dirHex.GetString()!);
+			sb.AppendLine("directory: " + string.Join(", ", Onboard.ParseDirectory(dir).Select(e => $"{e.Sector:X4}{(e.Enabled ? "" : " (off)")}")) + $", CRC {(Onboard.CrcOk(dir) ? "ok" : "bad")}");
+		}
+		int bad = 0;
+		foreach (var s in sectors.EnumerateObject())
+		{
+			if (s.Name == "0000")
+			{
+				continue;
+			}
+			byte[] raw = Convert.FromHexString(s.Value.GetString()!);
+			OnboardProfile? p = OnboardProfile.Parse(raw);
+			if (p == null)
+			{
+				sb.AppendLine($"[{s.Name}] size {raw.Length}");
+				continue;
+			}
+			bool same = p.Serialize().AsSpan().SequenceEqual(raw);
+			if (p.CrcOk && !same)
+			{
+				bad++;
+			}
+			bool rom = s.Name.StartsWith("01", StringComparison.Ordinal);
+			if (!p.CrcOk && !rom)
+			{
+				sb.AppendLine(raw.All(x => x == 0xFF) ? $"[{s.Name}] empty" : $"[{s.Name}] CRC bad (not a profile)");
+				continue;
+			}
+			if (rom)
+			{
+				same = true; // заводские профили хранятся без CRC
+			}
+			sb.AppendLine($"[{s.Name}] {(rom ? "factory " : "")}\"{p.Name}\" {(rom ? "no CRC" : "CRC ok")}, round-trip {(same ? "identical" : "DIFFERENT")}, dim after {p.PowerSaveSeconds} s, off after {p.PowerOffSeconds} s");
+			sb.AppendLine($"    logo {OnboardProfile.DescribeLed(p.Led(OnboardProfile.LedLogo))} | keys {OnboardProfile.DescribeLed(p.Led(OnboardProfile.LedKeys))}");
+			sb.AppendLine($"    dim: logo {OnboardProfile.DescribeLed(p.Led(OnboardProfile.LedLogoDim))} | keys {OnboardProfile.DescribeLed(p.Led(OnboardProfile.LedKeysDim))}");
+			for (int i = 0; i < 8; i++)
+			{
+				sb.AppendLine($"    button {i}: {OnboardProfile.DescribeButton(p.Button(i))}");
+			}
+		}
+		sb.AppendLine(bad == 0 ? "round-trip: all valid profiles identical" : $"round-trip: {bad} DIFFERENT");
+		File.WriteAllText(report, sb.ToString());
+		return (bad == 0) ? 0 : 2;
+	}
+
 	private static void Describe(StringBuilder sb, HidppDevice? d, byte slot)
 	{
 		if (d == null)
