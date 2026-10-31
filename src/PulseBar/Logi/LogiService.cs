@@ -58,6 +58,19 @@ internal sealed class LogiService : IDisposable
 
 	private readonly Dictionary<HidppDevice, byte[]> _keyIds = new Dictionary<HidppDevice, byte[]>();
 
+	// 2.2: какие клавиатуры переведены в режим «управляет программа» (true) или оставлены на встроенном профиле (false).
+	private readonly Dictionary<HidppDevice, bool> _hostMode = new Dictionary<HidppDevice, bool>();
+
+	// Кадр подсветки не подтверждён — повторить при сверке.
+	private readonly HashSet<HidppDevice> _paintFailed = new HashSet<HidppDevice>();
+
+	private readonly Timer _reconcileTimer;
+
+	private volatile bool _ghub;
+
+	// Нажатия M подряд: применяется только последнее.
+	private int _applyVersion;
+
 	public LogiConfig Config { get; }
 
 	public bool ReadOnly { get; init; }
@@ -157,6 +170,10 @@ internal sealed class LogiService : IDisposable
 		{
 			CheckIdle();
 		}, null, -1, -1);
+		_reconcileTimer = new Timer(delegate
+		{
+			Post(Reconcile);
+		}, null, -1, -1);
 	}
 
 	private void CheckIdle()
@@ -185,7 +202,10 @@ internal sealed class LogiService : IDisposable
 	{
 		foreach (HidppDevice item in Devices.Where((HidppDevice d) => d.Online && d.IsKeyboard && d.Has(32832)))
 		{
-			SetBrightness(item);
+			if (Controlling && _hostMode.TryGetValue(item, out var value) && value)
+			{
+				SetBrightness(item);
+			}
 		}
 	}
 
@@ -218,22 +238,24 @@ internal sealed class LogiService : IDisposable
 		return false;
 	}
 
+	// С 2.2 устройства ищутся всегда (заряд на строке), а управляет клавиатурой модуль, только если включено и G HUB не запущен.
 	public void Start()
 	{
-		if (Config.Enabled)
-		{
-			Post(Scan);
-			_batteryTimer.Change(TimeSpan.FromMinutes(5L), TimeSpan.FromMinutes(5L));
-			_idleTimer.Change(1000, 1000);
-		}
+		_ghub = GHubRunning();
+		Post(Scan);
+		_batteryTimer.Change(TimeSpan.FromMinutes(5L), TimeSpan.FromMinutes(5L));
+		_idleTimer.Change(1000, 1000);
+		_reconcileTimer.Change(20000, 20000);
 	}
 
 	public void Stop()
 	{
 		_batteryTimer.Change(-1, -1);
 		_idleTimer.Change(-1, -1);
+		_reconcileTimer.Change(-1, -1);
 		Post(delegate
 		{
+			ReleaseAll();
 			lock (_lock)
 			{
 				foreach (HidppChannel channel in _channels)
@@ -251,10 +273,6 @@ internal sealed class LogiService : IDisposable
 
 	public void DevicesChanged()
 	{
-		if (!Config.Enabled)
-		{
-			return;
-		}
 		long value = Environment.TickCount64 + 1500;
 		Interlocked.Exchange(ref _rescanAt, value);
 		Task.Delay(1600).ContinueWith(delegate
@@ -367,7 +385,7 @@ internal sealed class LogiService : IDisposable
 		{
 			ch.Notification += delegate(byte dev, byte feat, byte fn, byte[] data)
 			{
-				OnNotification(ch, dev, feat, data);
+				OnNotification(ch, dev, feat, fn, data);
 			};
 			ch.Connection += delegate(byte dev, bool linked)
 			{
@@ -478,20 +496,43 @@ internal sealed class LogiService : IDisposable
 		RaiseChanged();
 	}
 
+	// Гибрид (2.2): если текущему профилю нужны цвета отдельных клавиш или действия PulseBar — режим «управляет
+	// программа» (G-клавиши приходят в PulseBar, подсветка рисуется кадрами); иначе клавиатура остаётся на встроенном
+	// профиле, а PulseBar только выбирает номер профиля.
 	private void SetUp(HidppDevice d)
 	{
-		if (d.IsKeyboard && d.Protocol >= 2 && Config.Enabled && !ReadOnly)
+		if (d.IsKeyboard && d.Protocol >= 2 && Controlling)
 		{
-			if (d.Has(33024))
+			Profile profile = Config.Profiles[Current];
+			bool flag = !d.Has(33024) || OnboardBuilder.NeedsHost(profile);
+			_hostMode[d] = flag;
+			_paintFailed.Remove(d);
+			if (flag)
 			{
-				d.Call(33024, 1, 2);
+				if (d.Has(33024))
+				{
+					d.Call(33024, 1, 2);
+				}
+				if (d.Has(32784))
+				{
+					d.Call(32784, 2, 1);
+				}
+				_gPrev = (_mPrev = (_mrPrev = 0));
+				Apply(d);
 			}
-			if (d.Has(32784))
+			else
 			{
-				d.Call(32784, 2, 1);
+				if (d.Has(32784))
+				{
+					d.Call(32784, 2, default(byte));
+				}
+				d.Call(33024, 1, 1);
+				if (Current < 3)
+				{
+					d.Call(33024, 3, default(byte), (byte)(Current + 1));
+				}
 			}
-			_gPrev = (_mPrev = (_mrPrev = 0));
-			Apply(d);
+			Log.Write($"logi: {d.Name}: profile {Current + 1}, {(flag ? "host mode (PulseBar draws key colours)" : "onboard mode")}");
 		}
 		if (!d.ReadBattery())
 		{
@@ -501,13 +542,13 @@ internal sealed class LogiService : IDisposable
 
 	private void ApplyAll()
 	{
-		if (ReadOnly)
+		if (!Controlling)
 		{
 			return;
 		}
 		foreach (HidppDevice item in Devices.Where((HidppDevice d) => d.Online && d.IsKeyboard && d.Protocol >= 2))
 		{
-			Apply(item);
+			SetUp(item);
 		}
 		RaiseChanged();
 	}
@@ -648,7 +689,11 @@ internal sealed class LogiService : IDisposable
 				}
 			}
 		}
-		d.Call(32897, 7, default(byte), default(byte), default(byte), default(byte), default(byte));
+		if (d.Call(32897, 7, default(byte), default(byte), default(byte), default(byte), default(byte)) == null)
+		{
+			_paintFailed.Add(d);
+			Log.Write("logi: per-key frame not confirmed, will retry");
+		}
 	}
 
 	private bool PaintAll(HidppDevice d, byte red, byte green, byte blue, bool commit = true)
@@ -739,15 +784,36 @@ internal sealed class LogiService : IDisposable
 		return (r: byte.MaxValue, g: byte.MaxValue, b: byte.MaxValue);
 	}
 
-	private void OnNotification(HidppChannel ch, byte dev, byte feat, byte[] data)
+	private void OnNotification(HidppChannel ch, byte dev, byte feat, byte fn, byte[] data)
 	{
 		HidppDevice hidppDevice;
 		lock (_lock)
 		{
 			hidppDevice = _devices.FirstOrDefault((HidppDevice x) => x.Channel == ch && x.Index == dev);
 		}
-		if (hidppDevice == null || !hidppDevice.IsKeyboard || data.Length < 2 || !Config.Enabled)
+		if (hidppDevice == null || !hidppDevice.IsKeyboard || data.Length < 2 || !Controlling)
 		{
+			return;
+		}
+		if (feat == hidppDevice.Feat(33024) && fn == 0)
+		{
+			// Встроенный режим: клавиатура сама переключила профиль (M1–M3).
+			int num0 = ((data[0] << 8) | data[1]) - 1;
+			if (num0 >= 0 && num0 < Config.Profiles.Count && num0 != Config.Active)
+			{
+				Log.Write($"logi: keyboard switched to profile {num0 + 1}");
+				Config.Active = num0;
+				_auto = -1;
+				Post(delegate
+				{
+					Config.Save();
+					if (OnboardBuilder.NeedsHost(Config.Profiles[num0]))
+					{
+						SetUp(hidppDevice);
+					}
+					RaiseChanged();
+				});
+			}
 			return;
 		}
 		Profile profile = Config.Profiles[Current];
@@ -778,10 +844,14 @@ internal sealed class LogiService : IDisposable
 					Log.Write($"logi: M{num6 + 1}");
 					Config.Active = active;
 					_auto = -1;
+					int version = Interlocked.Increment(ref _applyVersion);
 					Post(delegate
 					{
-						Config.Save();
-						ApplyAll();
+						if (version == Volatile.Read(ref _applyVersion))
+						{
+							Config.Save();
+							ApplyAll();
+						}
 					});
 				}
 			}
@@ -856,6 +926,228 @@ internal sealed class LogiService : IDisposable
 		return string.Join(", ", list);
 	}
 
+	// ---------- 2.2: гибрид встроенной памяти и подсветки из программы ----------
+
+	// Управлять клавиатурой можно, если это включено, это не снимок окна и не запущен G HUB (он перехватывает режим).
+	private bool Controlling
+	{
+		get
+		{
+			if (Config.Enabled && !ReadOnly)
+			{
+				return !_ghub;
+			}
+			return false;
+		}
+	}
+
+	public bool GHubActive => _ghub;
+
+	// Последний результат записи / восстановления / копии — для окна настроек.
+	public string LastResult { get; private set; } = "";
+
+	public string ModeText(HidppDevice d)
+	{
+		if (!_hostMode.TryGetValue(d, out var value))
+		{
+			return "";
+		}
+		if (!value)
+		{
+			return "onboard";
+		}
+		return "host";
+	}
+
+	// Раз в 20 с: G HUB появился/закрылся; режим клавиатуры не тот, что нужен (сбросила после сна, перехватила
+	// другая программа); не дошёл кадр подсветки — привести к нужному состоянию.
+	private void Reconcile()
+	{
+		bool flag = GHubRunning();
+		if (flag != _ghub)
+		{
+			_ghub = flag;
+			Log.Write(flag ? "logi: G HUB started, keyboard left to it" : "logi: G HUB closed, PulseBar controls the keyboard");
+			if (!flag)
+			{
+				foreach (HidppDevice item in Devices.Where((HidppDevice d) => d.Online && d.IsKeyboard))
+				{
+					SetUp(item);
+				}
+			}
+			else
+			{
+				_hostMode.Clear();
+			}
+			RaiseChanged();
+		}
+		if (!Controlling)
+		{
+			return;
+		}
+		foreach (HidppDevice item2 in Devices.Where((HidppDevice d) => d.Online && d.IsKeyboard && d.Protocol >= 2))
+		{
+			bool value;
+			bool flag2 = _hostMode.TryGetValue(item2, out value) && value;
+			int num = (item2.Has(33024) ? (item2.Call(33024, 2)?[0] ?? (-1)) : (-1));
+			if ((num > 0 && num != (flag2 ? 2 : 1)) || _paintFailed.Contains(item2))
+			{
+				Log.Write($"logi: {item2.Name}: mode {num}, wanted {(flag2 ? 2 : 1)}{(_paintFailed.Contains(item2) ? ", lighting not confirmed" : "")} — restoring");
+				SetUp(item2);
+			}
+		}
+	}
+
+	// При выходе и когда управление выключено: вернуть клавиатуру во встроенный режим (подсветка из её профиля).
+	private void ReleaseAll()
+	{
+		foreach (HidppDevice item in Devices.Where((HidppDevice d) => d.Online && d.IsKeyboard))
+		{
+			if (_hostMode.TryGetValue(item, out var value) && value)
+			{
+				if (item.Has(32784))
+				{
+					item.Call(32784, 2, default(byte));
+				}
+				if (item.Has(33024))
+				{
+					item.Call(33024, 1, 1);
+				}
+				Log.Write("logi: " + item.Name + ": back to onboard mode");
+			}
+		}
+		_hostMode.Clear();
+	}
+
+	public void WriteOnboard()
+	{
+		Post(delegate
+		{
+			LastResult = DoWriteOnboard(factory: false);
+			Log.Write("logi: write onboard: " + LastResult);
+			RaiseChanged();
+		});
+	}
+
+	public void RestoreFactory()
+	{
+		Post(delegate
+		{
+			LastResult = DoWriteOnboard(factory: true);
+			Log.Write("logi: restore factory: " + LastResult);
+			RaiseChanged();
+		});
+	}
+
+	public void BackupNow()
+	{
+		Post(delegate
+		{
+			HidppDevice keyboard = Keyboard;
+			Onboard onboard = ((keyboard != null && keyboard.Online) ? Onboard.Open(keyboard) : null);
+			LastResult = ((onboard == null) ? "no keyboard with onboard memory" : (onboard.Backup(BackupPath()) + " -> " + BackupPath()));
+			Log.Write("logi: backup: " + LastResult);
+			RaiseChanged();
+		});
+	}
+
+	private static string BackupPath()
+	{
+		return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PulseBar", $"logitech-backup-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+	}
+
+	// Запись профилей M1–M3 во встроенную память (factory — заводские профили вместо своих). Перед записью — копия всей
+	// памяти; каждый сектор проверяется обратным чтением; затем клавиатура перечитывает профиль.
+	private string DoWriteOnboard(bool factory)
+	{
+		if (!Controlling)
+		{
+			if (!_ghub)
+			{
+				return "Logitech control is off";
+			}
+			return "G HUB is running — close it first";
+		}
+		HidppDevice keyboard = Keyboard;
+		if (keyboard == null || !keyboard.Online)
+		{
+			return "keyboard not connected";
+		}
+		Onboard onboard = Onboard.Open(keyboard);
+		if (onboard == null)
+		{
+			return "this keyboard has no onboard memory";
+		}
+		if (onboard.ProfileFormat != 4 || onboard.SectorSize != 255)
+		{
+			return $"unsupported profile format {onboard.ProfileFormat} / sector {onboard.SectorSize}";
+		}
+		string text = BackupPath();
+		string text2 = onboard.Backup(text);
+		if (!text2.EndsWith(" 0 unreadable", StringComparison.Ordinal))
+		{
+			return "backup failed: " + text2;
+		}
+		int num = Math.Min(onboard.ProfileCount, Math.Min(3, factory ? onboard.RomProfileCount : Config.Profiles.Count));
+		for (int i = 0; i < num; i++)
+		{
+			byte[] array = onboard.ReadSector(i + 1);
+			byte[] array2 = onboard.ReadSector(0x101 + i);
+			if (array2 == null)
+			{
+				return $"cannot read factory profile {i + 1}";
+			}
+			byte[] data;
+			if (factory)
+			{
+				data = (byte[])array2.Clone();
+				Onboard.SetCrc(data);
+			}
+			else
+			{
+				OnboardProfile onboardProfile = OnboardProfile.Parse((array != null && Onboard.CrcOk(array)) ? array : array2);
+				data = OnboardBuilder.Build(onboardProfile, Config.Profiles[i], Config).Serialize();
+			}
+			if (!onboard.WriteSector(i + 1, data, out var error))
+			{
+				return $"profile {i + 1}: {error} (backup: {text})";
+			}
+		}
+		bool value;
+		bool flag = _hostMode.TryGetValue(keyboard, out value) && value;
+		onboard.SetMode(1);
+		onboard.SetCurrentProfile(Math.Clamp(Current, 0, num - 1) + 1);
+		if (flag)
+		{
+			SetUp(keyboard);
+		}
+		return $"{num} profiles written and verified (backup: {text})";
+	}
+
+	// Окно настроек сохранило logitech.json — перечитать и применить.
+	public void ReloadConfig()
+	{
+		Post(delegate
+		{
+			LogiConfig logiConfig = LogiConfig.Load();
+			bool enabled = Config.Enabled;
+			Config.Enabled = logiConfig.Enabled;
+			Config.Active = logiConfig.Active;
+			Config.IdleMinutes = logiConfig.IdleMinutes;
+			Config.IdleBrightness = logiConfig.IdleBrightness;
+			Config.Profiles = logiConfig.Profiles;
+			if (enabled && !Config.Enabled)
+			{
+				ReleaseAll();
+			}
+			foreach (HidppDevice item in Devices.Where((HidppDevice d) => d.Online && d.IsKeyboard))
+			{
+				SetUp(item);
+			}
+			RaiseChanged();
+		});
+	}
+
 	private unsafe static string ExeName(nint hwnd)
 	{
 		if (hwnd == 0)
@@ -893,6 +1185,14 @@ internal sealed class LogiService : IDisposable
 
 	public void Dispose()
 	{
+		_reconcileTimer.Dispose();
+		Post(ReleaseAll);
+		Task queue;
+		lock (_lock)
+		{
+			queue = _queue;
+		}
+		queue.Wait(3000);
 		lock (_lock)
 		{
 			_disposed = true;

@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using PulseBar.Logi;
+using Color = System.Windows.Media.Color;
 using Bitmap = System.Drawing.Bitmap;
 using Graphics = System.Drawing.Graphics;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
@@ -63,6 +64,19 @@ internal interface ISettingsHost
 	void ResetLayout();
 
 	void AddSeparator();
+
+	// Logitech: состояние клавиатуры (от строки) и команды строке — устройством владеет она.
+	sealed record Logitech(string Device, bool Online, int Battery, string Mode, bool GHub, string Result);
+
+	Logitech LogiStatus { get; }
+
+	void LogiReload();
+
+	void LogiWrite();
+
+	void LogiRestore();
+
+	void LogiBackup();
 }
 
 // Окно настроек: вкладки слева, тема Fluent (как в Windows 11, светлая/тёмная — по системе).
@@ -105,6 +119,7 @@ internal sealed class SettingsWindow : Window
 		_pages.Add((L.T("Thresholds"), ThresholdsPage));
 		_pages.Add((L.T("Keyboard"), KeyboardPage));
 		_pages.Add((L.T("Mouse"), MousePage));
+		_pages.Add(("Logitech", LogitechPage));
 		_pages.Add(("Claude", ClaudePage));
 		_pages.Add((L.T("About"), AboutPage));
 		foreach (var (title, _) in _pages)
@@ -709,6 +724,318 @@ internal sealed class SettingsWindow : Window
 		};
 		p.Children.Add(b);
 		return p;
+	}
+
+	// ---------- Logitech ----------
+
+	private LogiConfig? _logi;
+
+	private int _logiProfile;
+
+	private DispatcherTimer? _logiSave;
+
+	// Изменения профиля сохраняются в logitech.json и через полсекунды передаются строке (она владеет клавиатурой).
+	private void LogiChanged()
+	{
+		if (_logiSave == null)
+		{
+			_logiSave = new DispatcherTimer
+			{
+				Interval = TimeSpan.FromMilliseconds(500.0)
+			};
+			_logiSave.Tick += delegate
+			{
+				_logiSave.Stop();
+				_logi?.Save();
+				_host.LogiReload();
+			};
+		}
+		_logiSave.Stop();
+		_logiSave.Start();
+	}
+
+	private UIElement LogitechPage()
+	{
+		_logi ??= LogiConfig.Load();
+		LogiConfig c = _logi;
+		StackPanel p = Page("Logitech");
+		TextBlock status = new TextBlock
+		{
+			TextWrapping = TextWrapping.Wrap,
+			Margin = new Thickness(0.0, 0.0, 0.0, 8.0),
+			LineHeight = 20.0
+		};
+		p.Children.Add(status);
+		p.Children.Add(Check(L.T("Control Logitech devices (instead of G HUB)"), () => c.Enabled, delegate(bool v)
+		{
+			c.Enabled = v;
+			LogiChanged();
+		}, apply: false));
+		p.Children.Add(Note(L.T("While G HUB is running PulseBar only reads the battery. Close G HUB (and turn off its autostart) to let PulseBar control the keyboard.")));
+		_logiProfile = Math.Clamp(c.Active, 0, Math.Max(0, Math.Min(3, c.Profiles.Count) - 1));
+		StackPanel profilePanel = new StackPanel();
+		string[] names = c.Profiles.Take(3).Select((Profile pr, int i) => $"M{i + 1} · {pr.Name}").ToArray();
+		p.Children.Add(Combo(L.T("Profile"), names, () => _logiProfile, delegate(int v)
+		{
+			_logiProfile = v;
+			profilePanel.Children.Clear();
+			profilePanel.Children.Add(LogiProfileEditor(c, c.Profiles[v]));
+		}, apply: false));
+		if (c.Profiles.Count > 0)
+		{
+			profilePanel.Children.Add(LogiProfileEditor(c, c.Profiles[_logiProfile]));
+		}
+		p.Children.Add(profilePanel);
+		p.Children.Add(Caption(L.T("Dim when idle")));
+		p.Children.Add(SliderRow(L.T("Dim after"), 0.0, 30.0, 1.0, () => c.IdleMinutes, delegate(int v)
+		{
+			c.IdleMinutes = v;
+			LogiChanged();
+		}, (int v) => (v == 0) ? L.T("never") : L.F("{0} min", v), apply: false));
+		p.Children.Add(SliderRow(L.T("Dimmed brightness"), 1.0, 100.0, 1.0, () => Math.Max(1, c.IdleBrightness), delegate(int v)
+		{
+			c.IdleBrightness = v;
+			LogiChanged();
+		}, (int v) => $"{v}%", apply: false));
+		p.Children.Add(Note(L.T("The keyboard dims by itself, even without PulseBar, after the profiles are written to it.")));
+		p.Children.Add(Caption(L.T("Keyboard memory")));
+		p.Children.Add(Note(L.T("Colours and effects of the keys and the logo, dimming, G-keys with one key combination or a media key are written into the keyboard and work without PulseBar. Colours of single keys, typing text, running programs, macros and MR work while PulseBar runs. A full backup is made before every write.")));
+		WrapPanel buttons = new WrapPanel
+		{
+			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
+		};
+		Button write = new Button
+		{
+			Content = L.T("Write to keyboard"),
+			Margin = new Thickness(0.0, 0.0, 8.0, 8.0)
+		};
+		write.Click += delegate
+		{
+			_logi?.Save();
+			_host.LogiReload();
+			_host.LogiWrite();
+		};
+		Button factory = new Button
+		{
+			Content = L.T("Restore factory profiles"),
+			Margin = new Thickness(0.0, 0.0, 8.0, 8.0)
+		};
+		factory.Click += delegate
+		{
+			if (MessageBox.Show(this, L.T("Replace the three profiles in the keyboard with the factory ones? A backup is made first."), "PulseBar", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK)
+			{
+				_host.LogiRestore();
+			}
+		};
+		Button backup = new Button
+		{
+			Content = L.T("Back up keyboard memory"),
+			Margin = new Thickness(0.0, 0.0, 8.0, 8.0)
+		};
+		backup.Click += delegate
+		{
+			_host.LogiBackup();
+		};
+		Button keys = new Button
+		{
+			Content = L.T("Colours of single keys…"),
+			Margin = new Thickness(0.0, 0.0, 8.0, 8.0)
+		};
+		keys.Click += delegate
+		{
+			_logi?.Save();
+			_host.OpenLogitech();
+		};
+		buttons.Children.Add(write);
+		buttons.Children.Add(factory);
+		buttons.Children.Add(backup);
+		buttons.Children.Add(keys);
+		p.Children.Add(buttons);
+		_refresh = Refresh;
+		Refresh();
+		return p;
+		void Refresh()
+		{
+			ISettingsHost.Logitech s = _host.LogiStatus;
+			string device = (s.Device.Length > 0) ? (s.Device + ": " + (s.Online ? ((s.Battery >= 0) ? $"{L.T("battery")} {s.Battery}%" : L.T("connected")) : L.T("asleep or off"))) : L.T("No Logitech G keyboard found");
+			string mode = s.GHub ? L.T("G HUB is running — PulseBar does not touch the keyboard") : ((!c.Enabled) ? L.T("Logitech control is off") : ((s.Mode == "host") ? L.T("mode: PulseBar draws the key colours") : ((s.Mode == "onboard") ? L.T("mode: profile from the keyboard memory") : "")));
+			status.Text = device + ((mode.Length > 0) ? ("\n" + mode) : "") + ((s.Result.Length > 0) ? ("\n" + s.Result) : "");
+			write.IsEnabled = (factory.IsEnabled = c.Enabled && !s.GHub && s.Online);
+		}
+	}
+
+	private UIElement LogiProfileEditor(LogiConfig c, Profile pr)
+	{
+		StackPanel p = new StackPanel();
+		TextBox name = new TextBox
+		{
+			Text = pr.Name,
+			MinWidth = 220.0
+		};
+		name.TextChanged += delegate
+		{
+			pr.Name = name.Text.Trim();
+			LogiChanged();
+		};
+		p.Children.Add(LabeledRow(L.T("Name"), name));
+		p.Children.Add(LightingRow(L.T("Keys"), pr.Keyboard));
+		p.Children.Add(LightingRow(L.T("Logo"), pr.Logo));
+		p.Children.Add(SliderRow(L.T("Brightness"), 1.0, 100.0, 1.0, () => Math.Max(1, pr.Brightness), delegate(int v)
+		{
+			pr.Brightness = v;
+			LogiChanged();
+		}, (int v) => $"{v}%", apply: false));
+		string[] types = new string[5] { "none", "keys", "text", "run", "macro" };
+		string[] typeNames = new string[5]
+		{
+			L.T("Nothing"),
+			L.T("Key combination"),
+			L.T("Type text"),
+			L.T("Run program / open"),
+			L.T("Macro")
+		};
+		for (int i = 1; i <= 5; i++)
+		{
+			KeyAction a = pr.Key("G" + i);
+			ComboBox type = new ComboBox
+			{
+				ItemsSource = typeNames,
+				SelectedIndex = Math.Max(0, Array.IndexOf(types, a.Type)),
+				Width = 170.0,
+				Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
+			};
+			TextBox value = new TextBox
+			{
+				Text = a.Value,
+				Width = 200.0
+			};
+			TextBlock where = new TextBlock
+			{
+				Margin = new Thickness(8.0, 0.0, 0.0, 0.0),
+				VerticalAlignment = VerticalAlignment.Center,
+				FontSize = 11.0
+			};
+			where.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+			type.SelectionChanged += delegate
+			{
+				a.Type = types[Math.Max(0, type.SelectedIndex)];
+				Where();
+				LogiChanged();
+			};
+			value.TextChanged += delegate
+			{
+				a.Value = value.Text;
+				Where();
+				LogiChanged();
+			};
+			StackPanel row = new StackPanel
+			{
+				Orientation = Orientation.Horizontal
+			};
+			row.Children.Add(type);
+			row.Children.Add(value);
+			row.Children.Add(where);
+			p.Children.Add(LabeledRow("G" + i, row));
+			Where();
+			void Where()
+			{
+				where.Text = (a.Type == "none" || string.IsNullOrWhiteSpace(a.Value)) ? "" : (OnboardBuilder.HostOnly(a) ? L.T("PulseBar") : L.T("keyboard"));
+			}
+		}
+		p.Children.Add(Note(L.T("Key combination: e.g. Ctrl+Shift+F5 or PlayPause. Macro: steps separated by ';' — wait 100; text Hello; Enter; run notepad.")));
+		TextBox apps = new TextBox
+		{
+			Text = pr.Apps,
+			MinWidth = 220.0
+		};
+		apps.TextChanged += delegate
+		{
+			pr.Apps = apps.Text;
+			LogiChanged();
+		};
+		p.Children.Add(LabeledRow(L.T("Switch automatically for programs:"), apps));
+		return p;
+	}
+
+	// Цвет или эффект зоны: эффект и цвет #RRGGBB (кнопка «…» — выбор цвета).
+	private UIElement LightingRow(string label, Lighting l)
+	{
+		string[] effects = new string[4] { "off", "static", "breathing", "cycle" };
+		ComboBox effect = new ComboBox
+		{
+			ItemsSource = new string[4]
+			{
+				L.T("Off"),
+				L.T("Color"),
+				L.T("Breathing"),
+				L.T("Color cycle")
+			},
+			SelectedIndex = Math.Max(0, Array.IndexOf(effects, l.Effect)),
+			Width = 170.0,
+			Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
+		};
+		TextBox color = new TextBox
+		{
+			Text = l.Color,
+			Width = 100.0
+		};
+		Border swatch = new Border
+		{
+			Width = 24.0,
+			Height = 24.0,
+			CornerRadius = new CornerRadius(4.0),
+			Margin = new Thickness(8.0, 0.0, 8.0, 0.0),
+			BorderThickness = new Thickness(1.0),
+			BorderBrush = Brushes.Gray
+		};
+		Button pick = new Button
+		{
+			Content = "…",
+			MinWidth = 36.0
+		};
+		effect.SelectionChanged += delegate
+		{
+			l.Effect = effects[Math.Max(0, effect.SelectedIndex)];
+			LogiChanged();
+		};
+		color.TextChanged += delegate
+		{
+			string t = color.Text.Trim();
+			if (System.Text.RegularExpressions.Regex.IsMatch(t, "^#?[0-9A-Fa-f]{6}$"))
+			{
+				l.Color = "#" + t.TrimStart('#').ToUpperInvariant();
+				Paint();
+				LogiChanged();
+			}
+		};
+		pick.Click += delegate
+		{
+			var (r, g, b) = LogiService.ParseColor(l.Color);
+			using System.Windows.Forms.ColorDialog d = new System.Windows.Forms.ColorDialog
+			{
+				Color = System.Drawing.Color.FromArgb(r, g, b),
+				FullOpen = true
+			};
+			if (d.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+			{
+				color.Text = $"#{d.Color.R:X2}{d.Color.G:X2}{d.Color.B:X2}";
+			}
+		};
+		Paint();
+		StackPanel row = new StackPanel
+		{
+			Orientation = Orientation.Horizontal
+		};
+		row.Children.Add(effect);
+		row.Children.Add(color);
+		row.Children.Add(swatch);
+		row.Children.Add(pick);
+		return LabeledRow(label, row);
+		void Paint()
+		{
+			var (r2, g2, b2) = LogiService.ParseColor(l.Color);
+			swatch.Background = new SolidColorBrush(Color.FromRgb(r2, g2, b2));
+		}
 	}
 
 	// ---------- Claude ----------

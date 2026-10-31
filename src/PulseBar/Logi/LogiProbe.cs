@@ -139,6 +139,48 @@ internal static class LogiProbe
 		return (bad == 0) ? 0 : 2;
 	}
 
+	// PulseBar.exe --logi-build <копия.json> <отчёт.txt> — что было бы записано в клавиатуру из текущих профилей
+	// (logitech.json) поверх секторов копии; без устройства, ничего не записывает.
+	public static int BuildPreview(string backup, string report)
+	{
+		LogiConfig c = LogiConfig.Load();
+		StringBuilder sb = new StringBuilder();
+		using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(backup));
+		var sectors = doc.RootElement.GetProperty("sectors");
+		for (int i = 0; i < Math.Min(3, c.Profiles.Count); i++)
+		{
+			Profile p = c.Profiles[i];
+			string key = (i + 1).ToString("X4");
+			byte[] raw = Convert.FromHexString(sectors.GetProperty(key).GetString()!);
+			OnboardProfile basis = OnboardProfile.Parse(raw)!;
+			if (!basis.CrcOk)
+			{
+				raw = Convert.FromHexString(sectors.GetProperty((0x101 + i).ToString("X4")).GetString()!);
+				basis = OnboardProfile.Parse(raw)!;
+			}
+			byte[] built = OnboardBuilder.Build(basis, p, c).Serialize();
+			OnboardProfile o = OnboardProfile.Parse(built)!;
+			int changed = 0;
+			for (int k = 0; k < built.Length; k++)
+			{
+				if (built[k] != raw[k])
+				{
+					changed++;
+				}
+			}
+			sb.AppendLine($"[{key}] \"{o.Name}\" CRC {(o.CrcOk ? "ok" : "BAD")}, {changed} bytes differ from the keyboard, host overlay needed: {OnboardBuilder.NeedsHost(p)} ({p.KeyColors.Count} key colours)");
+			sb.AppendLine($"    keys {OnboardProfile.DescribeLed(o.Led(OnboardProfile.LedKeys))} | logo {OnboardProfile.DescribeLed(o.Led(OnboardProfile.LedLogo))}");
+			sb.AppendLine($"    dim after {o.PowerSaveSeconds} s: keys {OnboardProfile.DescribeLed(o.Led(OnboardProfile.LedKeysDim))} | logo {OnboardProfile.DescribeLed(o.Led(OnboardProfile.LedLogoDim))}");
+			for (int b = 0; b < 8; b++)
+			{
+				string src = (b < 5) ? $" <- {p.Key("G" + (b + 1)).Type} \"{p.Key("G" + (b + 1)).Value}\"" : "";
+				sb.AppendLine($"    button {b}: {OnboardProfile.DescribeButton(o.Button(b))}{src}");
+			}
+		}
+		File.WriteAllText(report, sb.ToString());
+		return 0;
+	}
+
 	private static void Describe(StringBuilder sb, HidppDevice? d, byte slot)
 	{
 		if (d == null)

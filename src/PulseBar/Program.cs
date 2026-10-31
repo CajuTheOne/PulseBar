@@ -42,6 +42,10 @@ internal static class Program
 		{
 			return LogiProbe.Backup(args[1]);
 		}
+		if (args != null && args.Length == 3 && args[0] == "--logi-build")
+		{
+			return LogiProbe.BuildPreview(args[1], args[2]);
+		}
 		if (args != null && args.Length == 3 && args[0] == "--logi-parse")
 		{
 			return LogiProbe.Parse(args[1], args[2]);

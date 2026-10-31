@@ -403,16 +403,10 @@ internal sealed class LogiForm : Form
 		_enabled.Checked = _svc.Config.Enabled;
 		_enabled.CheckedChanged += delegate
 		{
+			// С 2.2 модуль работает всегда (заряд на строке); галочка включает и выключает управление клавиатурой.
 			_svc.Config.Enabled = _enabled.Checked;
 			_svc.Save();
-			if (_enabled.Checked)
-			{
-				_svc.Start();
-			}
-			else
-			{
-				_svc.Stop();
-			}
+			_svc.ReloadConfig();
 		};
 		Button button = new Button
 		{

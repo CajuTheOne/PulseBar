@@ -278,6 +278,26 @@ internal sealed class Overlay : Form
 			AddSeparator(null);
 			return;
 		}
+		if (m.Msg == SettingsProcess.MsgLogiReload)
+		{
+			_logi.ReloadConfig();
+			return;
+		}
+		if (m.Msg == SettingsProcess.MsgLogiWrite)
+		{
+			_logi.WriteOnboard();
+			return;
+		}
+		if (m.Msg == SettingsProcess.MsgLogiRestore)
+		{
+			_logi.RestoreFactory();
+			return;
+		}
+		if (m.Msg == SettingsProcess.MsgLogiBackup)
+		{
+			_logi.BackupNow();
+			return;
+		}
 		if (_msgTaskbarCreated != 0 && m.Msg == _msgTaskbarCreated)
 		{
 			_tray = IntPtr.Zero;
@@ -309,7 +329,7 @@ internal sealed class Overlay : Form
 		RecordHistory();
 		if (SettingsOpen)
 		{
-			SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit);
+			SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit, _logi);
 		}
 		long tickCount = Environment.TickCount64;
 		if (tickCount >= _updateCheckAt)
@@ -939,7 +959,7 @@ internal sealed class Overlay : Form
 			}
 			return;
 		}
-		SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit);
+		SettingsProcess.WriteStatus(in _r, _claude, _lightTaskbar, _sensors.Gpu.Adapters, _edit, _logi);
 		try
 		{
 			_settingsProcess = Process.Start(new ProcessStartInfo(Environment.ProcessPath, $"--settings {page} {base.Handle.ToInt64()}")

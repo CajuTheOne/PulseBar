@@ -69,6 +69,24 @@ internal static class SettingsShot
 		public void AddSeparator()
 		{
 		}
+
+		public ISettingsHost.Logitech LogiStatus => new ISettingsHost.Logitech("G915 WIRELESS RGB MECHANICAL GAMING KEYBOARD", Online: true, 64, "onboard", GHub: false, "");
+
+		public void LogiReload()
+		{
+		}
+
+		public void LogiWrite()
+		{
+		}
+
+		public void LogiRestore()
+		{
+		}
+
+		public void LogiBackup()
+		{
+		}
 	}
 
 	public static int Run(string png, int page, bool expand, string? language)
