@@ -68,6 +68,8 @@ internal sealed class HidppDevice
 		Index = index;
 	}
 
+	public IReadOnlyDictionary<ushort, byte> Features => _features;
+
 	public bool Has(ushort feature)
 	{
 		return _features.ContainsKey(feature);

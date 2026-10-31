@@ -38,6 +38,10 @@ internal static class Program
 			bitmap.Save(args[1]);
 			return 0;
 		}
+		if (args != null && args.Length == 2 && args[0] == "--logi-probe")
+		{
+			return LogiProbe.Run(args[1]);
+		}
 		if (args != null && args.Length >= 1 && args[0] == "--settings")
 		{
 			return SettingsProcess.Run((args.Length > 1 && int.TryParse(args[1], out var page)) ? page : 0, (args.Length > 2 && long.TryParse(args[2], out var bar)) ? new IntPtr(bar) : IntPtr.Zero, args.Length > 3 && args[3] == "test");

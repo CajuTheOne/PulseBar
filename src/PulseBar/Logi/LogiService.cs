@@ -446,7 +446,7 @@ internal sealed class LogiService : IDisposable
 		ch.Register(byte.MaxValue, 128, 0, b, (byte)(b2 | 9), b3);
 	}
 
-	private static string PairedName(HidppChannel ch, byte slot)
+	internal static string PairedName(HidppChannel ch, byte slot)
 	{
 		byte[] array = ch.Register(byte.MaxValue, 131, 181, (byte)(64 + slot - 1));
 		if (array == null || array.Length < 3)
