@@ -178,7 +178,7 @@
 "Wave": "Хвиля",
 "also without PulseBar": "і без PulseBar",
 "with PulseBar": "з PulseBar",
-"Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard.": "«Динамічне освітлення» Windows перефарбовує клавіатуру (служба Logitech LampArray). PulseBar повертає свої кольори, але краще вимкнути «Динамічне освітлення» для цієї клавіатури.",
 "Another program changes the keyboard lighting. PulseBar paints it back.": "Інша програма змінює підсвітку клавіатури. PulseBar повертає свої кольори.",
-"Open Dynamic Lighting settings": "Відкрити налаштування «Динамічного освітлення»"
+"Open Dynamic Lighting settings": "Відкрити налаштування «Динамічного освітлення»",
+"Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device.": "«Динамічне освітлення» Windows перефарбовує клавіатуру (служба Logitech LampArray), і його кольори можуть залишатися поверх кольорів PulseBar до вимкнення клавіатури. Вимкніть службу (services.msc → Logitech LampArray Service → «Вимкнуто») або «Динамічне освітлення» повністю, потім вимкніть і увімкніть клавіатуру. Вимкнути його лише для цієї клавіатури надовго не вийде: після кожного перепідключення Windows бачить новий пристрій."
 }

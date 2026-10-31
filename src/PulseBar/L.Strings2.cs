@@ -189,7 +189,7 @@ internal static partial class L
 			["Wave"] = "Волна",
 			["also without PulseBar"] = "и без PulseBar",
 			["with PulseBar"] = "с PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "«Динамическое освещение» Windows перекрашивает клавиатуру (служба Logitech LampArray). PulseBar возвращает свои цвета, но лучше выключить «Динамическое освещение» для этой клавиатуры.",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "«Динамическое освещение» Windows перекрашивает клавиатуру (служба Logitech LampArray), и его цвета могут оставаться поверх цветов PulseBar до выключения клавиатуры. Отключите службу (services.msc → Logitech LampArray Service → «Отключена») или «Динамическое освещение» целиком, затем выключите и включите клавиатуру. Выключить его только для этой клавиатуры не выйдет надолго: после каждого переподключения Windows видит новое устройство.",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Другая программа меняет подсветку клавиатуры. PulseBar возвращает свои цвета.",
 			["Open Dynamic Lighting settings"] = "Открыть настройки «Динамического освещения»"
 		},
@@ -374,7 +374,7 @@ internal static partial class L
 			["Wave"] = "Хвиля",
 			["also without PulseBar"] = "і без PulseBar",
 			["with PulseBar"] = "з PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "«Динамічне освітлення» Windows перефарбовує клавіатуру (служба Logitech LampArray). PulseBar повертає свої кольори, але краще вимкнути «Динамічне освітлення» для цієї клавіатури.",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "«Динамічне освітлення» Windows перефарбовує клавіатуру (служба Logitech LampArray), і його кольори можуть залишатися поверх кольорів PulseBar до вимкнення клавіатури. Вимкніть службу (services.msc → Logitech LampArray Service → «Вимкнуто») або «Динамічне освітлення» повністю, потім вимкніть і увімкніть клавіатуру. Вимкнути його лише для цієї клавіатури надовго не вийде: після кожного перепідключення Windows бачить новий пристрій.",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Інша програма змінює підсвітку клавіатури. PulseBar повертає свої кольори.",
 			["Open Dynamic Lighting settings"] = "Відкрити налаштування «Динамічного освітлення»"
 		},
@@ -559,7 +559,7 @@ internal static partial class L
 			["Wave"] = "Welle",
 			["also without PulseBar"] = "auch ohne PulseBar",
 			["with PulseBar"] = "mit PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "Die dynamische Beleuchtung von Windows färbt die Tastatur um (Logitech LampArray Service). PulseBar stellt seine Farben wieder her, besser ist es aber, die dynamische Beleuchtung für diese Tastatur auszuschalten.",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "Die dynamische Beleuchtung von Windows färbt die Tastatur um (Logitech LampArray Service), und ihre Farben können bis zum Ausschalten der Tastatur über denen von PulseBar bleiben. Schalten Sie den Dienst ab (services.msc → Logitech LampArray Service → Deaktiviert) oder die dynamische Beleuchtung ganz, dann die Tastatur aus- und wieder einschalten. Nur für diese Tastatur ausschalten hält nicht: nach jedem Neuverbinden sieht Windows ein neues Gerät.",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Ein anderes Programm ändert die Tastaturbeleuchtung. PulseBar stellt seine Farben wieder her.",
 			["Open Dynamic Lighting settings"] = "Einstellungen für dynamische Beleuchtung öffnen"
 		},
@@ -744,7 +744,7 @@ internal static partial class L
 			["Wave"] = "Vague",
 			["also without PulseBar"] = "aussi sans PulseBar",
 			["with PulseBar"] = "avec PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "L'éclairage dynamique de Windows recolore le clavier (service Logitech LampArray). PulseBar remet ses couleurs, mais mieux vaut désactiver l'éclairage dynamique pour ce clavier.",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "L'éclairage dynamique de Windows recolore le clavier (service Logitech LampArray), et ses couleurs peuvent rester par-dessus celles de PulseBar jusqu'à l'extinction du clavier. Désactivez le service (services.msc → Logitech LampArray Service → Désactivé) ou l'éclairage dynamique entièrement, puis éteignez et rallumez le clavier. Le désactiver pour ce seul clavier ne dure pas : à chaque reconnexion, Windows voit un nouvel appareil.",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Un autre programme modifie l'éclairage du clavier. PulseBar remet ses couleurs.",
 			["Open Dynamic Lighting settings"] = "Ouvrir les paramètres de l'éclairage dynamique"
 		},
@@ -929,7 +929,7 @@ internal static partial class L
 			["Wave"] = "Onda",
 			["also without PulseBar"] = "también sin PulseBar",
 			["with PulseBar"] = "con PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "La iluminación dinámica de Windows cambia los colores del teclado (servicio Logitech LampArray). PulseBar restaura sus colores, pero es mejor desactivar la iluminación dinámica para este teclado.",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "La iluminación dinámica de Windows cambia los colores del teclado (servicio Logitech LampArray), y sus colores pueden quedar por encima de los de PulseBar hasta apagar el teclado. Desactive el servicio (services.msc → Logitech LampArray Service → Deshabilitado) o la iluminación dinámica por completo, y luego apague y encienda el teclado. Desactivarla solo para este teclado no dura: tras cada reconexión Windows ve un dispositivo nuevo.",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Otro programa cambia la iluminación del teclado. PulseBar restaura sus colores.",
 			["Open Dynamic Lighting settings"] = "Abrir la configuración de iluminación dinámica"
 		},
@@ -1114,7 +1114,7 @@ internal static partial class L
 			["Wave"] = "Onda",
 			["also without PulseBar"] = "também sem o PulseBar",
 			["with PulseBar"] = "com o PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "A iluminação dinâmica do Windows muda as cores do teclado (serviço Logitech LampArray). O PulseBar restaura as cores dele, mas é melhor desligar a iluminação dinâmica para este teclado.",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "A iluminação dinâmica do Windows muda as cores do teclado (serviço Logitech LampArray), e as cores dela podem ficar por cima das do PulseBar até desligar o teclado. Desative o serviço (services.msc → Logitech LampArray Service → Desativado) ou a iluminação dinâmica por completo e depois desligue e ligue o teclado. Desligar só para este teclado não dura: a cada reconexão o Windows vê um dispositivo novo.",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Outro programa muda a iluminação do teclado. O PulseBar restaura as cores dele.",
 			["Open Dynamic Lighting settings"] = "Abrir as configurações de iluminação dinâmica"
 		},
@@ -1299,7 +1299,7 @@ internal static partial class L
 			["Wave"] = "Onda",
 			["also without PulseBar"] = "anche senza PulseBar",
 			["with PulseBar"] = "con PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "L'illuminazione dinamica di Windows ricolora la tastiera (servizio Logitech LampArray). PulseBar ripristina i suoi colori, ma è meglio disattivare l'illuminazione dinamica per questa tastiera.",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "L'illuminazione dinamica di Windows ricolora la tastiera (servizio Logitech LampArray), e i suoi colori possono restare sopra quelli di PulseBar finché la tastiera non viene spenta. Disattivate il servizio (services.msc → Logitech LampArray Service → Disabilitato) o l'illuminazione dinamica del tutto, poi spegnete e riaccendete la tastiera. Disattivarla solo per questa tastiera non dura: a ogni riconnessione Windows vede un nuovo dispositivo.",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Un altro programma modifica l'illuminazione della tastiera. PulseBar ripristina i suoi colori.",
 			["Open Dynamic Lighting settings"] = "Apri le impostazioni dell'illuminazione dinamica"
 		},
@@ -1484,7 +1484,7 @@ internal static partial class L
 			["Wave"] = "Fala",
 			["also without PulseBar"] = "również bez PulseBar",
 			["with PulseBar"] = "z PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "Oświetlenie dynamiczne Windows przemalowuje klawiaturę (usługa Logitech LampArray). PulseBar przywraca swoje kolory, ale lepiej wyłączyć oświetlenie dynamiczne dla tej klawiatury.",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "Oświetlenie dynamiczne Windows przemalowuje klawiaturę (usługa Logitech LampArray), a jego kolory mogą zostać nad kolorami PulseBar do wyłączenia klawiatury. Wyłącz usługę (services.msc → Logitech LampArray Service → Wyłączony) albo całe oświetlenie dynamiczne, potem wyłącz i włącz klawiaturę. Wyłączenie tylko dla tej klawiatury nie trwa długo: po każdym ponownym połączeniu Windows widzi nowe urządzenie.",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "Inny program zmienia podświetlenie klawiatury. PulseBar przywraca swoje kolory.",
 			["Open Dynamic Lighting settings"] = "Otwórz ustawienia oświetlenia dynamicznego"
 		},
@@ -1669,7 +1669,7 @@ internal static partial class L
 			["Wave"] = "波浪",
 			["also without PulseBar"] = "无需 PulseBar",
 			["with PulseBar"] = "需要 PulseBar",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "Windows 动态光效正在改变键盘颜色（Logitech LampArray 服务）。PulseBar 会恢复自己的颜色，但最好为此键盘关闭动态光效。",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "Windows 动态光效正在改变键盘颜色（Logitech LampArray 服务），在关闭键盘之前，它的颜色可能一直盖在 PulseBar 的颜色之上。请停用该服务（services.msc → Logitech LampArray Service → 禁用）或完全关闭动态光效，然后关闭再打开键盘。只为此键盘关闭无法持久：每次重新连接后 Windows 都会把它当成新设备。",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "另一个程序正在更改键盘灯光。PulseBar 会恢复自己的颜色。",
 			["Open Dynamic Lighting settings"] = "打开动态光效设置"
 		},
@@ -1854,7 +1854,7 @@ internal static partial class L
 			["Wave"] = "ウェーブ",
 			["also without PulseBar"] = "PulseBar なしでも",
 			["with PulseBar"] = "PulseBar 使用時",
-			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard."] = "Windows のダイナミック ライティングがキーボードの色を変えています（Logitech LampArray サービス）。PulseBar は色を戻しますが、このキーボードではダイナミック ライティングをオフにすることをおすすめします。",
+			["Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device."] = "Windows のダイナミック ライティングがキーボードの色を変えています（Logitech LampArray サービス）。その色はキーボードの電源を切るまで PulseBar の色の上に残ることがあります。サービスを無効にする（services.msc → Logitech LampArray Service → 無効）か、ダイナミック ライティング全体をオフにしてから、キーボードの電源を入れ直してください。このキーボードだけオフにしても長続きしません。再接続のたびに Windows は新しいデバイスとして認識します。",
 			["Another program changes the keyboard lighting. PulseBar paints it back."] = "別のプログラムがキーボードのライティングを変更しています。PulseBar は色を戻します。",
 			["Open Dynamic Lighting settings"] = "ダイナミック ライティングの設定を開く"
 		}

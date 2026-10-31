@@ -178,7 +178,7 @@
 "Wave": "波浪",
 "also without PulseBar": "无需 PulseBar",
 "with PulseBar": "需要 PulseBar",
-"Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard.": "Windows 动态光效正在改变键盘颜色（Logitech LampArray 服务）。PulseBar 会恢复自己的颜色，但最好为此键盘关闭动态光效。",
 "Another program changes the keyboard lighting. PulseBar paints it back.": "另一个程序正在更改键盘灯光。PulseBar 会恢复自己的颜色。",
-"Open Dynamic Lighting settings": "打开动态光效设置"
+"Open Dynamic Lighting settings": "打开动态光效设置",
+"Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device.": "Windows 动态光效正在改变键盘颜色（Logitech LampArray 服务），在关闭键盘之前，它的颜色可能一直盖在 PulseBar 的颜色之上。请停用该服务（services.msc → Logitech LampArray Service → 禁用）或完全关闭动态光效，然后关闭再打开键盘。只为此键盘关闭无法持久：每次重新连接后 Windows 都会把它当成新设备。"
 }

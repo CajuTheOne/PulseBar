@@ -184,109 +184,70 @@ internal sealed class LogiKeyboard
 	}
 
 	// Программное управление подсветкой, 0x8071 fn5: [0] → [0, режим, флаги]; [1, режим, флаги] — записать.
-	// Эффекты из программы (fn1) G915 принимает только при бите 0 режима, иначе ошибка 5. Журнал 31.10.2026: после
-	// режима PulseBar было 02 06 — эффекты отклонялись; служба Logitech LampArray после смены профиля ставит 03 06, и тогда
-	// они проходили; поэтому в 2.3.0-beta.1 эффекты то работали, то нет. Ставим бит 0, флаги оставляем (0 → 06, как у
-	// LampArray). Служба может сбросить режим снова — тогда при ошибке 5 он ставится заново (SetEffect).
-	private bool EnsureSoftwareControl()
+	// Проверено на G915 31.10.2026: после включения питания 00 00; служба Logitech LampArray ставит 02 06 или 03 06 и
+	// красит клавиши по одной; с режимом 03 06 цвета по клавишам видны. Ставим биты 0 и 1, флаги оставляем (0 → 06, как
+	// у LampArray); при отпускании возвращается прежнее значение. Служба может сменить режим снова — он проверяется перед
+	// каждым кадром.
+	private void EnsureSoftwareControl()
 	{
 		if (!Device.Has(LogiDevice.RgbEffects))
 		{
-			return false;
+			return;
 		}
 		byte[]? r = Device.Call(LogiDevice.RgbEffects, 5, new byte[1], out int e, 2);
 		if (r == null || r.Length < 3)
 		{
 			Log.Write($"logi: software lighting control: error {e}");
-			return false;
+			return;
 		}
 		_swOriginal ??= new byte[2] { r[1], r[2] };
-		if ((r[1] & 1) != 0)
+		if ((r[1] & 3) == 3)
 		{
-			return true;
+			return;
 		}
-		byte mode = (byte)((r[1] == 0) ? 3 : (r[1] | 1));
+		byte mode = (byte)(r[1] | 3);
 		byte flags = (byte)((r[2] == 0) ? 6 : r[2]);
 		bool ok = Device.Call(LogiDevice.RgbEffects, 5, new byte[3] { 1, mode, flags }, out e, 2) != null;
 		Log.Write($"logi: software lighting control {r[1]:X2} {r[2]:X2} -> {mode:X2} {flags:X2}{(ok ? "" : $": error {e}")}");
-		return ok;
 	}
 
+	// Кадр подсветки в режиме PulseBar — только цветами по клавишам (0x8081). Эффекты 0x8071 G915 в этом режиме
+	// принимает, но не показывает (проверка 31.10.2026; G HUB в этом режиме тоже рисует сам). Клавиши — цвет зоны
+	// (выключена — чёрный), в режиме «По клавишам» — свои цвета; логотип — номер 210 с цветом своей зоны. Дыхание,
+	// цикл и волна здесь показываются статичным цветом зоны, сами эффекты работают из памяти клавиатуры.
 	private bool PaintLighting(KeyFrame f, out string error)
 	{
 		error = "";
-		if (!SetEffect(KeysZone, f.Keys, out error) || !SetEffect(LogoZone, f.Logo, out error))
+		if (KeyIds.Length == 0 || !Device.Has(LogiDevice.PerKeyLighting))
 		{
-			return false;
+			return true;
 		}
-		if (f.PerKey && KeyIds.Length > 0)
+		EnsureSoftwareControl();
+		Rgb keys = ZoneColor(f.Keys);
+		Rgb logo = ZoneColor(f.Logo);
+		foreach (IGrouping<Rgb, byte> g in KeyIds.GroupBy((byte id) => (id == KeyLayout.Logo) ? logo : ((f.PerKey && f.Colors.TryGetValue(id, out Rgb c)) ? c : keys)))
 		{
-			Rgb baseColor = Rgb.Parse(f.Keys.Color);
-			// Логотип — своя зона со своим эффектом: в кадр клавиш не входит.
-			foreach (IGrouping<Rgb, byte> g in KeyIds.Where((byte id) => id != KeyLayout.Logo).GroupBy((byte id) => f.Colors.TryGetValue(id, out Rgb c) ? c : baseColor))
+			byte[] ids = g.ToArray();
+			for (int i = 0; i < ids.Length; i += 13)
 			{
-				byte[] ids = g.ToArray();
-				for (int i = 0; i < ids.Length; i += 13)
+				if (!PaintKeys(g.Key, ids.AsSpan(i, Math.Min(13, ids.Length - i)), out int e))
 				{
-					if (!PaintKeys(g.Key, ids.AsSpan(i, Math.Min(13, ids.Length - i)), out int e))
-					{
-						error = $"key colours: error {e}";
-						return false;
-					}
+					error = $"key colours: error {e}";
+					return false;
 				}
 			}
-			if (Device.Call(LogiDevice.PerKeyLighting, 7, new byte[5], out int e2, 3) == null)
-			{
-				error = $"key colours frame: error {e2}";
-				return false;
-			}
+		}
+		if (Device.Call(LogiDevice.PerKeyLighting, 7, new byte[5], out int e2, 3) == null)
+		{
+			error = $"key colours frame: error {e2}";
+			return false;
 		}
 		return true;
 	}
 
-	// Эффект кластера через 0x8071: [кластер, индекс эффекта, 10 параметров, 0 — не сохранять в памяти клавиатуры].
-	// Параметры — как в записи встроенной памяти. Яркость здесь всегда 100: общую яркость задаёт 0x8040.
-	// Ошибка 5 — выключено программное управление подсветкой (см. EnsureSoftwareControl): включить и повторить.
-	private bool SetEffect(int cluster, Lighting l, out string error)
+	private static Rgb ZoneColor(Lighting l)
 	{
-		error = "";
-		if (!Clusters.TryGetValue(cluster, out Dictionary<int, int>? effects))
-		{
-			return true;
-		}
-		byte[] entry = OnboardPlan.Entry(l, 100);
-		int index = effects.FirstOrDefault(x => x.Value == entry[0], new KeyValuePair<int, int>(-1, -1)).Key;
-		if (index < 0)
-		{
-			// Такого эффекта у зоны нет — статичный цвет.
-			entry = OnboardSector.Static(Rgb.Parse(l.Color));
-			index = effects.FirstOrDefault(x => x.Value == entry[0], new KeyValuePair<int, int>(-1, -1)).Key;
-			if (index < 0)
-			{
-				return true;
-			}
-		}
-		byte[] args = new byte[13];
-		args[0] = (byte)cluster;
-		args[1] = (byte)index;
-		Array.Copy(entry, 1, args, 2, 10);
-		byte[]? reply = Device.Call(LogiDevice.RgbEffects, 1, args, out int e, 3);
-		if (reply == null && e == 5 && EnsureSoftwareControl())
-		{
-			reply = Device.Call(LogiDevice.RgbEffects, 1, args, out e, 3);
-		}
-		if (reply == null)
-		{
-			if (e > 0 && e != HidppLink.ErrBusy)
-			{
-				// Клавиатура отклонила параметры: кадр без этого эффекта, иначе сверка повторялась бы без конца.
-				Log.Write($"logi: effect {l.Effect} (zone {cluster}) rejected: error {e}");
-				return true;
-			}
-			error = $"effect {l.Effect} (zone {cluster}): error {e}";
-			return false;
-		}
-		return true;
+		return (l.Effect == "off") ? Rgb.Black : Rgb.Parse(l.Color);
 	}
 
 	// 0x8081 fn6: один цвет для 1–13 клавиш [R, G, B, номера…], недостающие места — повтор последнего номера.

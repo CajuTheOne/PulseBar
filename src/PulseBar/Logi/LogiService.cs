@@ -505,7 +505,7 @@ internal sealed class LogiService : IDisposable
 			return;
 		}
 		ushort id = kb.Device.FeatureAt(feat);
-		bool lighting = (id == LogiDevice.PerKeyLighting && fn >= 1) || (id == LogiDevice.RgbEffects && fn == 1);
+		bool lighting = (id == LogiDevice.PerKeyLighting && fn >= 1) || (id == LogiDevice.RgbEffects && (fn == 1 || fn == 5));
 		bool brightness = id == LogiDevice.Brightness && fn == 2;
 		if (!lighting && !brightness)
 		{

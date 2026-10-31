@@ -89,8 +89,8 @@ public class ServiceTests
 
 	private static Rgb KeysColor(FakeG915 kb)
 	{
-		byte[] p = kb.Effects[FakeG915.KeysZone].Params;
-		return new Rgb(p[0], p[1], p[2]);
+		// Клавиша A (номер 1).
+		return kb.Frame.TryGetValue(1, out Rgb c) ? c : Rgb.Black;
 	}
 
 	[TestMethod]
@@ -101,7 +101,7 @@ public class ServiceTests
 		Assert.IsTrue(r.Kb.Diverted);
 		Assert.AreEqual(1, r.Kb.MLeds);
 		Assert.AreEqual(100, r.Kb.Brightness);
-		Assert.AreEqual(0x01, r.Kb.Effects[FakeG915.KeysZone].Effect);
+		Assert.AreEqual(3, r.Kb.SwMode, "software lighting control");
 		Assert.AreEqual(new Rgb(0x10, 0x20, 0x30), KeysColor(r.Kb));
 		Assert.AreEqual("host", r.Svc.Mode);
 	}
@@ -144,10 +144,7 @@ public class ServiceTests
 		});
 		Assert.AreEqual(new Rgb(0xFF, 0x80, 0), r.Kb.Frame[0x17], "W");
 		Assert.AreEqual(new Rgb(0x10, 0x20, 0x30), r.Kb.Frame[0x01], "A");
-		Assert.IsFalse(r.Kb.Frame.ContainsKey(KeyLayout.Logo), "logo keeps its own zone");
-		byte[] logo = r.Kb.Effects[FakeG915.LogoZone].Params;
-		Assert.AreEqual(0x01, r.Kb.Effects[FakeG915.LogoZone].Effect);
-		Assert.AreEqual(new Rgb(0, 0xFF, 0), new Rgb(logo[0], logo[1], logo[2]), "logo colour goes to the logo zone (0)");
+		Assert.AreEqual(new Rgb(0, 0xFF, 0), r.Kb.Frame[KeyLayout.Logo], "logo has its own colour");
 		Assert.IsTrue(r.Svc.KeyIds.Count > 90);
 	}
 
@@ -267,7 +264,7 @@ public class ServiceTests
 		Assert.AreEqual(2, r.Kb.Mode);
 		Assert.IsTrue(r.Kb.Diverted);
 		Assert.AreEqual(2, r.Kb.MLeds);
-		Assert.IsTrue(r.Kb.Effects.ContainsKey(FakeG915.KeysZone));
+		Assert.IsTrue(r.Kb.Frame.ContainsKey(1), "frame painted again");
 	}
 
 	[TestMethod]
@@ -306,17 +303,17 @@ public class ServiceTests
 	public void SoftwareLightingControlIsTurnedOnAndGivenBack()
 	{
 		Rig r = new Rig(c => c.Profiles[0].Keyboard.Color = "#102030");
-		Assert.AreEqual(3, r.Kb.SwMode, "effects need bit 0");
+		Assert.AreEqual(3, r.Kb.SwMode, "bits 0 and 1");
 		Assert.AreEqual(new Rgb(0x10, 0x20, 0x30), KeysColor(r.Kb));
-		// Служба LampArray сбросила режим — следующий эффект включает его снова.
+		// Служба LampArray сбросила режим — следующий кадр включает его снова.
 		r.Kb.SwMode = 2;
-		r.Kb.Effects.Clear();
 		LogiConfig c = LogiConfig.Load(r.ConfigPath);
 		c.Profiles[0].Keyboard.Color = "#405060";
 		c.Save(r.ConfigPath);
 		r.Svc.ReloadConfig();
 		r.Settle();
 		Assert.AreEqual(new Rgb(0x40, 0x50, 0x60), KeysColor(r.Kb));
+		Assert.AreEqual(3, r.Kb.SwMode, "set again");
 		r.Dispose();
 		Assert.AreEqual(2, r.Kb.SwMode, "given back on exit");
 		Assert.AreEqual(6, r.Kb.SwFlags);

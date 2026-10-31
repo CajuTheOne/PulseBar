@@ -182,7 +182,7 @@ internal sealed partial class SettingsWindow
 			status.Text = device + ((mode.Length > 0) ? ("\n" + mode) : "") + ((s.Result.Length > 0) ? ("\n" + s.Result) : "");
 			factory.IsEnabled = backup.IsEnabled = s.Mode == "host";
 			foreign.Visibility = (s.Foreign.Length > 0) ? Visibility.Visible : Visibility.Collapsed;
-			foreignText.Text = (s.Foreign == "lamparray") ? L.T("Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service). PulseBar paints it back, but it is better to turn Dynamic Lighting off for this keyboard.") : L.T("Another program changes the keyboard lighting. PulseBar paints it back.");
+			foreignText.Text = (s.Foreign == "lamparray") ? L.T("Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device.") : L.T("Another program changes the keyboard lighting. PulseBar paints it back.");
 			lightingSettings.Visibility = (s.Foreign == "lamparray") ? Visibility.Visible : Visibility.Collapsed;
 		}
 	}
