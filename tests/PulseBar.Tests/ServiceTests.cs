@@ -141,7 +141,7 @@ public class ServiceTests
 		using Rig r = new Rig(c =>
 		{
 			Profile p = c.Profiles[0];
-			p.PerKey = true;
+			p.Keyboard.Effect = "static";
 			p.Keyboard.Color = "#102030";
 			p.KeyColors["17"] = "#FF8000";
 			p.Logo.Color = "#00FF00";
@@ -396,6 +396,35 @@ public class ServiceTests
 	}
 
 	[TestMethod]
+	public void SlotsPutAnyProfileOnTheMKeys()
+	{
+		using Rig r = new Rig(c =>
+		{
+			c.Profiles.Add(new Profile
+			{
+				Name = "Game",
+				Keyboard = new Lighting { Color = "#ABCDEF" }
+			});
+			c.Profiles[0].Apps = "editor.exe";
+			c.Slots = new int[3] { 3, 1, 2 };
+			c.Active = 3;
+		});
+		Assert.AreEqual(3, r.Svc.Current);
+		Assert.AreEqual(1, r.Kb.MLeds, "profile 4 sits on M1");
+		Assert.AreEqual(new Rgb(0xAB, 0xCD, 0xEF), KeysColor(r.Kb));
+		r.Kb.PressM(2);
+		r.Settle();
+		Assert.AreEqual(1, r.Svc.Current);
+		r.Svc.Foreground("editor.exe");
+		r.Settle();
+		Assert.AreEqual(0, r.Svc.Current, "profile only for a program");
+		Assert.AreEqual(0, r.Kb.MLeds, "no M lamp for it");
+		r.Svc.SyncOnboardNow();
+		OnboardSector s1 = new OnboardSector(r.Kb.Sectors[1]);
+		Assert.AreEqual("static #ABCDEF", OnboardSector.DescribeLed(s1.Led(OnboardSector.LedKeys)), "memory slot 1 = profile on M1");
+	}
+
+	[TestMethod]
 	public void M1PressThatTouchesM2StaysOnM1()
 	{
 		using Rig r = new Rig(c => c.Active = 2);
@@ -453,7 +482,7 @@ public class ServiceTests
 	{
 		using Rig r = new Rig(c =>
 		{
-			c.Profiles[0].PerKey = true;
+			c.Profiles[0].Keyboard.Effect = "static";
 			c.Profiles[0].Keyboard.Color = "#102030";
 		});
 		r.DynamicLighting = true;
@@ -470,6 +499,47 @@ public class ServiceTests
 		Thread.Sleep(700);
 		r.Settle();
 		Assert.AreEqual(blue, r.Kb.Frame[0x01], "the sixth time in a minute PulseBar gives up");
+	}
+}
+
+[TestClass]
+public class ConfigTests
+{
+	[TestMethod]
+	public void Version2BecomesVersion3()
+	{
+		string dir = Path.Combine(Path.GetTempPath(), "PulseBarTests", Guid.NewGuid().ToString("N"));
+		Directory.CreateDirectory(dir);
+		string path = Path.Combine(dir, "logitech.json");
+		File.WriteAllText(path, """
+			{"version":2,"enabled":true,"active":1,"profiles":[
+			 {"name":"A","perKey":true,"keyboard":{"effect":"cycle","color":"#112233"},"keyColors":{"17":"#FF0000"}},
+			 {"name":"B","perKey":false,"keyboard":{"effect":"static","color":"#445566"},"keyColors":{"01":"#00FF00"}},
+			 {"name":"C","perKey":false,"keyboard":{"effect":"wave","color":"#778899"},"keyColors":{"02":"#0000FF"}}]}
+			""");
+		LogiConfig c = LogiConfig.Load(path);
+		Assert.AreEqual(3, c.Version);
+		CollectionAssert.AreEqual(new[] { 0, 1, 2 }, c.Slots);
+		Assert.AreEqual("static", c.Profiles[0].Keyboard.Effect, "by key -> static");
+		Assert.AreEqual("#FF0000", c.Profiles[0].KeyColors["17"]);
+		Assert.AreEqual(0, c.Profiles[1].KeyColors.Count, "hidden key colours of a plain colour profile do not come back");
+		Assert.AreEqual("wave", c.Profiles[2].Keyboard.Effect);
+		Assert.AreEqual(1, c.Profiles[2].KeyColors.Count, "kept for when it becomes static");
+		Assert.IsTrue(File.Exists(Path.Combine(dir, "logitech.v2.json")));
+		Directory.Delete(dir, recursive: true);
+	}
+
+	[TestMethod]
+	public void RemovingAProfileFixesSlots()
+	{
+		LogiConfig c = new LogiConfig();
+		c.Normalize();
+		c.Profiles.Add(new Profile { Name = "D" });
+		c.Slots = new int[3] { 3, 1, 2 };
+		c.Active = 2;
+		c.RemoveProfile(1);
+		CollectionAssert.AreEqual(new[] { 2, 0, 1 }, c.Slots);
+		Assert.AreEqual(1, c.Active);
 	}
 }
 

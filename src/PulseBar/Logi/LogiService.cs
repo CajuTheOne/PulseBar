@@ -504,7 +504,7 @@ internal sealed class LogiService : IDisposable
 		Profile p = Config.Profiles[Current];
 		if (p.Brightness != value)
 		{
-			Log.Write($"logi: brightness key: {value}% for profile {Current + 1}");
+			Log.Write($"logi: brightness key: {value}% for profile {Current + 1} ({p.Name})");
 			p.Brightness = value;
 			LogiConfig c = LogiConfig.Load(_env.ConfigPath);
 			c.Profiles[Current].Brightness = value;
@@ -628,7 +628,14 @@ internal sealed class LogiService : IDisposable
 		{
 			int n = key[1] - '1';
 			Log.Write("logi: " + key);
-			Post(() => Select(n, manual: true));
+			// M1–M3 — профиль, стоящий в слоте.
+			Post(delegate
+			{
+				if (n < Config.Slots.Length)
+				{
+					Select(Config.Slots[n], manual: true);
+				}
+			});
 			return;
 		}
 		Profile p = Config.Profiles[Current];
@@ -749,13 +756,42 @@ internal sealed class LogiService : IDisposable
 		{
 			b = Math.Min(b, LowBatteryCap);
 		}
-		KeyFrame f = KeyFrame.From(p, b, (byte)(1 << Current));
+		KeyFrame f = KeyFrame.From(p, b, MLeds());
 		// Анимация — только когда её видно и есть заряд: при простое, низком заряде и погашенной подсветке — статичный цвет.
 		return f with
 		{
 			Animate = f.HasAnimation && b > 0 && !_idle && !low
 		};
 	}
+
+	// Лампочки M: слоты, в которых стоит текущий профиль (профиль только для программ — ни одной).
+	private byte MLeds()
+	{
+		int current = Current;
+		byte bits = 0;
+		for (int i = 0; i < Config.Slots.Length; i++)
+		{
+			if (Config.Slots[i] == current)
+			{
+				bits |= (byte)(1 << i);
+			}
+		}
+		return bits;
+	}
+
+	// Номер профиля встроенной памяти (1–3) для возврата клавиатуре: слот текущего профиля, иначе последний слот, который
+	// был включён.
+	private int OnboardSlot()
+	{
+		int slot = Config.SlotOf(Current);
+		if (slot >= 0)
+		{
+			_lastSlot = slot;
+		}
+		return _lastSlot + 1;
+	}
+
+	private int _lastSlot;
 
 	private void Reconcile()
 	{
@@ -772,7 +808,7 @@ internal sealed class LogiService : IDisposable
 				Retry("set up: " + error);
 				return;
 			}
-			Log.Write($"logi: {kb.Device.Name}: PulseBar mode, profile {Current + 1}");
+			Log.Write($"logi: {kb.Device.Name}: PulseBar mode, profile {Current + 1} ({Config.Profiles[Current].Name})");
 		}
 		KeyFrame frame = Desired();
 		if (!kb.Apply(frame, _env.Now(), out error))
@@ -898,8 +934,9 @@ internal sealed class LogiService : IDisposable
 			return;
 		}
 		SetAnimating(on: false);
-		kb.Release(Current + 1);
-		Log.Write($"logi: {kb.Device.Name}: keyboard memory, profile {Current + 1} ({why})");
+		int slot = OnboardSlot();
+		kb.Release(slot);
+		Log.Write($"logi: {kb.Device.Name}: keyboard memory, profile {slot} ({why})");
 	}
 
 	// ---------- простой, экран, сон ----------
@@ -1212,7 +1249,7 @@ internal sealed class LogiService : IDisposable
 			Log.Write("logi: onboard: directory unreadable");
 			return;
 		}
-		int count = Math.Min(Math.Min(LogiConfig.ProfileCount, m.ProfileCount), m.SectorCount - 1);
+		int count = Math.Min(Math.Min(LogiConfig.SlotCount, m.ProfileCount), m.SectorCount - 1);
 		List<(int Sector, byte[] Data)> writes = new List<(int, byte[])>();
 		for (int i = 0; i < count; i++)
 		{
@@ -1223,7 +1260,7 @@ internal sealed class LogiService : IDisposable
 				return;
 			}
 			byte[]? rom = OnboardMemory.CrcOk(user) ? null : m.ReadSector(OnboardMemory.RomBase + 1 + Math.Min(i, m.RomProfileCount - 1));
-			byte[] built = OnboardPlan.Build(OnboardPlan.Basis(user, rom), Config.Profiles[i], Config).Serialize();
+			byte[] built = OnboardPlan.Build(OnboardPlan.Basis(user, rom), Config.Profiles[Config.Slots[i]], Config).Serialize();
 			if (!built.AsSpan().SequenceEqual(user))
 			{
 				writes.Add((i + 1, built));

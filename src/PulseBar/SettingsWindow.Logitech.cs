@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -13,16 +14,30 @@ using Color = System.Windows.Media.Color;
 
 namespace PulseBar;
 
-// Вкладка Logitech (2.3): состояние клавиатуры, профили M1–M3 (подсветка, цвета клавиш, G1–G5 и MR, программы),
-// приглушение, память клавиатуры. Профили сохраняются в logitech.json, строка их перечитывает (клавиатурой владеет она):
-// цвета клавиш — через 0,2 с, чтобы кисть сразу было видно на клавиатуре, остальное — через 0,5 с.
+// Вкладка «Клавиатура» (2.3.0-beta.5): над тремя вкладками — профиль и меню «…» (создать, копировать, переименовать,
+// удалить, поставить на M1–M3, программы для автопереключения, цвета из другого профиля); «Общие» — повтор клавиш
+// Windows, управление Logitech и G HUB, приглушение, память клавиатуры; «Подсветка» — эффекты клавиш и логотипа, яркость,
+// редактор цветов; «Клавиши G» — G1–G5 и MR. Всё помещается в окно без прокрутки. Профили сохраняются в logitech.json,
+// строка их перечитывает (клавиатурой владеет она): цвета — через 0,2 с, чтобы кисть сразу было видно на клавиатуре,
+// остальное — через 0,5 с.
 internal sealed partial class SettingsWindow
 {
 	private static readonly string[] EffectIds = new string[5] { "off", "static", "breathing", "cycle", "wave" };
 
 	private LogiConfig? _logi;
 
-	private int _logiProfile;
+	private int _logiProfile = -1;
+
+	private static int _keyboardTab = 1;
+
+	// Для снимков: какая вкладка «Клавиатуры» открыта.
+	internal static int KeyboardTab
+	{
+		set
+		{
+			_keyboardTab = value;
+		}
+	}
 
 	private DispatcherTimer? _logiSave;
 
@@ -47,6 +62,16 @@ internal sealed partial class SettingsWindow
 		_logiSave.Start();
 	}
 
+	// Сохранить сразу (смена профилей, слотов) и перестроить вкладку.
+	private void LogiSaveNow()
+	{
+		_logiSave?.Stop();
+		_logi?.Normalize();
+		_logi?.Save();
+		_host.LogiReload();
+		ShowPage(_nav.SelectedIndex);
+	}
+
 	private static string EffectName(string id)
 	{
 		return id switch
@@ -60,30 +85,351 @@ internal sealed partial class SettingsWindow
 		};
 	}
 
-	private UIElement LogitechPage()
+	private UIElement KeyboardPage()
 	{
 		_logi ??= LogiConfig.Load();
 		LogiConfig c = _logi;
 		ISettingsHost.Logitech st = _host.LogiStatus;
-		StackPanel p = Page("Logitech");
+		if (_logiProfile < 0 || _logiProfile >= c.Profiles.Count)
+		{
+			_logiProfile = Math.Clamp(c.Active, 0, c.Profiles.Count - 1);
+		}
+		Profile pr = c.Profiles[_logiProfile];
+		StackPanel p = Page(L.T("Keyboard"));
+		p.MaxWidth = 660.0;
+		p.Children[0].SetValue(FrameworkElement.MarginProperty, new Thickness(0.0, 0.0, 0.0, 8.0));
+		// Профиль и меню «…».
+		ComboBox profile = new ComboBox
+		{
+			ItemsSource = c.Profiles.Select((Profile x, int i) => ProfileTitle(c, i)).ToArray(),
+			SelectedIndex = _logiProfile,
+			Width = 260.0
+		};
+		profile.SelectionChanged += delegate
+		{
+			if (profile.SelectedIndex >= 0 && profile.SelectedIndex != _logiProfile)
+			{
+				_logiProfile = profile.SelectedIndex;
+				ShowPage(_nav.SelectedIndex);
+			}
+		};
+		Button more = new Button
+		{
+			Content = "…",
+			MinWidth = 36.0,
+			Margin = new Thickness(6.0, 0.0, 0.0, 0.0),
+			ToolTip = L.T("Profiles")
+		};
+		more.Click += delegate
+		{
+			ContextMenu m = ProfileMenu(c, pr);
+			m.PlacementTarget = more;
+			m.Placement = PlacementMode.Bottom;
+			m.IsOpen = true;
+		};
 		TextBlock status = new TextBlock
 		{
-			TextWrapping = TextWrapping.Wrap,
-			Margin = new Thickness(0.0, 0.0, 0.0, 8.0),
-			LineHeight = 20.0
+			Margin = new Thickness(14.0, 0.0, 0.0, 0.0),
+			VerticalAlignment = VerticalAlignment.Center,
+			FontSize = 12.0,
+			TextTrimming = TextTrimming.CharacterEllipsis
 		};
-		p.Children.Add(status);
+		status.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+		DockPanel top = new DockPanel
+		{
+			Margin = new Thickness(0.0, 0.0, 0.0, 6.0),
+			LastChildFill = true
+		};
+		top.Children.Add(new TextBlock
+		{
+			Text = L.T("Profile"),
+			VerticalAlignment = VerticalAlignment.Center,
+			Margin = new Thickness(0.0, 0.0, 10.0, 0.0)
+		});
+		top.Children.Add(profile);
+		top.Children.Add(more);
+		top.Children.Add(status);
+		p.Children.Add(top);
+		TabControl tabs = new TabControl
+		{
+			Margin = new Thickness(0.0, 0.0, 0.0, 0.0)
+		};
+		tabs.Items.Add(new TabItem
+		{
+			Header = L.T("General"),
+			Content = GeneralTab(c, out Action refreshGeneral)
+		});
+		tabs.Items.Add(new TabItem
+		{
+			Header = L.T("Lighting"),
+			Content = LightingTab(c, pr, st)
+		});
+		tabs.Items.Add(new TabItem
+		{
+			Header = L.T("G-keys"),
+			Content = KeysTab(pr)
+		});
+		tabs.SelectedIndex = Math.Clamp(_keyboardTab, 0, 2);
+		tabs.SelectionChanged += (object s, SelectionChangedEventArgs e) =>
+		{
+			if (e.Source == tabs)
+			{
+				_keyboardTab = tabs.SelectedIndex;
+			}
+		};
+		p.Children.Add(tabs);
+		_refresh = Refresh;
+		Refresh();
+		return p;
+		void Refresh()
+		{
+			ISettingsHost.Logitech s = _host.LogiStatus;
+			string device = (s.Device.Length > 0) ? (ShortName(s.Device) + " · " + (s.Online ? ((s.Battery >= 0) ? $"{s.Battery}%" : L.T("connected")) : L.T("asleep or off"))) : L.T("No Logitech G keyboard found");
+			string mode = s.Mode switch
+			{
+				"ghub" => "G HUB",
+				"off" => L.T("Logitech control is off"),
+				"host" => L.T("PulseBar controls the keyboard"),
+				"starting" => L.T("Connecting…"),
+				_ => ""
+			};
+			status.Text = device + ((mode.Length > 0) ? (" · " + mode) : "");
+			refreshGeneral();
+		}
+	}
+
+	private static string ShortName(string device)
+	{
+		string[] w = device.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		return (w.Length > 0) ? w[0] : device;
+	}
+
+	// «Имя · M1, M3» — профиль на слотах; «Имя · программы» — только для программ.
+	private static string ProfileTitle(LogiConfig c, int i)
+	{
+		List<string> slots = new List<string>();
+		for (int s = 0; s < c.Slots.Length; s++)
+		{
+			if (c.Slots[s] == i)
+			{
+				slots.Add("M" + (s + 1));
+			}
+		}
+		string tail = (slots.Count > 0) ? string.Join(", ", slots) : ((c.Profiles[i].Apps.Length > 0) ? L.T("programs") : "");
+		return c.Profiles[i].Name + ((tail.Length > 0) ? (" · " + tail) : "");
+	}
+
+	private ContextMenu ProfileMenu(LogiConfig c, Profile pr)
+	{
+		ContextMenu m = new ContextMenu();
+		void Item(ItemCollection to, string text, Action click, bool enabled = true, bool check = false)
+		{
+			MenuItem it = new MenuItem
+			{
+				Header = text,
+				IsEnabled = enabled,
+				IsCheckable = check,
+				IsChecked = check
+			};
+			it.Click += delegate
+			{
+				click();
+			};
+			to.Add(it);
+		}
+		Item(m.Items, L.T("New profile"), delegate
+		{
+			c.Profiles.Add(new Profile
+			{
+				Name = L.F("Profile {0}", c.Profiles.Count + 1),
+				Keyboard = new Lighting
+				{
+					Color = pr.Keyboard.Color
+				},
+				Logo = new Lighting
+				{
+					Color = pr.Logo.Color
+				}
+			});
+			_logiProfile = c.Profiles.Count - 1;
+			LogiSaveNow();
+		});
+		Item(m.Items, L.T("Copy profile"), delegate
+		{
+			Profile copy = System.Text.Json.JsonSerializer.Deserialize(System.Text.Json.JsonSerializer.Serialize(pr, LogiJson.Default.Profile), LogiJson.Default.Profile)!;
+			copy.Name = pr.Name + " " + L.T("(copy)");
+			c.Profiles.Add(copy);
+			_logiProfile = c.Profiles.Count - 1;
+			LogiSaveNow();
+		});
+		Item(m.Items, L.T("Rename…"), delegate
+		{
+			string? name = AskText(L.T("Rename profile"), L.T("Name"), pr.Name);
+			if (!string.IsNullOrWhiteSpace(name))
+			{
+				pr.Name = name;
+				LogiSaveNow();
+			}
+		});
+		Item(m.Items, L.T("Delete"), delegate
+		{
+			if (MessageBox.Show(this, L.F("Delete profile «{0}»?", pr.Name), "PulseBar", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK)
+			{
+				c.RemoveProfile(_logiProfile);
+				_logiProfile = Math.Clamp(_logiProfile, 0, c.Profiles.Count - 1);
+				LogiSaveNow();
+			}
+		}, c.Profiles.Count > 1);
+		m.Items.Add(new Separator());
+		int self = c.Profiles.IndexOf(pr);
+		for (int s = 0; s < c.Slots.Length; s++)
+		{
+			int slot = s;
+			Item(m.Items, L.F("On M{0}", s + 1), delegate
+			{
+				c.Slots[slot] = self;
+				LogiSaveNow();
+			}, c.Slots[s] != self, c.Slots[s] == self);
+		}
+		Item(m.Items, L.T("Programs…"), delegate
+		{
+			string? apps = AskText(L.T("Programs for automatic switching"), L.T("For example: game.exe, obs64. When the program is in front this profile turns on; when it is not — the profile chosen last with M1–M3."), pr.Apps);
+			if (apps != null)
+			{
+				pr.Apps = apps;
+				LogiSaveNow();
+			}
+		});
+		MenuItem from = new MenuItem
+		{
+			Header = L.T("Copy colours from"),
+			IsEnabled = c.Profiles.Count > 1
+		};
+		foreach (Profile other in c.Profiles.Where(x => x != pr))
+		{
+			Profile o = other;
+			Item(from.Items, o.Name, delegate
+			{
+				pr.KeyColors = new Dictionary<string, string>(o.KeyColors);
+				pr.Keyboard.Color = o.Keyboard.Color;
+				pr.Logo.Color = o.Logo.Color;
+				LogiSaveNow();
+			});
+		}
+		m.Items.Add(from);
+		return m;
+	}
+
+	// Простой диалог с одним полем; null — отмена.
+	private string? AskText(string title, string label, string value)
+	{
+		Window w = new Window
+		{
+			Title = title,
+			Owner = this,
+			ThemeMode = ThemeMode.System,
+			SizeToContent = SizeToContent.Height,
+			Width = 460.0,
+			ResizeMode = ResizeMode.NoResize,
+			WindowStartupLocation = WindowStartupLocation.CenterOwner,
+			ShowInTaskbar = false
+		};
+		StackPanel p = new StackPanel
+		{
+			Margin = new Thickness(16.0)
+		};
+		p.Children.Add(new TextBlock
+		{
+			Text = label,
+			TextWrapping = TextWrapping.Wrap,
+			Margin = new Thickness(0.0, 0.0, 0.0, 8.0)
+		});
+		TextBox box = new TextBox
+		{
+			Text = value
+		};
+		p.Children.Add(box);
+		StackPanel buttons = new StackPanel
+		{
+			Orientation = Orientation.Horizontal,
+			HorizontalAlignment = HorizontalAlignment.Right,
+			Margin = new Thickness(0.0, 12.0, 0.0, 0.0)
+		};
+		Button ok = new Button
+		{
+			Content = "OK",
+			IsDefault = true,
+			MinWidth = 80.0,
+			Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
+		};
+		Button cancel = new Button
+		{
+			Content = L.T("Cancel"),
+			IsCancel = true,
+			MinWidth = 80.0
+		};
+		ok.Click += delegate
+		{
+			w.DialogResult = true;
+		};
+		buttons.Children.Add(ok);
+		buttons.Children.Add(cancel);
+		p.Children.Add(buttons);
+		w.Content = p;
+		w.Loaded += delegate
+		{
+			box.Focus();
+			box.SelectAll();
+		};
+		return (w.ShowDialog() == true) ? box.Text.Trim() : null;
+	}
+
+	// ---------- Общие ----------
+
+	private UIElement GeneralTab(LogiConfig c, out Action refresh)
+	{
+		StackPanel p = new StackPanel
+		{
+			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
+		};
+		p.Children.Add(Caption(L.T("Windows keyboard settings (all keyboards)")));
+		p.Children.Add(SliderRow(L.T("Repeat delay"), 0.0, 3.0, 1.0, () => KeyboardSys.RepeatDelay, delegate(int v)
+		{
+			KeyboardSys.RepeatDelay = v;
+		}, (int v) => $"{250 * (v + 1)} ms", apply: false));
+		p.Children.Add(SliderRow(L.T("Repeat rate"), 0.0, 31.0, 1.0, () => KeyboardSys.RepeatRate, delegate(int v)
+		{
+			KeyboardSys.RepeatRate = v;
+		}, (int v) => L.F("{0} per second", (int)Math.Round(2.5 + v * 27.5 / 31.0)), apply: false));
+		p.Children.Add(SliderRow(L.T("Cursor blink rate"), 0.0, 1200.0, 100.0, () => KeyboardSys.CaretBlinkMs, delegate(int v)
+		{
+			KeyboardSys.CaretBlinkMs = v;
+		}, (int v) => (v == 0) ? L.T("no blinking") : $"{v} ms", apply: false));
+		p.Children.Add(LabeledRow(L.T("Try it here"), new TextBox
+		{
+			Width = 352.0,
+			HorizontalAlignment = HorizontalAlignment.Left
+		}));
+		p.Children.Add(Caption("Logitech G"));
+		p.Children.Add(Check(L.T("Control Logitech devices (instead of G HUB)"), () => c.Enabled, delegate(bool v)
+		{
+			c.Enabled = v;
+			LogiChanged();
+		}, apply: false));
+		p.Children.Add(Note(L.T("While G HUB is running PulseBar only reads the battery. Close G HUB (and turn off its autostart) to let PulseBar control the keyboard.")));
 		// Другая программа перекрашивает клавиатуру — обычно «Динамическое освещение» Windows через службу Logitech LampArray.
 		TextBlock foreignText = new TextBlock
 		{
 			TextWrapping = TextWrapping.Wrap,
-			Margin = new Thickness(0.0, 0.0, 0.0, 4.0)
+			FontSize = 12.0,
+			Margin = new Thickness(0.0, 6.0, 0.0, 4.0)
 		};
+		foreignText.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCautionBrush");
 		Button lightingSettings = new Button
 		{
 			Content = L.T("Open Dynamic Lighting settings"),
 			HorizontalAlignment = HorizontalAlignment.Left,
-			Margin = new Thickness(0.0, 0.0, 0.0, 8.0)
+			Margin = new Thickness(0.0, 0.0, 0.0, 4.0)
 		};
 		lightingSettings.Click += delegate
 		{
@@ -105,24 +451,6 @@ internal sealed partial class SettingsWindow
 		foreign.Children.Add(foreignText);
 		foreign.Children.Add(lightingSettings);
 		p.Children.Add(foreign);
-		p.Children.Add(Check(L.T("Control Logitech devices (instead of G HUB)"), () => c.Enabled, delegate(bool v)
-		{
-			c.Enabled = v;
-			LogiChanged();
-		}, apply: false));
-		p.Children.Add(Note(L.T("While G HUB is running PulseBar only reads the battery. Close G HUB (and turn off its autostart) to let PulseBar control the keyboard.")));
-		_logiProfile = Math.Clamp(_logiProfile, 0, c.Profiles.Count - 1);
-		StackPanel profilePanel = new StackPanel();
-		string[] names = c.Profiles.Select((Profile pr, int i) => $"M{i + 1} · {pr.Name}").ToArray();
-		p.Children.Add(Combo(L.T("Profile"), names, () => _logiProfile, delegate(int v)
-		{
-			_logiProfile = v;
-			profilePanel.Children.Clear();
-			profilePanel.Children.Add(LogiProfileEditor(c, c.Profiles[v], st));
-		}, apply: false));
-		profilePanel.Children.Add(LogiProfileEditor(c, c.Profiles[_logiProfile], st));
-		p.Children.Add(profilePanel);
-		p.Children.Add(Caption(L.T("Dim when idle")));
 		p.Children.Add(SliderRow(L.T("Dim after"), 0.0, 30.0, 1.0, () => c.IdleMinutes, delegate(int v)
 		{
 			c.IdleMinutes = v;
@@ -133,17 +461,14 @@ internal sealed partial class SettingsWindow
 			c.IdleBrightness = v;
 			LogiChanged();
 		}, (int v) => $"{v}%", apply: false));
-		p.Children.Add(Note(L.T("Any key press brings the light back. The light goes off while the screen is off, the PC is locked or asleep. Below 15% battery the brightness is at most 30%.")));
-		p.Children.Add(Caption(L.T("Keyboard memory")));
-		p.Children.Add(Note(L.T("PulseBar keeps the keyboard memory in step with the profiles by itself: colours and effects of the zones (for a profile with key colours — its base colour), dimming, G-keys with one key combination or a media key. They work when PulseBar is not running. A full backup is made before the first write.")));
-		WrapPanel buttons = new WrapPanel
-		{
-			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
-		};
+		TextBlock memory = Note("");
+		memory.Margin = new Thickness(0.0, 4.0, 0.0, 6.0);
+		p.Children.Add(memory);
+		WrapPanel buttons = new WrapPanel();
 		Button factory = new Button
 		{
 			Content = L.T("Restore factory profiles"),
-			Margin = new Thickness(0.0, 0.0, 8.0, 8.0)
+			Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
 		};
 		factory.Click += delegate
 		{
@@ -154,8 +479,7 @@ internal sealed partial class SettingsWindow
 		};
 		Button backup = new Button
 		{
-			Content = L.T("Back up keyboard memory"),
-			Margin = new Thickness(0.0, 0.0, 8.0, 8.0)
+			Content = L.T("Back up keyboard memory")
 		};
 		backup.Click += delegate
 		{
@@ -164,66 +488,26 @@ internal sealed partial class SettingsWindow
 		buttons.Children.Add(factory);
 		buttons.Children.Add(backup);
 		p.Children.Add(buttons);
-		_refresh = Refresh;
-		Refresh();
-		return p;
-		void Refresh()
+		refresh = delegate
 		{
 			ISettingsHost.Logitech s = _host.LogiStatus;
-			string device = (s.Device.Length > 0) ? (s.Device + ": " + (s.Online ? ((s.Battery >= 0) ? $"{L.T("battery")} {s.Battery}%" : L.T("connected")) : L.T("asleep or off"))) : L.T("No Logitech G keyboard found");
-			string mode = s.Mode switch
-			{
-				"ghub" => L.T("G HUB is running — PulseBar does not touch the keyboard"),
-				"off" => L.T("Logitech control is off"),
-				"host" => L.T("PulseBar controls the keyboard"),
-				"starting" => L.T("Connecting…"),
-				_ => ""
-			};
-			status.Text = device + ((mode.Length > 0) ? ("\n" + mode) : "") + ((s.Result.Length > 0) ? ("\n" + s.Result) : "");
 			factory.IsEnabled = backup.IsEnabled = s.Mode == "host";
 			foreign.Visibility = (s.Foreign.Length > 0) ? Visibility.Visible : Visibility.Collapsed;
 			foreignText.Text = (s.Foreign == "lamparray") ? L.T("Windows Dynamic Lighting repaints the keyboard (Logitech LampArray Service), and its colours can stay on top of PulseBar until the keyboard is switched off. Turn the service off (services.msc → Logitech LampArray Service → Disabled) or Dynamic Lighting entirely, then switch the keyboard off and on. Turning it off for this keyboard alone does not last: after each reconnect Windows sees a new device.") : L.T("Another program changes the keyboard lighting. PulseBar paints it back.");
 			lightingSettings.Visibility = (s.Foreign == "lamparray") ? Visibility.Visible : Visibility.Collapsed;
-		}
+			memory.Text = L.T("Keyboard memory (profiles on M1–M3) is updated by itself and works without PulseBar.") + ((s.Result.Length > 0) ? (" " + s.Result + ".") : "");
+		};
+		return p;
 	}
 
-	private UIElement LogiProfileEditor(LogiConfig c, Profile pr, ISettingsHost.Logitech st)
+	// ---------- Клавиши G ----------
+
+	private UIElement KeysTab(Profile pr)
 	{
-		StackPanel p = new StackPanel();
-		TextBox name = new TextBox
+		StackPanel p = new StackPanel
 		{
-			Text = pr.Name,
-			MinWidth = 220.0
+			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
 		};
-		name.TextChanged += delegate
-		{
-			pr.Name = name.Text.Trim();
-			LogiChanged();
-		};
-		p.Children.Add(LabeledRow(L.T("Name"), name));
-		// Клавиши: эффекты, которые есть у клавиатуры, и «По клавишам».
-		string[] keyEffects = (st.KeyEffects.Length > 0) ? st.KeyEffects : EffectIds;
-		StackPanel keysPanel = new StackPanel();
-		p.Children.Add(LightingRow(L.T("Keys"), pr.Keyboard, keyEffects, perKey: true, pr, delegate
-		{
-			keysPanel.Children.Clear();
-			if (pr.PerKey)
-			{
-				keysPanel.Children.Add(KeyEditor(c, pr, st.KeyIds));
-			}
-		}));
-		p.Children.Add(keysPanel);
-		if (pr.PerKey)
-		{
-			keysPanel.Children.Add(KeyEditor(c, pr, st.KeyIds));
-		}
-		p.Children.Add(LightingRow(L.T("Logo"), pr.Logo, (st.LogoEffects.Length > 0) ? st.LogoEffects : EffectIds, perKey: false, pr, null));
-		p.Children.Add(SliderRow(L.T("Brightness"), 1.0, 100.0, 1.0, () => pr.Brightness, delegate(int v)
-		{
-			pr.Brightness = v;
-			LogiChanged(200);
-		}, (int v) => $"{v}%", apply: false));
-		p.Children.Add(Caption(L.T("G-keys")));
 		string[] types = new string[5] { "none", "keys", "text", "run", "macro" };
 		string[] typeNames = new string[5]
 		{
@@ -240,13 +524,13 @@ internal sealed partial class SettingsWindow
 			{
 				ItemsSource = typeNames,
 				SelectedIndex = Math.Max(0, Array.IndexOf(types, a.Type)),
-				Width = 170.0,
+				Width = 180.0,
 				Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
 			};
 			TextBox value = new TextBox
 			{
 				Text = a.Value,
-				Width = 240.0
+				Width = 250.0
 			};
 			TextBlock where = new TextBlock
 			{
@@ -269,12 +553,20 @@ internal sealed partial class SettingsWindow
 			};
 			StackPanel row = new StackPanel
 			{
-				Orientation = Orientation.Horizontal
+				Orientation = Orientation.Horizontal,
+				Margin = new Thickness(0.0, 3.0, 0.0, 3.0)
 			};
+			row.Children.Add(new TextBlock
+			{
+				Text = key,
+				Width = 44.0,
+				VerticalAlignment = VerticalAlignment.Center,
+				FontWeight = FontWeights.SemiBold
+			});
 			row.Children.Add(type);
 			row.Children.Add(value);
 			row.Children.Add(where);
-			p.Children.Add(LabeledRow(key, row));
+			p.Children.Add(row);
 			Where();
 			void Where()
 			{
@@ -283,37 +575,46 @@ internal sealed partial class SettingsWindow
 				where.Text = (a.Type == "none" || string.IsNullOrWhiteSpace(a.Value)) ? "" : (hostOnly ? L.T("with PulseBar") : L.T("also without PulseBar"));
 			}
 		}
-		p.Children.Add(Note(L.T("Key combination: e.g. Ctrl+Shift+F5 or PlayPause. Macro: steps separated by ';' — wait 100; text Hello; Enter; run notepad.")));
-		TextBox apps = new TextBox
-		{
-			Text = pr.Apps,
-			MinWidth = 220.0
-		};
-		apps.TextChanged += delegate
-		{
-			pr.Apps = apps.Text;
-			LogiChanged();
-		};
-		p.Children.Add(LabeledRow(L.T("Switch automatically for programs:"), apps));
-		p.Children.Add(Note(L.T("For example: game.exe, obs64. When the program is in front this profile turns on; when it is not — the profile chosen last with M1–M3.")));
+		TextBlock note = Note(L.T("Key combination: e.g. Ctrl+Shift+F5 or PlayPause. Macro: steps separated by ';' — wait 100; text Hello; Enter; run notepad."));
+		note.Margin = new Thickness(0.0, 8.0, 0.0, 0.0);
+		p.Children.Add(note);
 		return p;
 	}
 
-	// Подсветка зоны: эффект (для клавиш ещё «По клавишам»), цвет #RRGGBB и период для дыхания и перелива.
-	private UIElement LightingRow(string label, Lighting l, string[] effects, bool perKey, Profile pr, Action? perKeyChanged)
+	// ---------- Подсветка ----------
+
+	private UIElement LightingTab(LogiConfig c, Profile pr, ISettingsHost.Logitech st)
+	{
+		StackPanel p = new StackPanel
+		{
+			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
+		};
+		_lightingRefresh.Clear();
+		StackPanel editorPanel = new StackPanel();
+		string[] keyEffects = (st.KeyEffects.Length > 0) ? st.KeyEffects : EffectIds;
+		p.Children.Add(LightingRow(L.T("Keys"), pr.Keyboard, keyEffects, delegate
+		{
+			editorPanel.Visibility = pr.PerKey ? Visibility.Visible : Visibility.Collapsed;
+		}));
+		p.Children.Add(LightingRow(L.T("Logo"), pr.Logo, (st.LogoEffects.Length > 0) ? st.LogoEffects : EffectIds, null));
+		p.Children.Add(SliderRow(L.T("Brightness"), 1.0, 100.0, 1.0, () => pr.Brightness, delegate(int v)
+		{
+			pr.Brightness = v;
+			LogiChanged(200);
+		}, (int v) => $"{v}%", apply: false));
+		editorPanel.Children.Add(KeyEditor(pr, st.KeyIds));
+		editorPanel.Visibility = pr.PerKey ? Visibility.Visible : Visibility.Collapsed;
+		p.Children.Add(editorPanel);
+		return p;
+	}
+
+	// Подсветка зоны: эффект, цвет (у статичного — базовый цвет клавиш, у дыхания — цвет дыхания), период для анимаций.
+	private UIElement LightingRow(string label, Lighting l, string[] effects, Action? effectChanged)
 	{
 		List<string> ids = effects.Where(e => EffectIds.Contains(e)).ToList();
 		List<string> items = ids.Select(EffectName).ToList();
-		if (perKey)
-		{
-			items.Add(L.T("By key"));
-		}
 		int Selected()
 		{
-			if (perKey && pr.PerKey)
-			{
-				return items.Count - 1;
-			}
 			int i = ids.IndexOf(l.Effect);
 			return (i >= 0) ? i : Math.Max(0, ids.IndexOf("static"));
 		}
@@ -321,27 +622,24 @@ internal sealed partial class SettingsWindow
 		{
 			ItemsSource = items,
 			SelectedIndex = Selected(),
-			Width = 170.0,
+			Width = 160.0,
 			Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
 		};
 		TextBox color = new TextBox
 		{
 			Text = l.Color,
-			Width = 90.0
+			Width = 86.0
 		};
 		Border swatch = new Border
 		{
 			Width = 24.0,
 			Height = 24.0,
 			CornerRadius = new CornerRadius(4.0),
-			Margin = new Thickness(8.0, 0.0, 8.0, 0.0),
+			Margin = new Thickness(6.0, 0.0, 6.0, 0.0),
 			BorderThickness = new Thickness(1.0),
-			BorderBrush = Brushes.Gray
-		};
-		Button pick = new Button
-		{
-			Content = "…",
-			MinWidth = 36.0
+			BorderBrush = Brushes.Gray,
+			Cursor = Cursors.Hand,
+			ToolTip = L.T("Choose colour")
 		};
 		StackPanel colorRow = new StackPanel
 		{
@@ -349,15 +647,14 @@ internal sealed partial class SettingsWindow
 		};
 		colorRow.Children.Add(color);
 		colorRow.Children.Add(swatch);
-		colorRow.Children.Add(pick);
 		Slider period = new Slider
 		{
 			Minimum = 1.0,
 			Maximum = 20.0,
 			TickFrequency = 0.5,
 			IsSnapToTickEnabled = true,
-			Width = 140.0,
-			Margin = new Thickness(12.0, 0.0, 0.0, 0.0),
+			Width = 130.0,
+			Margin = new Thickness(8.0, 0.0, 0.0, 0.0),
 			VerticalAlignment = VerticalAlignment.Center,
 			ToolTip = L.T("Effect period, seconds")
 		};
@@ -365,12 +662,12 @@ internal sealed partial class SettingsWindow
 		{
 			Margin = new Thickness(6.0, 0.0, 0.0, 0.0),
 			VerticalAlignment = VerticalAlignment.Center,
-			Width = 44.0
+			Width = 40.0
 		};
 		bool loading = true;
 		void Visible()
 		{
-			string e = (perKey && pr.PerKey) ? "static" : l.Effect;
+			string e = l.Effect;
 			colorRow.Visibility = (e == "static" || e == "breathing") ? Visibility.Visible : Visibility.Collapsed;
 			period.Visibility = periodText.Visibility = (e == "breathing" || e == "cycle" || e == "wave") ? Visibility.Visible : Visibility.Collapsed;
 			int ms = (l.Period > 0) ? l.Period : e switch
@@ -386,26 +683,9 @@ internal sealed partial class SettingsWindow
 		}
 		effect.SelectionChanged += delegate
 		{
-			int i = Math.Max(0, effect.SelectedIndex);
-			bool wasPerKey = pr.PerKey;
-			if (perKey && i == items.Count - 1)
-			{
-				pr.PerKey = true;
-				l.Effect = "static";
-			}
-			else
-			{
-				if (perKey)
-				{
-					pr.PerKey = false;
-				}
-				l.Effect = ids[i];
-			}
+			l.Effect = ids[Math.Max(0, effect.SelectedIndex)];
 			Visible();
-			if (perKey && wasPerKey != pr.PerKey)
-			{
-				perKeyChanged?.Invoke();
-			}
+			effectChanged?.Invoke();
 			LogiChanged(200);
 		};
 		color.TextChanged += delegate
@@ -419,7 +699,7 @@ internal sealed partial class SettingsWindow
 				LogiChanged(200);
 			}
 		};
-		pick.Click += delegate
+		swatch.MouseLeftButtonDown += delegate
 		{
 			if (PickColor(Rgb.Parse(l.Color), out Rgb v))
 			{
@@ -445,12 +725,18 @@ internal sealed partial class SettingsWindow
 		row.Children.Add(colorRow);
 		row.Children.Add(period);
 		row.Children.Add(periodText);
+		_lightingRefresh.Add(delegate
+		{
+			color.Text = l.Color;
+		});
 		return LabeledRow(label, row);
 		void Paint()
 		{
 			swatch.Background = Brush(Rgb.Parse(l.Color));
 		}
 	}
+
+	private readonly List<Action> _lightingRefresh = new List<Action>();
 
 	private static SolidColorBrush Brush(Rgb c)
 	{
@@ -475,16 +761,17 @@ internal sealed partial class SettingsWindow
 
 	private Action? _keyEditorRefresh;
 
-	// Редактор цветов клавиш: кисть — левая кнопка (можно вести по клавишам), правая — вернуть базовый цвет.
-	private UIElement KeyEditor(LogiConfig c, Profile pr, byte[] keyIds)
+	// Редактор цветов клавиш: кисть — левая кнопка (можно вести по клавишам), правая — вернуть базовый цвет; пипетка
+	// берёт цвет с клавиши; логотип — квадратик над G1 (его цвет — цвет зоны логотипа). Отменить/повторить — по штрихам.
+	private UIElement KeyEditor(Profile pr, byte[] keyIds)
 	{
 		const double U = 34.0;
 		KeyDef[] layout = KeyLayout.For(keyIds);
 		StackPanel p = new StackPanel
 		{
-			Margin = new Thickness(0.0, 4.0, 0.0, 8.0)
+			Margin = new Thickness(0.0, 6.0, 0.0, 0.0)
 		};
-		// Панель кисти: текущий цвет, выбор цвета, последние цвета.
+		// Инструменты: кисть, выбор цвета, пипетка, все клавиши, сброс, отменить/повторить, последние цвета.
 		WrapPanel tools = new WrapPanel
 		{
 			Margin = new Thickness(0.0, 0.0, 0.0, 6.0)
@@ -498,19 +785,32 @@ internal sealed partial class SettingsWindow
 			BorderBrush = Brushes.Gray,
 			Background = Brush(_brush),
 			ToolTip = L.T("Brush colour"),
+			Cursor = Cursors.Hand,
 			Margin = new Thickness(0.0, 0.0, 6.0, 0.0)
 		};
-		Button pick = new Button
+		ToggleButton dropper = new ToggleButton
 		{
-			Content = L.T("Colour…"),
-			Margin = new Thickness(0.0, 0.0, 12.0, 0.0)
+			Content = L.T("Eyedropper"),
+			Margin = new Thickness(0.0, 0.0, 6.0, 0.0),
+			ToolTip = L.T("Take the colour of a key")
 		};
+		Button all = ToolButton(L.T("All keys"));
+		Button clear = ToolButton(L.T("Clear key colours"));
+		Button undo = ToolButton("↶");
+		undo.ToolTip = L.T("Undo") + " (Ctrl+Z)";
+		Button redo = ToolButton("↷");
+		redo.ToolTip = L.T("Redo") + " (Ctrl+Y)";
 		WrapPanel recent = new WrapPanel
 		{
-			VerticalAlignment = VerticalAlignment.Center
+			VerticalAlignment = VerticalAlignment.Center,
+			Margin = new Thickness(6.0, 0.0, 0.0, 0.0)
 		};
 		tools.Children.Add(brush);
-		tools.Children.Add(pick);
+		tools.Children.Add(dropper);
+		tools.Children.Add(all);
+		tools.Children.Add(clear);
+		tools.Children.Add(undo);
+		tools.Children.Add(redo);
 		tools.Children.Add(recent);
 		p.Children.Add(tools);
 		Canvas canvas = new Canvas
@@ -522,29 +822,20 @@ internal sealed partial class SettingsWindow
 		Dictionary<byte, Border> keys = new Dictionary<byte, Border>();
 		foreach (KeyDef k in layout)
 		{
-			TextBlock label = new TextBlock
-			{
-				Text = k.Label,
-				FontSize = 10.0,
-				HorizontalAlignment = HorizontalAlignment.Center,
-				VerticalAlignment = VerticalAlignment.Center,
-				IsHitTestVisible = false
-			};
-			Border b = new Border
-			{
-				Width = k.W * U - 3.0,
-				Height = k.H * U - 3.0,
-				CornerRadius = new CornerRadius(4.0),
-				BorderThickness = new Thickness(1.0),
-				BorderBrush = new SolidColorBrush(Color.FromArgb(0x60, 0x80, 0x80, 0x80)),
-				Child = label,
-				Tag = k.Id
-			};
+			Border b = KeyBox(k.Label, k.W, k.H);
 			Canvas.SetLeft(b, k.X * U);
 			Canvas.SetTop(b, (k.Y + 1.25) * U);
 			canvas.Children.Add(b);
 			keys[k.Id] = b;
 		}
+		// Логотип — над G1, в ряду F-клавиш.
+		KeyDef logoDef = new KeyDef(KeyLayout.Logo, "G", 0f, 0f);
+		Border logo = KeyBox("G", 1f, 1f);
+		logo.CornerRadius = new CornerRadius(8.0);
+		logo.ToolTip = L.T("Logo");
+		Canvas.SetLeft(logo, 0.0);
+		Canvas.SetTop(logo, 1.25 * U);
+		canvas.Children.Add(logo);
 		p.Children.Add(new Viewbox
 		{
 			Child = canvas,
@@ -552,66 +843,12 @@ internal sealed partial class SettingsWindow
 			StretchDirection = StretchDirection.DownOnly,
 			HorizontalAlignment = HorizontalAlignment.Left
 		});
-		// Быстрые группы, сброс, копирование из другого профиля.
-		WrapPanel groups = new WrapPanel
-		{
-			Margin = new Thickness(0.0, 6.0, 0.0, 0.0)
-		};
-		void GroupButton(string text, Action click)
-		{
-			Button b = new Button
-			{
-				Content = text,
-				Margin = new Thickness(0.0, 0.0, 6.0, 6.0),
-				Padding = new Thickness(8.0, 2.0, 8.0, 2.0)
-			};
-			b.Click += delegate
-			{
-				click();
-			};
-			groups.Children.Add(b);
-		}
-		GroupButton(L.T("All keys"), delegate
-		{
-			PaintMany(keys.Keys);
-		});
-		foreach (var (gname, gids) in KeyLayout.Groups)
-		{
-			byte[] ids = gids;
-			GroupButton(L.T(gname), delegate
-			{
-				PaintMany(ids.Where(keys.ContainsKey));
-			});
-		}
-		GroupButton(L.T("Clear key colours"), delegate
-		{
-			pr.KeyColors.Clear();
-			Refresh();
-			LogiChanged(200);
-		});
-		p.Children.Add(groups);
-		WrapPanel copyRow = new WrapPanel();
-		int self = c.Profiles.IndexOf(pr);
-		foreach (int i in Enumerable.Range(0, c.Profiles.Count).Where(i => i != self))
-		{
-			Profile from = c.Profiles[i];
-			Button b = new Button
-			{
-				Content = L.F("Copy colours from M{0}", i + 1),
-				Margin = new Thickness(0.0, 0.0, 6.0, 6.0),
-				Padding = new Thickness(8.0, 2.0, 8.0, 2.0)
-			};
-			b.Click += delegate
-			{
-				pr.KeyColors = new Dictionary<string, string>(from.KeyColors);
-				pr.Keyboard.Color = from.Keyboard.Color;
-				Refresh();
-				LogiChanged(200);
-			};
-			copyRow.Children.Add(b);
-		}
-		p.Children.Add(copyRow);
-		p.Children.Add(Note(L.T("Left button paints (you can drag across keys), right button returns the base colour. Changes are visible on the keyboard at once.")));
+		TextBlock help = Note(L.T("Left button paints (you can drag across keys), right button returns the base colour. Changes are visible on the keyboard at once."));
+		help.Margin = new Thickness(0.0, 4.0, 0.0, 0.0);
+		p.Children.Add(help);
+		// Отменить/повторить: снимки цветов клавиш и логотипа.
+		Stack<(Dictionary<string, string> Keys, string Logo)> undoStack = new Stack<(Dictionary<string, string>, string)>();
+		Stack<(Dictionary<string, string> Keys, string Logo)> redoStack = new Stack<(Dictionary<string, string>, string)>();
 		bool painting = false;
 		bool erase = false;
 		canvas.MouseLeftButtonDown += (object s, MouseButtonEventArgs e) => Begin(e, eraseMode: false);
@@ -635,19 +872,142 @@ internal sealed partial class SettingsWindow
 		{
 			painting = false;
 		};
-		pick.Click += delegate
+		brush.MouseLeftButtonDown += delegate
 		{
 			if (PickColor(_brush, out Rgb v))
 			{
 				SetBrush(v);
 			}
 		};
+		all.Click += delegate
+		{
+			Snapshot();
+			Remember(_brush);
+			foreach (byte id in keys.Keys)
+			{
+				pr.KeyColors[id.ToString("X2")] = _brush.ToString();
+			}
+			Refresh();
+			LogiChanged(200);
+		};
+		clear.Click += delegate
+		{
+			Snapshot();
+			pr.KeyColors.Clear();
+			Refresh();
+			LogiChanged(200);
+		};
+		undo.Click += delegate
+		{
+			Step(undoStack, redoStack);
+		};
+		redo.Click += delegate
+		{
+			Step(redoStack, undoStack);
+		};
+		// Ctrl+Z / Ctrl+Y — пока редактор на экране (вкладка подсветки выгружается при переключении вкладок).
+		p.Loaded += delegate
+		{
+			PreviewKeyDown -= OnKey;
+			PreviewKeyDown += OnKey;
+		};
+		p.Unloaded += delegate
+		{
+			PreviewKeyDown -= OnKey;
+		};
 		_keyEditorRefresh = Refresh;
 		Refresh();
 		Recent();
+		Buttons();
 		return p;
+		void OnKey(object s, KeyEventArgs e)
+		{
+			if (!p.IsVisible || Keyboard.Modifiers != ModifierKeys.Control || Keyboard.FocusedElement is TextBox)
+			{
+				return;
+			}
+			if (e.Key == Key.Z)
+			{
+				Step(undoStack, redoStack);
+				e.Handled = true;
+			}
+			else if (e.Key == Key.Y)
+			{
+				Step(redoStack, undoStack);
+				e.Handled = true;
+			}
+		}
+		Button ToolButton(string text)
+		{
+			return new Button
+			{
+				Content = text,
+				Margin = new Thickness(0.0, 0.0, 6.0, 0.0),
+				Padding = new Thickness(8.0, 2.0, 8.0, 2.0)
+			};
+		}
+		Border KeyBox(string text, float w, float h)
+		{
+			return new Border
+			{
+				Width = w * U - 3.0,
+				Height = h * U - 3.0,
+				CornerRadius = new CornerRadius(4.0),
+				BorderThickness = new Thickness(1.0),
+				BorderBrush = new SolidColorBrush(Color.FromArgb(0x60, 0x80, 0x80, 0x80)),
+				Child = new TextBlock
+				{
+					Text = text,
+					FontSize = 10.0,
+					HorizontalAlignment = HorizontalAlignment.Center,
+					VerticalAlignment = VerticalAlignment.Center,
+					IsHitTestVisible = false
+				}
+			};
+		}
+		void Snapshot()
+		{
+			undoStack.Push((new Dictionary<string, string>(pr.KeyColors), pr.Logo.Color));
+			redoStack.Clear();
+			Buttons();
+		}
+		void Step(Stack<(Dictionary<string, string> Keys, string Logo)> from, Stack<(Dictionary<string, string> Keys, string Logo)> to)
+		{
+			if (from.Count == 0)
+			{
+				return;
+			}
+			to.Push((new Dictionary<string, string>(pr.KeyColors), pr.Logo.Color));
+			var (k, l) = from.Pop();
+			pr.KeyColors = k;
+			pr.Logo.Color = l;
+			Refresh();
+			foreach (Action a in _lightingRefresh)
+			{
+				a();
+			}
+			Buttons();
+			LogiChanged(200);
+		}
+		void Buttons()
+		{
+			undo.IsEnabled = undoStack.Count > 0;
+			redo.IsEnabled = redoStack.Count > 0;
+		}
 		void Begin(MouseButtonEventArgs e, bool eraseMode)
 		{
+			Point pt = e.GetPosition(canvas);
+			if (dropper.IsChecked == true)
+			{
+				if (ColorAt(pt) is Rgb picked)
+				{
+					SetBrush(picked);
+				}
+				dropper.IsChecked = false;
+				e.Handled = true;
+				return;
+			}
+			Snapshot();
 			painting = true;
 			erase = eraseMode;
 			canvas.CaptureMouse();
@@ -655,7 +1015,7 @@ internal sealed partial class SettingsWindow
 			{
 				Remember(_brush);
 			}
-			PaintAt(e.GetPosition(canvas));
+			PaintAt(pt);
 			e.Handled = true;
 		}
 		void End()
@@ -663,11 +1023,46 @@ internal sealed partial class SettingsWindow
 			painting = false;
 			canvas.ReleaseMouseCapture();
 		}
-		void PaintAt(Point pt)
+		bool Inside(Point pt, KeyDef k)
 		{
+			return pt.X >= k.X * U && pt.X < (k.X + k.W) * U && pt.Y >= (k.Y + 1.25) * U && pt.Y < (k.Y + 1.25 + k.H) * U;
+		}
+		Rgb? ColorAt(Point pt)
+		{
+			if (Inside(pt, logoDef))
+			{
+				return Rgb.Parse(pr.Logo.Color);
+			}
 			foreach (KeyDef k in layout)
 			{
-				if (pt.X >= k.X * U && pt.X < (k.X + k.W) * U && pt.Y >= (k.Y + 1.25) * U && pt.Y < (k.Y + 1.25 + k.H) * U)
+				if (Inside(pt, k))
+				{
+					return pr.KeyColors.TryGetValue(k.Id.ToString("X2"), out string? v) ? Rgb.Parse(v) : Rgb.Parse(pr.Keyboard.Color);
+				}
+			}
+			return null;
+		}
+		void PaintAt(Point pt)
+		{
+			if (Inside(pt, logoDef))
+			{
+				// Логотип: кисть задаёт цвет зоны логотипа (статичный), правая кнопка его не трогает.
+				if (!erase && pr.Logo.Color != _brush.ToString())
+				{
+					pr.Logo.Color = _brush.ToString();
+					pr.Logo.Effect = "static";
+					ShowLogo();
+					foreach (Action a in _lightingRefresh)
+					{
+						a();
+					}
+					LogiChanged(200);
+				}
+				return;
+			}
+			foreach (KeyDef k in layout)
+			{
+				if (Inside(pt, k))
 				{
 					string id = k.Id.ToString("X2");
 					if (erase)
@@ -691,23 +1086,19 @@ internal sealed partial class SettingsWindow
 				}
 			}
 		}
-		void PaintMany(IEnumerable<byte> ids)
-		{
-			Remember(_brush);
-			foreach (byte id in ids)
-			{
-				pr.KeyColors[id.ToString("X2")] = _brush.ToString();
-				Show(id);
-			}
-			LogiChanged(200);
-		}
 		void Show(byte id)
 		{
-			if (!keys.TryGetValue(id, out Border? b))
+			if (keys.TryGetValue(id, out Border? b))
 			{
-				return;
+				Fill(b, pr.KeyColors.TryGetValue(id.ToString("X2"), out string? v) ? Rgb.Parse(v) : Rgb.Parse(pr.Keyboard.Color));
 			}
-			Rgb col = pr.KeyColors.TryGetValue(id.ToString("X2"), out string? v) ? Rgb.Parse(v) : Rgb.Parse(pr.Keyboard.Color);
+		}
+		void ShowLogo()
+		{
+			Fill(logo, (pr.Logo.Effect == "off") ? Rgb.Black : Rgb.Parse(pr.Logo.Color));
+		}
+		void Fill(Border b, Rgb col)
+		{
 			b.Background = Brush(col);
 			((TextBlock)b.Child).Foreground = (col.R * 299 + col.G * 587 + col.B * 114 > 140000) ? Brushes.Black : Brushes.White;
 		}
@@ -717,6 +1108,7 @@ internal sealed partial class SettingsWindow
 			{
 				Show(id);
 			}
+			ShowLogo();
 		}
 		void SetBrush(Rgb v)
 		{

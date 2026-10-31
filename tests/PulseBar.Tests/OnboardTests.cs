@@ -66,7 +66,7 @@ public class OnboardTests
 		LogiConfig c = Config(p =>
 		{
 			p.Name = "Work";
-			p.PerKey = true;
+			p.Keyboard.Effect = "static";
 			p.Keyboard.Color = "#DE4AFD";
 			p.KeyColors["17"] = "#FF8000";
 			p.Brightness = 50;

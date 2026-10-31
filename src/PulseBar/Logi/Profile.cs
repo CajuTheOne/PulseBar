@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace PulseBar.Logi;
 
-// Профиль M1–M3 (2.3). PerKey — режим «по клавишам»: базовый цвет Keyboard.Color и свои цвета KeyColors
-// (ключ — номер клавиши 0x8081 в hex, значение #RRGGBB), статично; иначе на клавишах эффект Keyboard.
+// Профиль подсветки и клавиш (2.3; на M1–M3 — через слоты LogiConfig.Slots). Статичный режим клавиш (PerKey) — базовый
+// цвет Keyboard.Color и свои цвета KeyColors (ключ — номер клавиши 0x8081 в hex, значение #RRGGBB); иначе на клавишах
+// эффект Keyboard по всей клавиатуре.
 // Keys — действия G1–G5 и MR; Apps — программы для автопереключения (через запятую, «.exe» можно не писать).
 internal sealed class Profile
 {
@@ -18,7 +20,14 @@ internal sealed class Profile
 
 	public Lighting Logo { get; set; } = new Lighting();
 
-	public bool PerKey { get; set; }
+	// Статичный режим клавиш: базовый цвет и свои цвета клавиш (в анимациях свои цвета не действуют).
+	[JsonIgnore]
+	public bool PerKey => Keyboard.Effect == "static";
+
+	// Флаг «по клавишам» из файлов версий 1–2 — только для переноса, в файл версии 3 не пишется.
+	[JsonPropertyName("perKey")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public bool LegacyPerKey { get; set; }
 
 	public int Brightness { get; set; } = 100;
 

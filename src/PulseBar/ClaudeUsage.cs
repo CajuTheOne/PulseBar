@@ -34,6 +34,9 @@ internal sealed class ClaudeUsage : IDisposable
 
 	private static readonly string AccountCache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "claude-account.json");
 
+	// Журнал приложения Claude: по нему видно, что приложение перестало обновлять историю.
+	private static readonly string AppLog = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Claude", "logs", "main.log");
+
 	private string? _profileToken;
 
 	private DateTimeOffset _profileRetryAt = DateTimeOffset.MinValue;
@@ -87,6 +90,9 @@ internal sealed class ClaudeUsage : IDisposable
 
 	// Последняя причина, почему нет свежих данных из API (для подсказки и журнала).
 	public volatile string ApiStatus = "";
+
+	// Почему история приложения Claude не обновляется ("" — обновляется или причина неизвестна).
+	public volatile string AppStatus = "";
 
 	public bool Available => Current != null;
 
@@ -149,7 +155,9 @@ internal sealed class ClaudeUsage : IDisposable
 				}
 				next = Newer(next, FromHistory(target));
 			}
-			Current = next;
+			next = Expire(next);
+			AppStatus = (next != null && next.Source == "claude app" && DateTimeOffset.Now - next.Updated > TimeSpan.FromMinutes(30) && AppPaused()) ? L.T("The Claude app paused usage updates: open its usage window (Claude icon in the tray)") : "";
+				Current = next;
 			if (!Equals(before, next))
 			{
 				Changed?.Invoke();
@@ -184,6 +192,62 @@ internal sealed class ClaudeUsage : IDisposable
 	}
 
 	private static DateTimeOffset? Future(DateTimeOffset? t) => t > DateTimeOffset.Now ? t : null;
+
+	// Окно лимита уже сбросилось (прошло время сброса, а если оно неизвестно — 5 часов или 7 дней с замера):
+	// старые проценты ничего не значат, показывается «—».
+	private static Snapshot? Expire(Snapshot? s)
+	{
+		if (s == null)
+		{
+			return null;
+		}
+		DateTimeOffset now = DateTimeOffset.Now;
+		bool fiveOld = s.FiveHourReset.HasValue ? (s.FiveHourReset <= now) : (now - s.Updated > TimeSpan.FromHours(5));
+		bool weekOld = s.SevenDayReset.HasValue ? (s.SevenDayReset <= now) : (now - s.Updated > TimeSpan.FromDays(7));
+		if (!fiveOld && !weekOld)
+		{
+			return s;
+		}
+		return s with
+		{
+			FiveHour = fiveOld ? float.NaN : s.FiveHour,
+			FiveHourReset = fiveOld ? null : s.FiveHourReset,
+			SevenDay = weekOld ? float.NaN : s.SevenDay,
+			SevenDayReset = weekOld ? null : s.SevenDayReset
+		};
+	}
+
+	// Приложение Claude опрашивает лимиты, только если его окно расхода открывали за последние 24 часа; иначе пишет в
+	// журнал «[plan-usage] background poll paused: tray not opened recently» (проверено 01.11.2026). Смотрим последнюю
+	// запись [plan-usage] в конце журнала.
+	private static bool AppPaused()
+	{
+		try
+		{
+			if (!File.Exists(AppLog))
+			{
+				return false;
+			}
+			using FileStream f = new(AppLog, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+			long start = Math.Max(0, f.Length - 256 * 1024);
+			f.Seek(start, SeekOrigin.Begin);
+			using StreamReader r = new(f);
+			string? last = null;
+			string? line;
+			while ((line = r.ReadLine()) != null)
+			{
+				if (line.Contains("[plan-usage]", StringComparison.Ordinal) && (line.Contains("poll paused", StringComparison.Ordinal) || line.Contains("poll resumed", StringComparison.Ordinal) || line.Contains("polling", StringComparison.OrdinalIgnoreCase) || line.Contains("tray opened", StringComparison.Ordinal)))
+				{
+					last = line;
+				}
+			}
+			return last != null && last.Contains("poll paused", StringComparison.Ordinal);
+		}
+		catch (Exception)
+		{
+			return false;
+		}
+	}
 
 	// null — нет файла (Claude Code не вошёл); пустой токен при loggedIn — токен истёк, ждём, пока Claude Code его обновит.
 	private static string? ReadToken(out bool loggedIn)

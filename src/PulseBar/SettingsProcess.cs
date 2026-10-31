@@ -90,6 +90,7 @@ internal static class SettingsProcess
 					w.WriteEndObject();
 				}
 				w.WriteString("claudeApi", claude.ApiStatus);
+				w.WriteString("claudeApp", claude.AppStatus);
 				w.WriteString("claudeAccount", claude.AccountLabel);
 				w.WriteStartObject("logi");
 				w.WriteString("device", logi.KeyboardName);
@@ -182,6 +183,8 @@ internal static class SettingsProcess
 
 		private string _claudeApi = "";
 
+		private string _claudeApp = "";
+
 		private string _claudeAccount = "";
 
 		private bool _edit;
@@ -225,6 +228,8 @@ internal static class SettingsProcess
 		}
 
 		public string ClaudeApiStatus => _claudeApi;
+
+		public string ClaudeAppStatus => _claudeApp;
 
 		public string ClaudeAccount => _claudeAccount;
 
@@ -391,6 +396,7 @@ internal static class SettingsProcess
 					_readings.ClaudeStale = _claude.Stale;
 				}
 				_claudeApi = e.TryGetProperty("claudeApi", out JsonElement api) ? (api.GetString() ?? "") : "";
+				_claudeApp = e.TryGetProperty("claudeApp", out JsonElement app) ? (app.GetString() ?? "") : "";
 				if (e.TryGetProperty("logi", out JsonElement lg) && lg.ValueKind == JsonValueKind.Object)
 				{
 					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""), lg.TryGetProperty("foreign", out JsonElement fl) ? (fl.GetString() ?? "") : "");

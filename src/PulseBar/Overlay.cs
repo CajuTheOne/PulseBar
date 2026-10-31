@@ -1545,6 +1545,10 @@ internal sealed class Overlay : Form
 				int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - c.Updated).TotalMinutes);
 				rows.Add((L.T("Updated"), L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")", c.Stale ? _palette.Warn : null));
 			}
+			if (_claude.AppStatus.Length > 0)
+			{
+				rows.Add((L.T("Claude app"), _claude.AppStatus, _palette.Warn));
+			}
 			if (_claude.ApiStatus.Length > 0)
 			{
 				rows.Add(("API", _claude.ApiStatus, _palette.NoData));
@@ -1670,8 +1674,8 @@ internal sealed class Overlay : Form
 			{
 				if (e.Button == MouseButtons.Left)
 				{
-					// Значок в трее (настройка «Значок в трее»): клик — вкладка Logitech окна настроек.
-					OpenSettings(4);
+					// Значок в трее (настройка «Значок в трее»): клик — вкладка «Клавиатура» окна настроек.
+					OpenSettings(2);
 				}
 				else if (e.Button == MouseButtons.Right)
 				{

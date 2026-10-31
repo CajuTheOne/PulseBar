@@ -56,7 +56,9 @@ internal static class Program
 		}
 		if (args != null && args.Length >= 3 && args[0] == "--shot-settings")
 		{
-			return SettingsShot.Run(args[1], int.Parse(args[2]), args.Length > 3 && args[3] == "expand", (args.Length > 4) ? args[4] : null);
+			// Страница «2:0» — вкладка 2, внутренняя вкладка 0 (у «Клавиатуры»).
+			string[] pg = args[2].Split(':');
+			return SettingsShot.Run(args[1], int.Parse(pg[0]), args.Length > 3 && args[3] == "expand", (args.Length > 4) ? args[4] : null, (pg.Length > 1) ? int.Parse(pg[1]) : (-1));
 		}
 		using Mutex mutex = AcquireSingleInstance();
 		if (mutex == null)

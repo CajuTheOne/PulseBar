@@ -26,6 +26,8 @@ internal static class SettingsShot
 
 		public string ClaudeApiStatus => "";
 
+		public string ClaudeAppStatus => "";
+
 		public string ClaudeAccount { get; init; } = "";
 
 		public Updater Updater { get; } = new Updater();
@@ -81,9 +83,19 @@ internal static class SettingsShot
 		}
 	}
 
-	public static int Run(string png, int page, bool expand, string? language)
+	public static int Run(string png, int page, bool expand, string? language, int subTab = -1)
 	{
 		Settings s = Settings.Load();
+		string copy = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "PulseBar-shot-logitech.json");
+		if (System.IO.File.Exists(Logi.LogiConfig.FilePath))
+		{
+			System.IO.File.Copy(Logi.LogiConfig.FilePath, copy, overwrite: true);
+		}
+		Logi.LogiConfig.PathOverride = copy;
+		if (subTab >= 0)
+		{
+			SettingsWindow.KeyboardTab = subTab;
+		}
 		L.Set(language ?? s.Language);
 		using ClaudeUsage claude = new ClaudeUsage(s.ClaudeIntervalMin, api: false);
 		Thread.Sleep(4500);

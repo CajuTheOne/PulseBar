@@ -35,6 +35,8 @@ internal interface ISettingsHost
 
 	string ClaudeApiStatus { get; }
 
+	string ClaudeAppStatus { get; }
+
 	// Почта аккаунта Claude Code, для которого показаны лимиты.
 	string ClaudeAccount { get; }
 
@@ -120,7 +122,6 @@ internal sealed partial class SettingsWindow : Window
 		_pages.Add((L.T("Thresholds"), ThresholdsPage));
 		_pages.Add((L.T("Keyboard"), KeyboardPage));
 		_pages.Add((L.T("Mouse"), MousePage));
-		_pages.Add(("Logitech", LogitechPage));
 		_pages.Add(("Claude", ClaudePage));
 		_pages.Add((L.T("About"), AboutPage));
 		foreach (var (title, _) in _pages)
@@ -653,30 +654,6 @@ internal sealed partial class SettingsWindow : Window
 
 	// ---------- Клавиатура и мышь ----------
 
-	private UIElement KeyboardPage()
-	{
-		StackPanel p = Page(L.T("Keyboard"));
-		p.Children.Add(Caption(L.T("Windows keyboard settings (all keyboards)")));
-		p.Children.Add(SliderRow(L.T("Repeat delay"), 0.0, 3.0, 1.0, () => KeyboardSys.RepeatDelay, delegate(int v)
-		{
-			KeyboardSys.RepeatDelay = v;
-		}, (int v) => $"{250 * (v + 1)} ms", apply: false));
-		p.Children.Add(SliderRow(L.T("Repeat rate"), 0.0, 31.0, 1.0, () => KeyboardSys.RepeatRate, delegate(int v)
-		{
-			KeyboardSys.RepeatRate = v;
-		}, (int v) => L.F("{0} per second", (int)Math.Round(2.5 + v * 27.5 / 31.0)), apply: false));
-		p.Children.Add(SliderRow(L.T("Cursor blink rate"), 0.0, 1200.0, 100.0, () => KeyboardSys.CaretBlinkMs, delegate(int v)
-		{
-			KeyboardSys.CaretBlinkMs = v;
-		}, (int v) => (v == 0) ? L.T("no blinking") : $"{v} ms", apply: false));
-		p.Children.Add(Caption(L.T("Try it here")));
-		p.Children.Add(new TextBox
-		{
-			Margin = new Thickness(0.0, 0.0, 0.0, 16.0)
-		});
-		return p;
-	}
-
 	private UIElement MousePage()
 	{
 		StackPanel p = Page(L.T("Mouse"));
@@ -744,7 +721,7 @@ internal sealed partial class SettingsWindow : Window
 				return;
 			}
 			int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - c.Updated).TotalMinutes);
-			status.Text = account + L.T("5 hours") + ": " + Pct(c.FiveHour) + Reset(c.FiveHourReset) + "\n" + L.T("7 days") + ": " + Pct(c.SevenDay) + Reset(c.SevenDayReset) + "\n" + L.T("Updated") + ": " + L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")" + (c.Stale ? (" — " + L.T("out of date")) : "") + ((_host.ClaudeApiStatus.Length > 0) ? ("\nclaude.ai: " + _host.ClaudeApiStatus) : "");
+			status.Text = account + L.T("5 hours") + ": " + Pct(c.FiveHour) + Reset(c.FiveHourReset) + "\n" + L.T("7 days") + ": " + Pct(c.SevenDay) + Reset(c.SevenDayReset) + "\n" + L.T("Updated") + ": " + L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")" + (c.Stale ? (" — " + L.T("out of date")) : "") + ((_host.ClaudeAppStatus.Length > 0) ? ("\n" + _host.ClaudeAppStatus) : "") + ((_host.ClaudeApiStatus.Length > 0) ? ("\nclaude.ai: " + _host.ClaudeApiStatus) : "");
 		}
 	}
 
