@@ -251,5 +251,9 @@
 "The API key is set.",
 "Turn the tile on in Appearance to start asking.",
 "Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com.",
-"Your looks"
+"Your looks",
+"Turn off after",
+"off",
+"While G HUB is running PulseBar only reads the battery.",
+"{0} s"
 ]

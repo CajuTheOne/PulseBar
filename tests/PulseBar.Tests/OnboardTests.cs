@@ -20,8 +20,8 @@ public class OnboardTests
 		LogiConfig c = new LogiConfig
 		{
 			Version = LogiConfig.CurrentVersion,
-			IdleMinutes = 5,
-			IdleBrightness = 10
+			IdleSeconds = 300,
+			IdleBrightness = 20
 		};
 		c.Normalize();
 		edit?.Invoke(c.Profiles[0]);
@@ -73,7 +73,7 @@ public class OnboardTests
 		});
 		OnboardSector o = OnboardPlan.Build(new OnboardSector(Backup()[1]), c.Profiles[0], c);
 		Assert.AreEqual("static #6F257E", OnboardSector.DescribeLed(o.Led(OnboardSector.LedKeys)));
-		Assert.AreEqual("static #160719", OnboardSector.DescribeLed(o.Led(OnboardSector.LedKeysDim)), "dim = 10 % of the colour");
+		Assert.AreEqual("static #2C0E32", OnboardSector.DescribeLed(o.Led(OnboardSector.LedKeysDim)), "dim = 20 % of the colour");
 		Assert.AreEqual("Work", o.Name);
 		Assert.AreEqual(300, o.PowerSaveSeconds);
 		Assert.IsTrue(o.PowerOffSeconds >= 360);
@@ -93,7 +93,7 @@ public class OnboardTests
 		OnboardSector o = OnboardPlan.Build(new OnboardSector(Backup()[2]), c.Profiles[0], c);
 		Assert.AreEqual("breathe #00FF00 2000 ms, 100%", OnboardSector.DescribeLed(o.Led(OnboardSector.LedKeys)));
 		Assert.AreEqual("cycle 5000 ms, 100%", OnboardSector.DescribeLed(o.Led(OnboardSector.LedLogo)));
-		Assert.AreEqual("breathe #00FF00 2000 ms, 10%", OnboardSector.DescribeLed(o.Led(OnboardSector.LedKeysDim)));
+		Assert.AreEqual("breathe #00FF00 2000 ms, 20%", OnboardSector.DescribeLed(o.Led(OnboardSector.LedKeysDim)));
 	}
 
 	[TestMethod]
@@ -107,7 +107,7 @@ public class OnboardTests
 		Assert.AreEqual(0x04, led[0]);
 		CollectionAssert.AreEqual(was[..9], led[..9]);
 		Assert.AreEqual(100, led[9]);
-		Assert.AreEqual(10, o.Led(OnboardSector.LedKeysDim)[9]);
+		Assert.AreEqual(20, o.Led(OnboardSector.LedKeysDim)[9]);
 	}
 
 	[TestMethod]
@@ -136,7 +136,7 @@ public class OnboardTests
 	public void NeverDimKeepsDimCopiesEqual()
 	{
 		LogiConfig c = Config();
-		c.IdleMinutes = 0;
+		c.IdleSeconds = 0;
 		OnboardSector o = OnboardPlan.Build(new OnboardSector(Backup()[3]), c.Profiles[0], c);
 		CollectionAssert.AreEqual(o.Led(OnboardSector.LedKeys), o.Led(OnboardSector.LedKeysDim));
 		CollectionAssert.AreEqual(o.Led(OnboardSector.LedLogo), o.Led(OnboardSector.LedLogoDim));

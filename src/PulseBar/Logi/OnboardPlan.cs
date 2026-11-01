@@ -45,12 +45,12 @@ internal static class OnboardPlan
 		byte[] logoLed = Entry(p.Logo, bright, basis.Led(OnboardSector.LedLogo));
 		o.SetLed(OnboardSector.LedKeys, keysLed);
 		o.SetLed(OnboardSector.LedLogo, logoLed);
-		if (c.IdleMinutes > 0)
+		if (c.IdleSeconds > 0)
 		{
 			int dim = Math.Min(bright, c.IdleBrightness);
 			o.SetLed(OnboardSector.LedKeysDim, (dim > 0) ? Entry(keys, dim, basis.Led(OnboardSector.LedKeys)) : OnboardSector.Off());
 			o.SetLed(OnboardSector.LedLogoDim, (dim > 0) ? Entry(p.Logo, dim, basis.Led(OnboardSector.LedLogo)) : OnboardSector.Off());
-			o.PowerSaveSeconds = Math.Clamp(c.IdleMinutes * 60, 10, 0xFFFF);
+			o.PowerSaveSeconds = Math.Clamp(c.IdleSeconds, 10, 0xFFFF);
 		}
 		else
 		{
@@ -58,7 +58,8 @@ internal static class OnboardPlan
 			o.SetLed(OnboardSector.LedKeysDim, keysLed);
 			o.SetLed(OnboardSector.LedLogoDim, logoLed);
 		}
-		o.PowerOffSeconds = Math.Max(o.PowerOffSeconds, Math.Min(0xFFFF, o.PowerSaveSeconds + 60));
+		// Погасить через OffMinutes (не раньше приглушения); «никогда» — как было в памяти, но не раньше приглушения.
+		o.PowerOffSeconds = (c.OffMinutes > 0) ? Math.Clamp(c.OffMinutes * 60, o.PowerSaveSeconds + 10, 0xFFFF) : Math.Max(o.PowerOffSeconds, Math.Min(0xFFFF, o.PowerSaveSeconds + 60));
 		for (int i = 0; i < 5; i++)
 		{
 			o.SetButton(i, ButtonFor(p.Key("G" + (i + 1))) ?? OnboardSector.Disabled());

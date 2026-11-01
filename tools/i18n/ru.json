@@ -251,5 +251,9 @@
 "Turn the tile on in Appearance to start asking.": "Включите плитку во вкладке «Вид», чтобы начать опрос.",
 "Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com.": "Расход в % и сброс — из биллинга Grok CLI, только если вы вошли в него (grok login). Токен только читается и отправляется только на grok.com.",
 "Your looks": "Свой вид",
-"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "Приложение Claude записывает лимиты аккаунта, открытого в нём. Точное время сброса приходит с claude.ai, если это же аккаунт входа Claude Code; иначе PulseBar оценивает его по истории приложения (≈)."
+"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "Приложение Claude записывает лимиты аккаунта, открытого в нём. Точное время сброса приходит с claude.ai, если это же аккаунт входа Claude Code; иначе PulseBar оценивает его по истории приложения (≈).",
+"Turn off after": "Гасить через",
+"off": "выкл.",
+"While G HUB is running PulseBar only reads the battery.": "Пока запущен G HUB, PulseBar только читает заряд.",
+"{0} s": "{0} с"
 }

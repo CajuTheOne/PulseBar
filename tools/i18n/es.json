@@ -251,5 +251,9 @@
 "Turn the tile on in Appearance to start asking.": "Active el mosaico en «Apariencia» para empezar a consultar.",
 "Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com.": "Uso en % y reinicio — de la facturación de Grok CLI, solo si ha iniciado sesión en él (grok login). El token solo se lee y solo se envía a grok.com.",
 "Your looks": "Sus aspectos",
-"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "La aplicación Claude registra el uso de la cuenta abierta en ella. Las horas exactas de reinicio llegan de claude.ai si esa cuenta es también la de Claude Code; si no, PulseBar las estima con el historial de la aplicación (≈)."
+"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "La aplicación Claude registra el uso de la cuenta abierta en ella. Las horas exactas de reinicio llegan de claude.ai si esa cuenta es también la de Claude Code; si no, PulseBar las estima con el historial de la aplicación (≈).",
+"Turn off after": "Apagar después de",
+"off": "apagado",
+"While G HUB is running PulseBar only reads the battery.": "Mientras G HUB está abierto, PulseBar solo lee la batería.",
+"{0} s": "{0} s"
 }

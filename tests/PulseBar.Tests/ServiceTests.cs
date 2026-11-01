@@ -43,7 +43,8 @@ public class ServiceTests
 			LogiConfig c = new LogiConfig
 			{
 				Version = LogiConfig.CurrentVersion,
-				IdleMinutes = 0
+				IdleSeconds = 0,
+				OffMinutes = 0
 			};
 			c.Normalize();
 			edit?.Invoke(c);
@@ -526,6 +527,22 @@ public class ConfigTests
 		Assert.AreEqual("wave", c.Profiles[2].Keyboard.Effect);
 		Assert.AreEqual(1, c.Profiles[2].KeyColors.Count, "kept for when it becomes static");
 		Assert.IsTrue(File.Exists(Path.Combine(dir, "logitech.v2.json")));
+		Directory.Delete(dir, recursive: true);
+	}
+
+	[TestMethod]
+	public void OneIdleThresholdBecomesDimAndOff()
+	{
+		string dir = Path.Combine(Path.GetTempPath(), "PulseBarTests", Guid.NewGuid().ToString("N"));
+		Directory.CreateDirectory(dir);
+		string path = Path.Combine(dir, "logitech.json");
+		File.WriteAllText(path, "{\"version\":3,\"idleMinutes\":5,\"idleBrightness\":10,\"profiles\":[{\"name\":\"A\",\"brightness\":5}]}");
+		LogiConfig c = LogiConfig.Load(path);
+		Assert.AreEqual(30, c.IdleSeconds);
+		Assert.AreEqual(10, c.OffMinutes);
+		Assert.AreEqual(0, c.IdleBrightness, "10 % is dark on the G915 — off");
+		Assert.AreEqual(LogiConfig.MinBrightness, c.Profiles[0].Brightness, "lit from 11 %");
+		StringAssert.DoesNotMatch(File.ReadAllText(path), new System.Text.RegularExpressions.Regex("idleMinutes"));
 		Directory.Delete(dir, recursive: true);
 	}
 

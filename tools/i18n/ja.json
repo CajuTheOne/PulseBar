@@ -251,5 +251,9 @@
 "Turn the tile on in Appearance to start asking.": "「外観」でタイルをオンにすると問い合わせを開始します。",
 "Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com.": "使用量（%）とリセット — Grok CLI の請求情報から。ログイン済み（grok login）の場合のみ。トークンは読み取りのみで grok.com にのみ送信されます。",
 "Your looks": "保存した外観",
-"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "Claude アプリは開いているアカウントの使用量を記録します。そのアカウントが Claude Code のログインでもあれば正確なリセット時刻は claude.ai から取得し、そうでなければ PulseBar がアプリの履歴から推定します（≈）。"
+"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "Claude アプリは開いているアカウントの使用量を記録します。そのアカウントが Claude Code のログインでもあれば正確なリセット時刻は claude.ai から取得し、そうでなければ PulseBar がアプリの履歴から推定します（≈）。",
+"Turn off after": "消灯までの時間",
+"off": "オフ",
+"While G HUB is running PulseBar only reads the battery.": "G HUB の実行中、PulseBar はバッテリーのみ読み取ります。",
+"{0} s": "{0} 秒"
 }

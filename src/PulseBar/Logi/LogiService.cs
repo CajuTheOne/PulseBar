@@ -55,6 +55,9 @@ internal sealed class LogiService : IDisposable
 
 	private volatile bool _idle;
 
+	// Простой дольше OffMinutes — подсветка погашена.
+	private volatile bool _off;
+
 	private long _lastKeyInput = Environment.TickCount64;
 
 	private bool _screenOff;
@@ -746,9 +749,18 @@ internal sealed class LogiService : IDisposable
 		{
 			b = 0;
 		}
+		else if (_off)
+		{
+			b = 0;
+		}
 		else if (_idle)
 		{
 			b = Math.Min(b, Config.IdleBrightness);
+		}
+		// G915 при 10 % и ниже не светится.
+		if (b > 0 && b < LogiConfig.MinBrightness)
+		{
+			b = LogiConfig.MinBrightness;
 		}
 		(int pct, bool charging) = KeyboardBatteryState();
 		bool low = pct >= 0 && pct < LowBattery && !charging;
@@ -957,10 +969,13 @@ internal sealed class LogiService : IDisposable
 		}
 		long sinceWin = (uint)Environment.TickCount - li.dwTime;
 		long sinceKeys = Environment.TickCount64 - Interlocked.Read(ref _lastKeyInput);
-		bool idle = Config.IdleMinutes > 0 && Math.Min(sinceWin, sinceKeys) >= Config.IdleMinutes * 60000L;
-		if (idle != _idle)
+		long since = Math.Min(sinceWin, sinceKeys);
+		bool idle = Config.IdleSeconds > 0 && since >= Config.IdleSeconds * 1000L;
+		bool off = Config.OffMinutes > 0 && since >= Config.OffMinutes * 60000L;
+		if (idle != _idle || off != _off)
 		{
 			_idle = idle;
+			_off = off;
 			Kick();
 		}
 	}
@@ -1297,9 +1312,20 @@ internal sealed class LogiService : IDisposable
 		}
 		LastResult = L.F("Keyboard memory updated at {0}", DateTime.Now.ToString("HH:mm"));
 		Log.Write($"logi: onboard updated: sectors {string.Join(",", writes.Select(w => w.Sector))}{(dirOk ? "" : " + directory")}");
-		// Запись не должна была трогать режим PulseBar — но проверить дешевле, чем гадать.
+		// Запись не должна была трогать режим PulseBar — но проверить дешевле, чем гадать. Клавиатура после записи
+		// ещё перечитывает профиль и гасит лампочки M (пользователь, 01.11.2026: после ползунка яркости пропадала M1) —
+		// через 1,5 с всё отправляется ещё раз.
 		_kb?.Invalidate();
 		Kick();
+		ThreadPool.QueueUserWorkItem(delegate
+		{
+			Thread.Sleep(1500);
+			Post(delegate
+			{
+				_kb?.Invalidate();
+				Kick();
+			});
+		});
 		RaiseChanged();
 	}
 

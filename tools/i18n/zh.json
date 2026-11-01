@@ -251,5 +251,9 @@
 "Turn the tile on in Appearance to start asking.": "在“外观”中打开磁贴即可开始查询。",
 "Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com.": "用量百分比和重置时间 — 来自 Grok CLI 账单，仅当您已登录（grok login）。令牌只读取，只发送到 grok.com。",
 "Your looks": "我的外观",
-"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "Claude 应用记录其中打开的账户的用量。若该账户也是 Claude Code 的登录账户，确切的重置时间来自 claude.ai；否则 PulseBar 根据应用历史估算（≈）。"
+"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "Claude 应用记录其中打开的账户的用量。若该账户也是 Claude Code 的登录账户，确切的重置时间来自 claude.ai；否则 PulseBar 根据应用历史估算（≈）。",
+"Turn off after": "熄灭时间",
+"off": "关闭",
+"While G HUB is running PulseBar only reads the battery.": "G HUB 运行时，PulseBar 只读取电量。",
+"{0} s": "{0} 秒"
 }

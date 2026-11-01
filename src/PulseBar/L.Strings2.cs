@@ -262,7 +262,11 @@ internal static partial class L
 			["The API key is set."] = "Ключ API задан.",
 			["Turn the tile on in Appearance to start asking."] = "Включите плитку во вкладке «Вид», чтобы начать опрос.",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "Расход в % и сброс — из биллинга Grok CLI, только если вы вошли в него (grok login). Токен только читается и отправляется только на grok.com.",
-			["Your looks"] = "Свой вид"
+			["Your looks"] = "Свой вид",
+			["Turn off after"] = "Гасить через",
+			["off"] = "выкл.",
+			["While G HUB is running PulseBar only reads the battery."] = "Пока запущен G HUB, PulseBar только читает заряд.",
+			["{0} s"] = "{0} с"
 		},
 		["uk"] = new Dictionary<string, string>
 		{
@@ -518,7 +522,11 @@ internal static partial class L
 			["The API key is set."] = "Ключ API задано.",
 			["Turn the tile on in Appearance to start asking."] = "Увімкніть плитку на вкладці «Вигляд», щоб почати опитування.",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "Витрата у % і скидання — з білінгу Grok CLI, лише якщо ви увійшли в нього (grok login). Токен лише читається й надсилається тільки на grok.com.",
-			["Your looks"] = "Свій вигляд"
+			["Your looks"] = "Свій вигляд",
+			["Turn off after"] = "Гасити через",
+			["off"] = "вимк.",
+			["While G HUB is running PulseBar only reads the battery."] = "Поки запущено G HUB, PulseBar лише читає заряд.",
+			["{0} s"] = "{0} с"
 		},
 		["de"] = new Dictionary<string, string>
 		{
@@ -774,7 +782,11 @@ internal static partial class L
 			["The API key is set."] = "API-Schlüssel ist gesetzt.",
 			["Turn the tile on in Appearance to start asking."] = "Schalten Sie die Kachel unter „Darstellung“ ein, um die Abfrage zu starten.",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "Verbrauch in % und Zurücksetzung — aus der Grok-CLI-Abrechnung, nur wenn Sie dort angemeldet sind (grok login). Das Token wird nur gelesen und nur an grok.com gesendet.",
-			["Your looks"] = "Eigene Ansichten"
+			["Your looks"] = "Eigene Ansichten",
+			["Turn off after"] = "Ausschalten nach",
+			["off"] = "aus",
+			["While G HUB is running PulseBar only reads the battery."] = "Solange G HUB läuft, liest PulseBar nur den Akkustand.",
+			["{0} s"] = "{0} s"
 		},
 		["fr"] = new Dictionary<string, string>
 		{
@@ -1030,7 +1042,11 @@ internal static partial class L
 			["The API key is set."] = "La clé API est définie.",
 			["Turn the tile on in Appearance to start asking."] = "Activez la tuile dans « Apparence » pour commencer à interroger.",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "Utilisation en % et réinitialisation — depuis la facturation de Grok CLI, seulement si vous y êtes connecté (grok login). Le jeton est seulement lu et envoyé uniquement à grok.com.",
-			["Your looks"] = "Vos apparences"
+			["Your looks"] = "Vos apparences",
+			["Turn off after"] = "Éteindre après",
+			["off"] = "éteint",
+			["While G HUB is running PulseBar only reads the battery."] = "Tant que G HUB tourne, PulseBar ne lit que la batterie.",
+			["{0} s"] = "{0} s"
 		},
 		["es"] = new Dictionary<string, string>
 		{
@@ -1286,7 +1302,11 @@ internal static partial class L
 			["The API key is set."] = "La clave API está configurada.",
 			["Turn the tile on in Appearance to start asking."] = "Active el mosaico en «Apariencia» para empezar a consultar.",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "Uso en % y reinicio — de la facturación de Grok CLI, solo si ha iniciado sesión en él (grok login). El token solo se lee y solo se envía a grok.com.",
-			["Your looks"] = "Sus aspectos"
+			["Your looks"] = "Sus aspectos",
+			["Turn off after"] = "Apagar después de",
+			["off"] = "apagado",
+			["While G HUB is running PulseBar only reads the battery."] = "Mientras G HUB está abierto, PulseBar solo lee la batería.",
+			["{0} s"] = "{0} s"
 		},
 		["pt"] = new Dictionary<string, string>
 		{
@@ -1542,7 +1562,11 @@ internal static partial class L
 			["The API key is set."] = "A chave de API está definida.",
 			["Turn the tile on in Appearance to start asking."] = "Ative o bloco em “Aparência” para começar a consultar.",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "Uso em % e redefinição — do faturamento do Grok CLI, só se você estiver conectado a ele (grok login). O token só é lido e enviado só para grok.com.",
-			["Your looks"] = "Suas aparências"
+			["Your looks"] = "Suas aparências",
+			["Turn off after"] = "Apagar após",
+			["off"] = "desligado",
+			["While G HUB is running PulseBar only reads the battery."] = "Enquanto o G HUB está aberto, o PulseBar só lê a bateria.",
+			["{0} s"] = "{0} s"
 		},
 		["it"] = new Dictionary<string, string>
 		{
@@ -1798,7 +1822,11 @@ internal static partial class L
 			["The API key is set."] = "La chiave API è impostata.",
 			["Turn the tile on in Appearance to start asking."] = "Attivate il riquadro in «Aspetto» per iniziare a interrogare.",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "Utilizzo in % e azzeramento — dalla fatturazione di Grok CLI, solo se avete effettuato l'accesso (grok login). Il token viene solo letto e inviato solo a grok.com.",
-			["Your looks"] = "I vostri aspetti"
+			["Your looks"] = "I vostri aspetti",
+			["Turn off after"] = "Spegni dopo",
+			["off"] = "spento",
+			["While G HUB is running PulseBar only reads the battery."] = "Mentre G HUB è in esecuzione, PulseBar legge solo la batteria.",
+			["{0} s"] = "{0} s"
 		},
 		["pl"] = new Dictionary<string, string>
 		{
@@ -2054,7 +2082,11 @@ internal static partial class L
 			["The API key is set."] = "Klucz API jest ustawiony.",
 			["Turn the tile on in Appearance to start asking."] = "Włącz kafelek w „Wyglądzie”, aby zacząć odpytywanie.",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "Zużycie w % i reset — z rozliczeń Grok CLI, tylko gdy jesteś w nim zalogowany (grok login). Token jest tylko odczytywany i wysyłany tylko do grok.com.",
-			["Your looks"] = "Twoje wyglądy"
+			["Your looks"] = "Twoje wyglądy",
+			["Turn off after"] = "Wyłącz po",
+			["off"] = "wył.",
+			["While G HUB is running PulseBar only reads the battery."] = "Gdy działa G HUB, PulseBar tylko odczytuje baterię.",
+			["{0} s"] = "{0} s"
 		},
 		["zh"] = new Dictionary<string, string>
 		{
@@ -2310,7 +2342,11 @@ internal static partial class L
 			["The API key is set."] = "已设置 API 密钥。",
 			["Turn the tile on in Appearance to start asking."] = "在“外观”中打开磁贴即可开始查询。",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "用量百分比和重置时间 — 来自 Grok CLI 账单，仅当您已登录（grok login）。令牌只读取，只发送到 grok.com。",
-			["Your looks"] = "我的外观"
+			["Your looks"] = "我的外观",
+			["Turn off after"] = "熄灭时间",
+			["off"] = "关闭",
+			["While G HUB is running PulseBar only reads the battery."] = "G HUB 运行时，PulseBar 只读取电量。",
+			["{0} s"] = "{0} 秒"
 		},
 		["ja"] = new Dictionary<string, string>
 		{
@@ -2566,7 +2602,11 @@ internal static partial class L
 			["The API key is set."] = "API キーは設定済みです。",
 			["Turn the tile on in Appearance to start asking."] = "「外観」でタイルをオンにすると問い合わせを開始します。",
 			["Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com."] = "使用量（%）とリセット — Grok CLI の請求情報から。ログイン済み（grok login）の場合のみ。トークンは読み取りのみで grok.com にのみ送信されます。",
-			["Your looks"] = "保存した外観"
+			["Your looks"] = "保存した外観",
+			["Turn off after"] = "消灯までの時間",
+			["off"] = "オフ",
+			["While G HUB is running PulseBar only reads the battery."] = "G HUB の実行中、PulseBar はバッテリーのみ読み取ります。",
+			["{0} s"] = "{0} 秒"
 		}
 	};
 }

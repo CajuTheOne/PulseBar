@@ -31,9 +31,21 @@ internal sealed class LogiConfig
 
 	public int[] Slots { get; set; } = new int[3] { 0, 1, 2 };
 
-	public int IdleMinutes { get; set; } = 3;
+	// Простой: через IdleSeconds без ввода — приглушить до IdleBrightness, через OffMinutes — погасить; 0 — никогда.
+	public int IdleSeconds { get; set; } = 30;
 
-	public int IdleBrightness { get; set; } = 10;
+	public int OffMinutes { get; set; } = 10;
+
+	// G915 при 10 % и ниже не светится (пользователь, 01.11.2026): приглушение — 0 (погасить) или 11–100.
+	public int IdleBrightness { get; set; } = 20;
+
+	// «Приглушать через N минут» до 2.4.0-beta.4 — только для переноса.
+	[System.Text.Json.Serialization.JsonPropertyName("idleMinutes")]
+	[System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+	public int LegacyIdleMinutes { get; set; }
+
+	// Яркость 10 % и ниже на G915 — темно; светится с 11 %.
+	public const int MinBrightness = 11;
 
 	private static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PulseBar");
 
@@ -100,8 +112,17 @@ internal sealed class LogiConfig
 			Log.Write($"logi: logitech.json migrated from version {c.Version} to {CurrentVersion}");
 			c.Version = CurrentVersion;
 		}
+		// Один порог простоя (минуты) → два: приглушить через 30 с, погасить через 10 минут (предложение пользователя).
+		bool idle = c.LegacyIdleMinutes != 0;
+		if (idle)
+		{
+			c.IdleSeconds = 30;
+			c.OffMinutes = 10;
+			c.LegacyIdleMinutes = 0;
+			Log.Write("logi: idle: dim after 30 s, off after 10 min");
+		}
 		c.Normalize();
-		if (migrate)
+		if (migrate || idle)
 		{
 			c.Save(path);
 		}
@@ -135,7 +156,8 @@ internal sealed class LogiConfig
 			p.Logo ??= new Lighting();
 			p.Keys ??= new Dictionary<string, KeyAction>();
 			p.KeyColors ??= new Dictionary<string, string>();
-			p.Brightness = Math.Clamp(p.Brightness, 1, 100);
+			// 0 — погашено кнопкой яркости на клавиатуре.
+			p.Brightness = (p.Brightness <= 0) ? 0 : Math.Clamp(p.Brightness, MinBrightness, 100);
 			p.Name = string.IsNullOrWhiteSpace(p.Name) ? ("Profile " + (Profiles.IndexOf(p) + 1)) : p.Name.Trim();
 			foreach (Lighting l in new Lighting[2] { p.Keyboard, p.Logo })
 			{
@@ -151,8 +173,9 @@ internal sealed class LogiConfig
 				}
 			}
 		}
-		IdleMinutes = Math.Clamp(IdleMinutes, 0, 240);
-		IdleBrightness = Math.Clamp(IdleBrightness, 0, 100);
+		IdleSeconds = Math.Clamp(IdleSeconds, 0, 3600);
+		OffMinutes = Math.Clamp(OffMinutes, 0, 240);
+		IdleBrightness = (IdleBrightness < MinBrightness) ? 0 : Math.Min(IdleBrightness, 100);
 		Active = Math.Clamp(Active, 0, Profiles.Count - 1);
 		int[] slots = new int[SlotCount];
 		for (int i = 0; i < SlotCount; i++)

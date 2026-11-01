@@ -41,6 +41,23 @@ internal sealed partial class SettingsWindow
 
 	private DispatcherTimer? _logiSave;
 
+	// Время файла logitech.json после нашей записи: другое время — файл поменяла строка (кнопка яркости, M1–M3).
+	private DateTime _logiStamp;
+
+	private Action? _brightnessRefresh;
+
+	private static DateTime LogiFileTime()
+	{
+		try
+		{
+			return System.IO.File.GetLastWriteTimeUtc(LogiConfig.FilePath);
+		}
+		catch (Exception)
+		{
+			return default;
+		}
+	}
+
 	private Rgb _brush = new Rgb(0xFF, 0x80, 0x00);
 
 	private readonly List<Rgb> _recent = new List<Rgb>();
@@ -54,6 +71,7 @@ internal sealed partial class SettingsWindow
 			{
 				_logiSave.Stop();
 				_logi?.Save();
+				_logiStamp = LogiFileTime();
 				_host.LogiReload();
 			};
 		}
@@ -68,6 +86,7 @@ internal sealed partial class SettingsWindow
 		_logiSave?.Stop();
 		_logi?.Normalize();
 		_logi?.Save();
+		_logiStamp = LogiFileTime();
 		_host.LogiReload();
 		ShowPage(_nav.SelectedIndex);
 	}
@@ -87,7 +106,11 @@ internal sealed partial class SettingsWindow
 
 	private UIElement KeyboardPage()
 	{
-		_logi ??= LogiConfig.Load();
+		if (_logi == null)
+		{
+			_logi = LogiConfig.Load();
+			_logiStamp = LogiFileTime();
+		}
 		LogiConfig c = _logi;
 		ISettingsHost.Logitech st = _host.LogiStatus;
 		if (_logiProfile < 0 || _logiProfile >= c.Profiles.Count)
@@ -177,6 +200,20 @@ internal sealed partial class SettingsWindow
 			};
 			status.Text = device + ((mode.Length > 0) ? (" · " + mode) : "");
 			refreshGeneral();
+			// Строка поменяла файл (кнопка яркости на клавиатуре, выбор M1–M3): яркость профилей — оттуда, ползунок — за ней.
+			// Иначе окно при следующем сохранении вернуло бы старую яркость.
+			DateTime stamp = LogiFileTime();
+			if (stamp != _logiStamp && !(_logiSave?.IsEnabled ?? false))
+			{
+				_logiStamp = stamp;
+				LogiConfig fresh = LogiConfig.Load();
+				for (int i = 0; i < Math.Min(fresh.Profiles.Count, c.Profiles.Count); i++)
+				{
+					c.Profiles[i].Brightness = fresh.Profiles[i].Brightness;
+				}
+				c.Active = fresh.Active;
+				_brightnessRefresh?.Invoke();
+			}
 		}
 	}
 
@@ -387,18 +424,13 @@ internal sealed partial class SettingsWindow
 		{
 			KeyboardSys.CaretBlinkMs = v;
 		}, (int v) => (v == 0) ? L.T("no blinking") : $"{v} ms", apply: false));
-		p.Children.Add(LabeledRow(L.T("Try it here"), new TextBox
-		{
-			Width = 352.0,
-			HorizontalAlignment = HorizontalAlignment.Left
-		}));
 		p.Children.Add(Caption("Logitech G"));
 		p.Children.Add(Check(L.T("Control Logitech devices (instead of G HUB)"), () => c.Enabled, delegate(bool v)
 		{
 			c.Enabled = v;
 			LogiChanged();
 		}, apply: false));
-		p.Children.Add(Note(L.T("While G HUB is running PulseBar only reads the battery. Close G HUB (and turn off its autostart) to let PulseBar control the keyboard.")));
+		p.Children.Add(Note(L.T("While G HUB is running PulseBar only reads the battery.")));
 		// Другая программа перекрашивает клавиатуру — обычно «Динамическое освещение» Windows через службу Logitech LampArray.
 		TextBlock foreignText = new TextBlock
 		{
@@ -433,16 +465,23 @@ internal sealed partial class SettingsWindow
 		foreign.Children.Add(foreignText);
 		foreign.Children.Add(lightingSettings);
 		p.Children.Add(foreign);
-		p.Children.Add(SliderRow(L.T("Dim after"), 0.0, 30.0, 1.0, () => c.IdleMinutes, delegate(int v)
+		// Простой: коротко — приглушить, долго — погасить.
+		int[] dimSteps = new int[11] { 0, 15, 30, 45, 60, 90, 120, 180, 300, 600, 900 };
+		p.Children.Add(SliderRow(L.T("Dim after"), 0.0, dimSteps.Length - 1, 1.0, () => Math.Max(0, Array.FindIndex(dimSteps, (int x) => x >= c.IdleSeconds)), delegate(int v)
 		{
-			c.IdleMinutes = v;
+			c.IdleSeconds = dimSteps[v];
+			LogiChanged();
+		}, (int v) => (dimSteps[v] == 0) ? L.T("never") : ((dimSteps[v] < 60) ? L.F("{0} s", dimSteps[v]) : L.F("{0} min", dimSteps[v] / 60.0)), apply: false));
+		p.Children.Add(SliderRow(L.T("Dimmed brightness"), LogiConfig.MinBrightness - 1, 100.0, 1.0, () => (c.IdleBrightness == 0) ? (LogiConfig.MinBrightness - 1) : c.IdleBrightness, delegate(int v)
+		{
+			c.IdleBrightness = (v < LogiConfig.MinBrightness) ? 0 : v;
+			LogiChanged();
+		}, (int v) => (v < LogiConfig.MinBrightness) ? L.T("off") : $"{v}%", apply: false));
+		p.Children.Add(SliderRow(L.T("Turn off after"), 0.0, 60.0, 1.0, () => c.OffMinutes, delegate(int v)
+		{
+			c.OffMinutes = v;
 			LogiChanged();
 		}, (int v) => (v == 0) ? L.T("never") : L.F("{0} min", v), apply: false));
-		p.Children.Add(SliderRow(L.T("Dimmed brightness"), 0.0, 100.0, 1.0, () => c.IdleBrightness, delegate(int v)
-		{
-			c.IdleBrightness = v;
-			LogiChanged();
-		}, (int v) => $"{v}%", apply: false));
 		TextBlock memory = Note("");
 		memory.Margin = new Thickness(0.0, 4.0, 0.0, 6.0);
 		p.Children.Add(memory);
@@ -579,11 +618,52 @@ internal sealed partial class SettingsWindow
 			editorPanel.Visibility = pr.PerKey ? Visibility.Visible : Visibility.Collapsed;
 		}));
 		p.Children.Add(LightingRow(L.T("Logo"), pr.Logo, (st.LogoEffects.Length > 0) ? st.LogoEffects : EffectIds, null));
-		p.Children.Add(SliderRow(L.T("Brightness"), 1.0, 100.0, 1.0, () => pr.Brightness, delegate(int v)
+		// Яркость 11–100 % (10 % и ниже G915 не светится); ползунок следует за кнопкой яркости на клавиатуре.
+		Slider bright = new Slider
 		{
-			pr.Brightness = v;
-			LogiChanged(200);
-		}, (int v) => $"{v}%", apply: false));
+			Minimum = LogiConfig.MinBrightness,
+			Maximum = 100.0,
+			TickFrequency = 1.0,
+			IsSnapToTickEnabled = true,
+			Value = Math.Max(LogiConfig.MinBrightness, pr.Brightness),
+			Width = 220.0,
+			VerticalAlignment = VerticalAlignment.Center
+		};
+		TextBlock brightText = new TextBlock
+		{
+			Width = 120.0,
+			Margin = new Thickness(12.0, 0.0, 0.0, 0.0),
+			VerticalAlignment = VerticalAlignment.Center
+		};
+		bool syncing = false;
+		void BrightText()
+		{
+			brightText.Text = (pr.Brightness <= 0) ? L.T("off") : $"{pr.Brightness}%";
+		}
+		bright.ValueChanged += delegate
+		{
+			if (!syncing)
+			{
+				pr.Brightness = (int)Math.Round(bright.Value);
+				BrightText();
+				LogiChanged(200);
+			}
+		};
+		_brightnessRefresh = delegate
+		{
+			syncing = true;
+			bright.Value = Math.Max(LogiConfig.MinBrightness, pr.Brightness);
+			BrightText();
+			syncing = false;
+		};
+		BrightText();
+		StackPanel brightRow = new StackPanel
+		{
+			Orientation = Orientation.Horizontal
+		};
+		brightRow.Children.Add(bright);
+		brightRow.Children.Add(brightText);
+		p.Children.Add(LabeledRow(L.T("Brightness"), brightRow));
 		editorPanel.Children.Add(KeyEditor(pr, st.KeyIds));
 		editorPanel.Visibility = pr.PerKey ? Visibility.Visible : Visibility.Collapsed;
 		p.Children.Add(editorPanel);
