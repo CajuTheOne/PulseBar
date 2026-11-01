@@ -295,6 +295,11 @@ internal sealed class Overlay : Form
 			AddSeparator(null);
 			return;
 		}
+		if (m.Msg == SettingsProcess.MsgOpenSettings)
+		{
+			OpenSettings();
+			return;
+		}
 		if (m.Msg == SettingsProcess.MsgLogiReload)
 		{
 			_logi.ReloadConfig();

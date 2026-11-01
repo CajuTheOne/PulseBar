@@ -31,6 +31,9 @@ internal static class SettingsProcess
 	// Logitech: перечитать logitech.json, вернуть заводские профили, сделать копию памяти.
 	public static readonly uint MsgLogiReload = RegisterWindowMessageW("PulseBar.LogiReload");
 
+	// Повторный запуск (ярлык в «Пуске»): строка открывает окно настроек.
+	public static readonly uint MsgOpenSettings = RegisterWindowMessageW("PulseBar.OpenSettings");
+
 	public static readonly uint MsgLogiRestore = RegisterWindowMessageW("PulseBar.LogiRestore");
 
 	public static readonly uint MsgLogiBackup = RegisterWindowMessageW("PulseBar.LogiBackup");

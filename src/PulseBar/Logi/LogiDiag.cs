@@ -583,6 +583,17 @@ internal sealed class LogiDiag : Form
 		}
 	}
 
+	// Сообщение окнам строки других процессов PulseBar; false — строка не запущена.
+	internal static bool PostToBar(uint msg)
+	{
+		List<nint> bars = BarWindows();
+		foreach (nint h in bars)
+		{
+			PostMessageW(h, msg, 0, 0);
+		}
+		return bars.Count > 0;
+	}
+
 	// Окна «PulseBar» других процессов PulseBar (строка; окно настроек называется иначе).
 	private static List<nint> BarWindows()
 	{

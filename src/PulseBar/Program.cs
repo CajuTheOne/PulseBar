@@ -60,6 +60,9 @@ internal static class Program
 			string[] pg = args[2].Split(':');
 			return SettingsShot.Run(args[1], int.Parse(pg[0]), args.Length > 3 && args[3] == "expand", (args.Length > 4) ? args[4] : null, (pg.Length > 1) ? int.Parse(pg[1]) : (-1));
 		}
+		// Строка уже запущена (ярлык в «Пуске», повторный запуск) — сразу открыть её окно настроек. Если она как раз
+		// закрывается (обновление), ниже дождёмся её и запустимся сами.
+		Logi.LogiDiag.PostToBar(SettingsProcess.MsgOpenSettings);
 		using Mutex mutex = AcquireSingleInstance();
 		if (mutex == null)
 		{

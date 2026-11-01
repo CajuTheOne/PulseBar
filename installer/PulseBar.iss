@@ -70,6 +70,10 @@ Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 
+[Icons]
+; Ярлык в меню «Пуск» (для всех пользователей); если строка уже запущена, он открывает её окно настроек.
+Name: "{autoprograms}\PulseBar"; Filename: "{app}\PulseBar.exe"; Comment: "PulseBar"
+
 [Registry]
 ; Автозапуск строки — без прав администратора, для пользователя, который ставит программу.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "PulseBar"; ValueData: """{app}\PulseBar.exe"""; Tasks: autostart; Flags: uninsdeletevalue
