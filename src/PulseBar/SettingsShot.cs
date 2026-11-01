@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using System.Threading.Tasks;
 
 namespace PulseBar;
 
@@ -49,8 +50,9 @@ internal static class SettingsShot
 		{
 		}
 
-		public void CheckForUpdates()
+		public Task CheckForUpdates()
 		{
+			return Task.CompletedTask;
 		}
 
 		public void InstallUpdate()

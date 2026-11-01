@@ -255,5 +255,8 @@
 "Turn off after": "消灯までの時間",
 "off": "オフ",
 "While G HUB is running PulseBar only reads the battery.": "G HUB の実行中、PulseBar はバッテリーのみ読み取ります。",
-"{0} s": "{0} 秒"
+"{0} s": "{0} 秒",
+"Checking for updates…": "更新を確認中…",
+"(checked at {0})": "（{0} に確認）",
+"Could not check for updates: {0}": "更新を確認できませんでした: {0}"
 }

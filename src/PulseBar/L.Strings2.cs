@@ -266,7 +266,10 @@ internal static partial class L
 			["Turn off after"] = "Гасить через",
 			["off"] = "выкл.",
 			["While G HUB is running PulseBar only reads the battery."] = "Пока запущен G HUB, PulseBar только читает заряд.",
-			["{0} s"] = "{0} с"
+			["{0} s"] = "{0} с",
+			["Checking for updates…"] = "Проверяю обновления…",
+			["(checked at {0})"] = "(проверено в {0})",
+			["Could not check for updates: {0}"] = "Не удалось проверить обновления: {0}"
 		},
 		["uk"] = new Dictionary<string, string>
 		{
@@ -526,7 +529,10 @@ internal static partial class L
 			["Turn off after"] = "Гасити через",
 			["off"] = "вимк.",
 			["While G HUB is running PulseBar only reads the battery."] = "Поки запущено G HUB, PulseBar лише читає заряд.",
-			["{0} s"] = "{0} с"
+			["{0} s"] = "{0} с",
+			["Checking for updates…"] = "Перевіряю оновлення…",
+			["(checked at {0})"] = "(перевірено о {0})",
+			["Could not check for updates: {0}"] = "Не вдалося перевірити оновлення: {0}"
 		},
 		["de"] = new Dictionary<string, string>
 		{
@@ -786,7 +792,10 @@ internal static partial class L
 			["Turn off after"] = "Ausschalten nach",
 			["off"] = "aus",
 			["While G HUB is running PulseBar only reads the battery."] = "Solange G HUB läuft, liest PulseBar nur den Akkustand.",
-			["{0} s"] = "{0} s"
+			["{0} s"] = "{0} s",
+			["Checking for updates…"] = "Suche nach Updates…",
+			["(checked at {0})"] = "(geprüft um {0})",
+			["Could not check for updates: {0}"] = "Updates konnten nicht geprüft werden: {0}"
 		},
 		["fr"] = new Dictionary<string, string>
 		{
@@ -1046,7 +1055,10 @@ internal static partial class L
 			["Turn off after"] = "Éteindre après",
 			["off"] = "éteint",
 			["While G HUB is running PulseBar only reads the battery."] = "Tant que G HUB tourne, PulseBar ne lit que la batterie.",
-			["{0} s"] = "{0} s"
+			["{0} s"] = "{0} s",
+			["Checking for updates…"] = "Recherche de mises à jour…",
+			["(checked at {0})"] = "(vérifié à {0})",
+			["Could not check for updates: {0}"] = "Impossible de vérifier les mises à jour : {0}"
 		},
 		["es"] = new Dictionary<string, string>
 		{
@@ -1306,7 +1318,10 @@ internal static partial class L
 			["Turn off after"] = "Apagar después de",
 			["off"] = "apagado",
 			["While G HUB is running PulseBar only reads the battery."] = "Mientras G HUB está abierto, PulseBar solo lee la batería.",
-			["{0} s"] = "{0} s"
+			["{0} s"] = "{0} s",
+			["Checking for updates…"] = "Buscando actualizaciones…",
+			["(checked at {0})"] = "(comprobado a las {0})",
+			["Could not check for updates: {0}"] = "No se pudieron buscar actualizaciones: {0}"
 		},
 		["pt"] = new Dictionary<string, string>
 		{
@@ -1566,7 +1581,10 @@ internal static partial class L
 			["Turn off after"] = "Apagar após",
 			["off"] = "desligado",
 			["While G HUB is running PulseBar only reads the battery."] = "Enquanto o G HUB está aberto, o PulseBar só lê a bateria.",
-			["{0} s"] = "{0} s"
+			["{0} s"] = "{0} s",
+			["Checking for updates…"] = "Procurando atualizações…",
+			["(checked at {0})"] = "(verificado às {0})",
+			["Could not check for updates: {0}"] = "Não foi possível procurar atualizações: {0}"
 		},
 		["it"] = new Dictionary<string, string>
 		{
@@ -1826,7 +1844,10 @@ internal static partial class L
 			["Turn off after"] = "Spegni dopo",
 			["off"] = "spento",
 			["While G HUB is running PulseBar only reads the battery."] = "Mentre G HUB è in esecuzione, PulseBar legge solo la batteria.",
-			["{0} s"] = "{0} s"
+			["{0} s"] = "{0} s",
+			["Checking for updates…"] = "Ricerca aggiornamenti…",
+			["(checked at {0})"] = "(controllato alle {0})",
+			["Could not check for updates: {0}"] = "Impossibile controllare gli aggiornamenti: {0}"
 		},
 		["pl"] = new Dictionary<string, string>
 		{
@@ -2086,7 +2107,10 @@ internal static partial class L
 			["Turn off after"] = "Wyłącz po",
 			["off"] = "wył.",
 			["While G HUB is running PulseBar only reads the battery."] = "Gdy działa G HUB, PulseBar tylko odczytuje baterię.",
-			["{0} s"] = "{0} s"
+			["{0} s"] = "{0} s",
+			["Checking for updates…"] = "Sprawdzam aktualizacje…",
+			["(checked at {0})"] = "(sprawdzono o {0})",
+			["Could not check for updates: {0}"] = "Nie udało się sprawdzić aktualizacji: {0}"
 		},
 		["zh"] = new Dictionary<string, string>
 		{
@@ -2346,7 +2370,10 @@ internal static partial class L
 			["Turn off after"] = "熄灭时间",
 			["off"] = "关闭",
 			["While G HUB is running PulseBar only reads the battery."] = "G HUB 运行时，PulseBar 只读取电量。",
-			["{0} s"] = "{0} 秒"
+			["{0} s"] = "{0} 秒",
+			["Checking for updates…"] = "正在检查更新…",
+			["(checked at {0})"] = "（{0} 检查）",
+			["Could not check for updates: {0}"] = "无法检查更新：{0}"
 		},
 		["ja"] = new Dictionary<string, string>
 		{
@@ -2606,7 +2633,10 @@ internal static partial class L
 			["Turn off after"] = "消灯までの時間",
 			["off"] = "オフ",
 			["While G HUB is running PulseBar only reads the battery."] = "G HUB の実行中、PulseBar はバッテリーのみ読み取ります。",
-			["{0} s"] = "{0} 秒"
+			["{0} s"] = "{0} 秒",
+			["Checking for updates…"] = "更新を確認中…",
+			["(checked at {0})"] = "（{0} に確認）",
+			["Could not check for updates: {0}"] = "更新を確認できませんでした: {0}"
 		}
 	};
 }

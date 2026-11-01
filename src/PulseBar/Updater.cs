@@ -24,8 +24,16 @@ internal sealed class Updater
 
 	public bool Busy { get; private set; }
 
+	// Проверка идёт; последняя удачная проверка; причина неудачи последней ("" — удалась).
+	public bool Checking { get; private set; }
+
+	public DateTimeOffset? LastChecked { get; private set; }
+
+	public string LastError { get; private set; } = "";
+
 	public async Task CheckAsync(bool beta)
 	{
+		Checking = true;
 		try
 		{
 			using HttpClient http = Client();
@@ -50,11 +58,18 @@ internal sealed class Updater
 					digest != null && digest.StartsWith("sha256:") ? digest[7..] : null);
 			}
 			Available = best != null && Compare(best.Version, Current) > 0 ? best : null;
+			LastChecked = DateTimeOffset.Now;
+			LastError = "";
 			Log.Write($"update check: current {Current}, latest {best?.Version ?? "none"}{(Available != null ? " — update available" : "")}");
 		}
 		catch (Exception ex)
 		{
+			LastError = ex.Message;
 			Log.Write("update check: " + ex.Message);
+		}
+		finally
+		{
+			Checking = false;
 		}
 	}
 

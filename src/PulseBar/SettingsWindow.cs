@@ -13,6 +13,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using System.Threading.Tasks;
 using PulseBar.Logi;
 using Color = System.Windows.Media.Color;
 using Bitmap = System.Drawing.Bitmap;
@@ -51,7 +52,7 @@ internal interface ISettingsHost
 
 	void SelectGpu(string key);
 
-	void CheckForUpdates();
+	Task CheckForUpdates();
 
 	void InstallUpdate();
 
@@ -1334,11 +1335,35 @@ internal sealed partial class SettingsWindow : Window
 			TextWrapping = TextWrapping.Wrap
 		};
 		p.Children.Add(status);
-		Button action = new Button
+		Button action = new Button();
+		// Пока идёт проверка — рядом крутится «| / - \», потом — ответ (2.4.0-beta.5: раньше реакции не было видно).
+		TextBlock spin = new TextBlock
 		{
-			HorizontalAlignment = HorizontalAlignment.Left
+			Width = 16.0,
+			Margin = new Thickness(10.0, 0.0, 0.0, 0.0),
+			VerticalAlignment = VerticalAlignment.Center,
+			FontFamily = new FontFamily("Consolas")
 		};
-		action.Click += delegate
+		string[] frames = new string[4] { "|", "/", "-", "\\" };
+		int frame = 0;
+		DispatcherTimer spinner = new DispatcherTimer
+		{
+			Interval = TimeSpan.FromMilliseconds(120.0)
+		};
+		spinner.Tick += delegate
+		{
+			spin.Text = frames[frame++ % frames.Length];
+		};
+		async Task CheckUpdates()
+		{
+			spinner.Start();
+			Refresh();
+			await _host.CheckForUpdates();
+			spinner.Stop();
+			spin.Text = "";
+			Refresh();
+		}
+		action.Click += async delegate
 		{
 			if (_host.Updater.Available != null)
 			{
@@ -1346,15 +1371,33 @@ internal sealed partial class SettingsWindow : Window
 			}
 			else
 			{
-				_host.CheckForUpdates();
+				await CheckUpdates();
 			}
 		};
-		p.Children.Add(action);
-		p.Children.Add(Check(L.T("Get beta versions"), () => _s.Beta, delegate(bool v)
+		StackPanel actionRow = new StackPanel
+		{
+			Orientation = Orientation.Horizontal
+		};
+		actionRow.Children.Add(action);
+		actionRow.Children.Add(spin);
+		p.Children.Add(actionRow);
+		p.Children.Add(Check(L.T("Get beta versions"), () => _s.Beta, async delegate(bool v)
 		{
 			_s.Beta = v;
-			_host.CheckForUpdates();
+			await CheckUpdates();
 		}));
+		p.Unloaded += delegate
+		{
+			spinner.Stop();
+		};
+		// Окно настроек ещё не проверяло — проверить сразу, иначе «последняя версия» была бы без проверки.
+		if (!_host.Updater.LastChecked.HasValue && !_host.Updater.Checking && _host.Updater.LastError.Length == 0)
+		{
+			Dispatcher.BeginInvoke(async delegate
+			{
+				await CheckUpdates();
+			});
+		}
 		p.Children.Add(Link("github.com/CajuTheOne/PulseBar", "https://github.com/CajuTheOne/PulseBar"));
 		p.Children.Add(Link(L.T("Open the log folder"), Path.GetDirectoryName(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "x"))!));
 		TextBlock license = Note(L.T("MIT License. CPU temperature: PawnIO driver and its modules (LGPL-2.1)."));
@@ -1365,10 +1408,12 @@ internal sealed partial class SettingsWindow : Window
 		return p;
 		void Refresh()
 		{
-			Updater.Release r = _host.Updater.Available;
-			status.Text = (r != null) ? L.F("Version {0} is available.", r.Version) : L.T("You have the latest version.");
-			action.Content = (r != null) ? (_host.Updater.Busy ? L.F("Downloading {0}…", r.Version) : L.F("Update to {0}", r.Version)) : L.T("Check for updates");
-			action.IsEnabled = !_host.Updater.Busy;
+			Updater u = _host.Updater;
+			Updater.Release r = u.Available;
+			string checkedAt = u.LastChecked.HasValue ? (" " + L.F("(checked at {0})", u.LastChecked.Value.ToString("HH:mm"))) : "";
+			status.Text = u.Checking ? L.T("Checking for updates…") : ((r != null) ? L.F("Version {0} is available.", r.Version) : ((u.LastError.Length > 0) ? L.F("Could not check for updates: {0}", u.LastError) : (L.T("You have the latest version.") + checkedAt)));
+			action.Content = (r != null) ? (u.Busy ? L.F("Downloading {0}…", r.Version) : L.F("Update to {0}", r.Version)) : L.T("Check for updates");
+			action.IsEnabled = !u.Busy && !u.Checking;
 		}
 	}
 

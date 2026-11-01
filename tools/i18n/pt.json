@@ -255,5 +255,8 @@
 "Turn off after": "Apagar após",
 "off": "desligado",
 "While G HUB is running PulseBar only reads the battery.": "Enquanto o G HUB está aberto, o PulseBar só lê a bateria.",
-"{0} s": "{0} s"
+"{0} s": "{0} s",
+"Checking for updates…": "Procurando atualizações…",
+"(checked at {0})": "(verificado às {0})",
+"Could not check for updates: {0}": "Não foi possível procurar atualizações: {0}"
 }

@@ -255,5 +255,8 @@
 "Turn off after",
 "off",
 "While G HUB is running PulseBar only reads the battery.",
-"{0} s"
+"{0} s",
+"Checking for updates…",
+"(checked at {0})",
+"Could not check for updates: {0}"
 ]

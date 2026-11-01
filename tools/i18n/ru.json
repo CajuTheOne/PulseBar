@@ -255,5 +255,8 @@
 "Turn off after": "Гасить через",
 "off": "выкл.",
 "While G HUB is running PulseBar only reads the battery.": "Пока запущен G HUB, PulseBar только читает заряд.",
-"{0} s": "{0} с"
+"{0} s": "{0} с",
+"Checking for updates…": "Проверяю обновления…",
+"(checked at {0})": "(проверено в {0})",
+"Could not check for updates: {0}": "Не удалось проверить обновления: {0}"
 }

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace PulseBar;
@@ -365,9 +366,10 @@ internal static class SettingsProcess
 			Apply();
 		}
 
-		public async void CheckForUpdates()
+		// Не меньше 0,7 с, чтобы проверку было видно, даже если GitHub ответил мгновенно.
+		public async Task CheckForUpdates()
 		{
-			await Updater.CheckAsync(Settings.Beta);
+			await Task.WhenAll(Updater.CheckAsync(Settings.Beta), Task.Delay(700));
 		}
 
 		public async void InstallUpdate()

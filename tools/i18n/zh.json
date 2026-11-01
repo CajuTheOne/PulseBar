@@ -255,5 +255,8 @@
 "Turn off after": "熄灭时间",
 "off": "关闭",
 "While G HUB is running PulseBar only reads the battery.": "G HUB 运行时，PulseBar 只读取电量。",
-"{0} s": "{0} 秒"
+"{0} s": "{0} 秒",
+"Checking for updates…": "正在检查更新…",
+"(checked at {0})": "（{0} 检查）",
+"Could not check for updates: {0}": "无法检查更新：{0}"
 }

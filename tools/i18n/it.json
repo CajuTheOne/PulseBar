@@ -255,5 +255,8 @@
 "Turn off after": "Spegni dopo",
 "off": "spento",
 "While G HUB is running PulseBar only reads the battery.": "Mentre G HUB è in esecuzione, PulseBar legge solo la batteria.",
-"{0} s": "{0} s"
+"{0} s": "{0} s",
+"Checking for updates…": "Ricerca aggiornamenti…",
+"(checked at {0})": "(controllato alle {0})",
+"Could not check for updates: {0}": "Impossibile controllare gli aggiornamenti: {0}"
 }
