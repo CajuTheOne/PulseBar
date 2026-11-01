@@ -32,6 +32,9 @@ public class ServiceTests
 		// Часы анимации, мс.
 		public long Now;
 
+		// Время с последнего ввода в Windows, мс.
+		public long IdleMs = 60000;
+
 		public Rig(Action<LogiConfig>? edit = null, Action<FakeG915>? before = null)
 		{
 			Dir = Path.Combine(Path.GetTempPath(), "PulseBarTests", Guid.NewGuid().ToString("N"));
@@ -62,7 +65,8 @@ public class ServiceTests
 				Timers = false,
 				FirstSyncMs = int.MaxValue / 2,
 				DynamicLighting = () => DynamicLighting,
-				Now = () => Interlocked.Read(ref Now)
+				Now = () => Interlocked.Read(ref Now),
+				IdleMs = () => Interlocked.Read(ref IdleMs)
 			};
 			Svc = new LogiService(LogiConfig.Load(ConfigPath), readOnly: false, env);
 			Svc.Start();
@@ -476,6 +480,72 @@ public class ServiceTests
 		r.Svc.DisplayChanged(on: true);
 		r.Settle();
 		Assert.AreEqual(12, r.Kb.Brightness);
+	}
+
+	[TestMethod]
+	public void BrightnessKeyTurnsOffFromTwelvePercent()
+	{
+		using Rig r = new Rig(c => c.Profiles[0].Brightness = 12);
+		r.Kb.PressBrightness(0);
+		r.Settle();
+		Assert.AreEqual(0, LogiConfig.Load(r.ConfigPath).Profiles[0].Brightness, "12 -> 0 is the button's own step");
+		r.Kb.PressBrightness(100);
+		r.Settle();
+		Assert.AreEqual(100, LogiConfig.Load(r.ConfigPath).Profiles[0].Brightness);
+	}
+
+	// Пользователь, 01.11.2026: клавиатура погасла сама, и зажечь её можно было только кнопкой яркости — 0 % попадал в
+	// профиль. Теперь профиль не меняется, а подсветку зажигает любой ввод.
+	[TestMethod]
+	public void KeyboardThatTurnedItselfOffWakesOnAnyKey()
+	{
+		using Rig r = new Rig(c =>
+		{
+			c.Profiles[0].Brightness = 25;
+			c.Profiles[0].Keyboard.Color = "#102030";
+		});
+		Assert.AreEqual(25, r.Kb.Brightness);
+		r.Kb.TurnOffItself();
+		r.Settle();
+		Assert.AreEqual(25, r.Svc.Config.Profiles[0].Brightness, "not a press: 25 -> 0 is not the button's step");
+		Assert.AreEqual(25, LogiConfig.Load(r.ConfigPath).Profiles[0].Brightness);
+		r.Svc.TickNow();
+		Assert.AreEqual(0, r.Kb.Brightness, "stays off without input");
+		r.IdleMs = 0;
+		r.Svc.TickNow();
+		r.Settle();
+		Assert.AreEqual(25, r.Kb.Brightness, "a key turns it on");
+		Assert.AreEqual(new Rgb(0x10, 0x20, 0x30), KeysColor(r.Kb), "frame painted again");
+	}
+
+	[TestMethod]
+	public void DimAndOffAfterIdleDoNotChangeTheProfile()
+	{
+		using Rig r = new Rig(c =>
+		{
+			c.Profiles[0].Brightness = 80;
+			c.IdleSeconds = 30;
+			c.IdleBrightness = 20;
+			c.OffMinutes = 10;
+		});
+		r.IdleMs = 0;
+		r.Svc.TickNow();
+		Assert.AreEqual(80, r.Kb.Brightness);
+		r.IdleMs = 31000;
+		r.Svc.TickNow();
+		r.Settle();
+		Assert.AreEqual(20, r.Kb.Brightness, "dimmed");
+		r.IdleMs = 601000;
+		r.Svc.TickNow();
+		r.Settle();
+		Assert.AreEqual(0, r.Kb.Brightness, "off");
+		Assert.AreEqual(80, LogiConfig.Load(r.ConfigPath).Profiles[0].Brightness, "own writes are not presses");
+		r.Kb.Frame.Clear();
+		r.IdleMs = 0;
+		r.Svc.TickNow();
+		r.Settle();
+		Assert.AreEqual(80, r.Kb.Brightness, "back on a key");
+		Assert.IsTrue(r.Kb.Frame.ContainsKey(1), "frame painted again after off");
 	}
 
 	[TestMethod]

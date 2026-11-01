@@ -41,6 +41,10 @@ internal sealed class LogiService : IDisposable
 
 	private List<PointingDevice> _otherMice = new List<PointingDevice>();
 
+	private string _miceNames = "";
+
+	private int _miceRetry;
+
 	private LogiKeyboard? _kb;
 
 	private int _kick;
@@ -58,7 +62,12 @@ internal sealed class LogiService : IDisposable
 	// Простой дольше OffMinutes — подсветка погашена.
 	private volatile bool _off;
 
-	private long _lastKeyInput = Environment.TickCount64;
+	// Клавиатура погасла сама (яркость 0 %, которую не ставили ни PulseBar, ни кнопка): время события; новый ввод —
+	// любая клавиша или мышь — зажигает её. -1 — не гасла.
+	private long _darkSince = -1;
+
+	// Последнее нажатие G, M, MR или кнопки яркости (Environment.TickCount64); 0 — не было, простой считает Windows.
+	private long _lastKeyInput;
 
 	private bool _screenOff;
 
@@ -372,8 +381,26 @@ internal sealed class LogiService : IDisposable
 			Log.Write("logi: devices: " + (devices.Count == 0 ? "none" : string.Join(", ", devices.Select((LogiDevice d) => $"{d.Name} ({(d.Features.Count > 0 ? "online" : "asleep")})"))));
 		}
 		List<PointingDevice> mice = _env.FindMice();
+		string names = string.Join(", ", mice.Select((PointingDevice m) => $"{m.Name} {m.Vid:X4}:{m.Pid:X4}{(m.RazerPath != null ? " (Razer)" : "")}"));
+		if (names != _miceNames)
+		{
+			_miceNames = names;
+			Log.Write("mice: " + ((names.Length > 0) ? names : "none"));
+		}
 		lock (_lock)
 		{
+			// Заряд, прочитанный раньше, остаётся: при новом чтении мышь могла спать.
+			foreach (PointingDevice m in mice)
+			{
+				PointingDevice? old = _otherMice.FirstOrDefault((PointingDevice x) => x.Vid == m.Vid && x.Pid == m.Pid);
+				if (old != null)
+				{
+					m.BatteryPercent = old.BatteryPercent;
+					m.Charging = old.Charging;
+					m.RazerTid = old.RazerTid;
+					m.RazerStatus = old.RazerStatus;
+				}
+			}
 			_otherMice = mice;
 		}
 		ReadBatteries();
@@ -410,6 +437,7 @@ internal sealed class LogiService : IDisposable
 			_kb.Invalidate();
 			if (linked)
 			{
+				Interlocked.Exchange(ref _darkSince, -1);
 				_retries = 0;
 				Kick();
 			}
@@ -488,21 +516,41 @@ internal sealed class LogiService : IDisposable
 			if (fn == 0 && data.Length >= 2)
 			{
 				int value = (data[0] << 8) | data[1];
-				Interlocked.Exchange(ref _lastKeyInput, Environment.TickCount64);
 				Post(() => OnBrightnessKey(kb, value));
 			}
 			break;
 		}
 	}
 
-	// Яркость, выбранная кнопкой на клавиатуре, становится яркостью текущего профиля. Своя же запись (то же значение,
-	// что отправили последним) — не нажатие.
+	// Яркость, выбранная кнопкой на клавиатуре, становится яркостью текущего профиля. Не нажатия:
+	// - отзвук своей записи: клавиатура сообщает о каждой записи яркости тем же значением (журнал 31.10.2026), даже
+	//   когда ответ на саму запись опоздал;
+	// - яркость, которая и должна быть сейчас (простой, экран выключен);
+	// - 0 %, когда горело больше 12 %: кнопка гасит только с шага 12 % (100 → 50 → 25 → 12 → 0), значит, клавиатура
+	//   погасла сама. Пользователь, 01.11.2026: после сна клавиатура зажигалась только кнопкой яркости — такой 0 %
+	//   записывался в профиль. Теперь он в профиль не идёт, а подсветку зажигает любая клавиша.
 	private void OnBrightnessKey(LogiKeyboard kb, int value)
 	{
-		if (!Controlling || !kb.SetUpDone || value == kb.AppliedBrightness || value < 0 || value > 100)
+		if (!Controlling || !kb.SetUpDone || value < 0 || value > 100)
 		{
 			return;
 		}
+		int before = kb.LastBrightness;
+		if (value == before || value == Desired().Brightness)
+		{
+			kb.AppliedBrightness = value;
+			return;
+		}
+		if (value == 0 && !(before > 0 && before <= 12 && !_idle))
+		{
+			kb.AppliedBrightness = 0;
+			Interlocked.Exchange(ref _darkSince, Environment.TickCount64);
+			Log.Write($"logi: the keyboard turned its light off itself (was {before}%), any key turns it on");
+			Kick();
+			return;
+		}
+		Interlocked.Exchange(ref _lastKeyInput, Environment.TickCount64);
+		Interlocked.Exchange(ref _darkSince, -1);
 		kb.AppliedBrightness = value;
 		Profile p = Config.Profiles[Current];
 		if (p.Brightness != value)
@@ -521,6 +569,8 @@ internal sealed class LogiService : IDisposable
 	// Ответ на чужую запись подсветки: служба Logitech LampArray перекрашивает клавиатуру в цвет «Динамического
 	// освещения» Windows (журнал 31.10.2026: синий акцент #0078D4 после каждой смены эффекта). Через 0,5 с свой кадр
 	// отправляется заново, но не чаще 5 раз в минуту: дальше не спорить, только сообщить в окне настроек.
+	// Ответ на запись яркости (0x8040 fn2) без запроса — опоздавший ответ на свою же запись (журнал 01.11.2026, служба
+	// LampArray выключена), не чужая программа; саму смену яркости разбирает OnBrightnessKey.
 	private void OnForeign(HidppLink link, byte dev, byte feat, byte fn)
 	{
 		LogiKeyboard? kb = _kb;
@@ -530,8 +580,7 @@ internal sealed class LogiService : IDisposable
 		}
 		ushort id = kb.Device.FeatureAt(feat);
 		bool lighting = (id == LogiDevice.PerKeyLighting && fn >= 1) || (id == LogiDevice.RgbEffects && (fn == 1 || fn == 5));
-		bool brightness = id == LogiDevice.Brightness && fn == 2;
-		if (!lighting && !brightness)
+		if (!lighting)
 		{
 			return;
 		}
@@ -549,14 +598,7 @@ internal sealed class LogiService : IDisposable
 				Log.Write($"logi: another program changes the lighting ({LogiDevice.FeatureName(id)} fn{fn}){(_env.DynamicLighting() ? ", Windows Dynamic Lighting is on" : "")}");
 				RaiseChanged();
 			}
-			if (lighting)
-			{
-				kb.InvalidateLighting();
-			}
-			else
-			{
-				kb.AppliedBrightness = -1;
-			}
+			kb.InvalidateLighting();
 			if (_repaintDue)
 			{
 				return;
@@ -749,7 +791,7 @@ internal sealed class LogiService : IDisposable
 		{
 			b = 0;
 		}
-		else if (_off)
+		else if (_off || Interlocked.Read(ref _darkSince) >= 0)
 		{
 			b = 0;
 		}
@@ -959,25 +1001,53 @@ internal sealed class LogiService : IDisposable
 		{
 			return;
 		}
+		long sinceWin = _env.IdleMs();
+		if (sinceWin < 0)
+		{
+			return;
+		}
+		long now = Environment.TickCount64;
+		long sinceKeys = now - Interlocked.Read(ref _lastKeyInput);
+		long since = Math.Min(sinceWin, sinceKeys);
+		bool idle = Config.IdleSeconds > 0 && since >= Config.IdleSeconds * 1000L;
+		bool off = Config.OffMinutes > 0 && since >= Config.OffMinutes * 60000L;
+		// Ввод после того, как клавиатура погасла сама или по простою: зажечь и отправить кадр заново (прошивка могла
+		// стереть его, пока подсветка была погашена).
+		long dark = Interlocked.Read(ref _darkSince);
+		bool wake = dark >= 0 && now - since > dark;
+		if (wake)
+		{
+			Interlocked.CompareExchange(ref _darkSince, -1, dark);
+		}
+		if (idle != _idle || off != _off || wake)
+		{
+			bool relight = wake || (_off && !off);
+			_idle = idle;
+			_off = off;
+			if (relight)
+			{
+				// Сверка — после «зажечь заново», в потоке службы: уже ждущая сверка могла бы пройти раньше.
+				Post(delegate
+				{
+					_kb?.Relight();
+					Kick();
+				});
+			}
+			else
+			{
+				Kick();
+			}
+		}
+	}
+
+	// Время с последнего ввода в Windows (клавиатура, мышь), мс; -1 — неизвестно.
+	internal static long WindowsIdleMs()
+	{
 		LASTINPUTINFO li = new LASTINPUTINFO
 		{
 			cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>()
 		};
-		if (!GetLastInputInfo(ref li))
-		{
-			return;
-		}
-		long sinceWin = (uint)Environment.TickCount - li.dwTime;
-		long sinceKeys = Environment.TickCount64 - Interlocked.Read(ref _lastKeyInput);
-		long since = Math.Min(sinceWin, sinceKeys);
-		bool idle = Config.IdleSeconds > 0 && since >= Config.IdleSeconds * 1000L;
-		bool off = Config.OffMinutes > 0 && since >= Config.OffMinutes * 60000L;
-		if (idle != _idle || off != _off)
-		{
-			_idle = idle;
-			_off = off;
-			Kick();
-		}
+		return GetLastInputInfo(ref li) ? (uint)Environment.TickCount - li.dwTime : -1;
 	}
 
 	private void OnSessionSwitch(object? sender, SessionSwitchEventArgs e)
@@ -1065,6 +1135,16 @@ internal sealed class LogiService : IDisposable
 		foreach (PointingDevice m in mice)
 		{
 			OtherMice.ReadBattery(m);
+		}
+		// Заряд мыши ещё не прочитан ни разу — снова через 30 с, а не через 5 минут.
+		if (mice.Any((PointingDevice m) => m.RazerPath != null && m.BatteryPercent < 0) && Interlocked.Exchange(ref _miceRetry, 1) == 0)
+		{
+			ThreadPool.QueueUserWorkItem(delegate
+			{
+				Thread.Sleep(30000);
+				Interlocked.Exchange(ref _miceRetry, 0);
+				Post(ReadBatteries);
+			});
 		}
 		Kick();
 		RaiseChanged();
@@ -1401,6 +1481,12 @@ internal sealed class LogiService : IDisposable
 		Flush();
 	}
 
+	internal void TickNow()
+	{
+		Tick();
+		Flush();
+	}
+
 	internal void SyncOnboardNow()
 	{
 		Post(SyncOnboard);
@@ -1468,6 +1554,9 @@ internal sealed class LogiEnv
 	public Func<IReadOnlyCollection<string>> PresentPaths = () => Hid.Enumerate(0x046D).Where((HidInfo h) => h.UsagePage == 0xFF00 && h.OutLen == 20).Select((HidInfo h) => h.Path).ToList();
 
 	public Func<bool> GHubRunning = LogiService.GHubRunning;
+
+	// Время с последнего ввода в Windows, мс.
+	public Func<long> IdleMs = LogiService.WindowsIdleMs;
 
 	public Func<List<PointingDevice>> FindMice = OtherMice.Find;
 

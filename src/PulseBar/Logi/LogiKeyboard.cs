@@ -158,6 +158,7 @@ internal sealed class LogiKeyboard
 		}
 		if (f.Brightness != _brightness && Device.Has(LogiDevice.Brightness))
 		{
+			LastBrightness = f.Brightness;
 			if (Device.Call(LogiDevice.Brightness, 2, new byte[2] { (byte)(f.Brightness >> 8), (byte)f.Brightness }, out int e, 3) == null)
 			{
 				error = $"brightness: error {e}";
@@ -404,7 +405,22 @@ internal sealed class LogiKeyboard
 		set
 		{
 			_brightness = value;
+			if (value >= 0)
+			{
+				LastBrightness = value;
+			}
 		}
+	}
+
+	// Яркость на клавиатуре: последняя отправленная или сообщённая ею (-1 — неизвестно). Клавиатура сообщает о каждой
+	// записи яркости тем же значением — по нему отзвук своей записи отличается от нажатия кнопки. Сброс не меняет.
+	public int LastBrightness { get; private set; } = -1;
+
+	// Подсветку гасила прошивка или простой: яркость и весь кадр отправить заново.
+	public void Relight()
+	{
+		_brightness = -1;
+		InvalidateLighting();
 	}
 
 	// Таблица эффектов 0x8071 (журнал G915 31.10.2026):

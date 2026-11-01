@@ -70,6 +70,9 @@ internal sealed class FakeG915 : IHidppPort
 
 	public int Brightness = 100;
 
+	// Запись яркости (fn2): настоящая G915 сначала сообщает новую яркость (fn0), потом отвечает (журнал 31.10.2026).
+	private int _echo = -1;
+
 	// Программное управление подсветкой 0x8071 fn5: после режима PulseBar у настоящей G915 — 02 06 (эффекты отклоняются).
 	public byte SwMode = 2;
 
@@ -146,6 +149,17 @@ internal sealed class FakeG915 : IHidppPort
 			Brightness = value;
 		}
 		Notify(0x8040, 0, new byte[2] { (byte)(value >> 8), (byte)value });
+	}
+
+	// Клавиатура погасла сама (сон прошивки и т. п.): яркость 0 и то же событие, что от кнопки.
+	public void TurnOffItself()
+	{
+		lock (_lock)
+		{
+			Brightness = 0;
+			Frame.Clear();
+		}
+		Notify(0x8040, 0, new byte[2]);
 	}
 
 	// Служба Logitech LampArray («Динамическое освещение» Windows) красит все клавиши в один цвет; ответы на её
@@ -229,9 +243,16 @@ internal sealed class FakeG915 : IHidppPort
 	public void Write(byte[] q)
 	{
 		byte[]? reply;
+		int echo;
 		lock (_lock)
 		{
 			reply = (q[0] == 0x10) ? Register(q) : Feature(q);
+			echo = _echo;
+			_echo = -1;
+		}
+		if (echo >= 0)
+		{
+			Notify(0x8040, 0, new byte[2] { (byte)(echo >> 8), (byte)echo });
 		}
 		if (reply != null)
 		{
@@ -478,6 +499,7 @@ internal sealed class FakeG915 : IHidppPort
 			if (fn == 2)
 			{
 				Brightness = (a[0] << 8) | a[1];
+				_echo = Brightness;
 			}
 			return new byte[0];
 		case 0x4540:
