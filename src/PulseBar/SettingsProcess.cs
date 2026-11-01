@@ -92,6 +92,7 @@ internal static class SettingsProcess
 					}
 					w.WriteNumber("updated", c.Updated.ToUnixTimeSeconds());
 					w.WriteString("source", c.Source);
+					w.WriteBoolean("estimated", c.ResetsEstimated);
 					w.WriteEndObject();
 				}
 				w.WriteString("claudeApi", claude.ApiStatus);
@@ -431,7 +432,7 @@ internal static class SettingsProcess
 				_claude = null;
 				if (e.TryGetProperty("claude", out JsonElement c) && c.ValueKind == JsonValueKind.Object)
 				{
-					_claude = new ClaudeUsage.Snapshot(F(c, "fiveHour"), F(c, "sevenDay"), Time(c, "fiveHourReset"), Time(c, "sevenDayReset"), Time(c, "updated") ?? DateTimeOffset.Now, c.TryGetProperty("source", out JsonElement src) ? (src.GetString() ?? "") : "");
+					_claude = new ClaudeUsage.Snapshot(F(c, "fiveHour"), F(c, "sevenDay"), Time(c, "fiveHourReset"), Time(c, "sevenDayReset"), Time(c, "updated") ?? DateTimeOffset.Now, c.TryGetProperty("source", out JsonElement src) ? (src.GetString() ?? "") : "", c.TryGetProperty("estimated", out JsonElement est) && est.GetBoolean());
 					_readings.ClaudeShown = true;
 					_readings.ClaudeFiveHour = _claude.FiveHour;
 					_readings.ClaudeSevenDay = _claude.SevenDay;

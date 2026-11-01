@@ -1550,8 +1550,8 @@ internal sealed class Overlay : Form
 			}
 			if (c != null)
 			{
-				rows.Add((L.T("5 hours"), Pct(c.FiveHour) + Resets(c.FiveHourReset), c.Stale ? _palette.NoData : _palette.Level(c.FiveHour, _s.Claude)));
-				rows.Add((L.T("7 days"), Pct(c.SevenDay) + Resets(c.SevenDayReset), c.Stale ? _palette.NoData : _palette.Level(c.SevenDay, _s.Claude)));
+				rows.Add((L.T("5 hours"), Pct(c.FiveHour) + Resets(c.FiveHourReset, c.ResetsEstimated), c.Stale ? _palette.NoData : _palette.Level(c.FiveHour, _s.Claude)));
+				rows.Add((L.T("7 days"), Pct(c.SevenDay) + Resets(c.SevenDayReset, c.ResetsEstimated), c.Stale ? _palette.NoData : _palette.Level(c.SevenDay, _s.Claude)));
 				int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - c.Updated).TotalMinutes);
 				rows.Add((L.T("Updated"), L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")", c.Stale ? _palette.Warn : null));
 			}
@@ -1644,7 +1644,7 @@ internal sealed class Overlay : Form
 		return "—";
 	}
 
-	private static string Resets(DateTimeOffset? at)
+	private static string Resets(DateTimeOffset? at, bool estimated = false)
 	{
 		if (!at.HasValue)
 		{
@@ -1656,7 +1656,7 @@ internal sealed class Overlay : Form
 			return "";
 		}
 		string left = (d.TotalHours >= 24.0) ? (L.F("{0} d", (int)d.TotalDays) + " " + L.F("{0} h", d.Hours)) : ((d.TotalMinutes >= 60.0) ? (L.F("{0} h", (int)d.TotalHours) + " " + L.F("{0} min", d.Minutes)) : L.F("{0} min", (int)Math.Ceiling(d.TotalMinutes)));
-		return " · " + L.F("reset in {0}", left);
+		return " · " + L.F("reset in {0}", (estimated ? "≈" : "") + left);
 	}
 
 	private static float MinutesLeft(DateTimeOffset? at)

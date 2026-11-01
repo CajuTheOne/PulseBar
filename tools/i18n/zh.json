@@ -110,7 +110,6 @@
 "account open in the Claude app": "Claude 应用中当前打开的账户",
 "Open in the Claude app": "Claude 应用中打开的账户",
 "Claude Code sign-in": "Claude Code 登录账户",
-"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "Claude 应用会记录其中当前打开账户的用量。重置时间来自 claude.ai，仅当该账户同时是 Claude Code 的登录账户时显示。",
 "While G HUB is running PulseBar only reads the battery. Close G HUB (and turn off its autostart) to let PulseBar control the keyboard.": "G HUB 运行时，PulseBar 只读取电量。关闭 G HUB（并关闭其自动启动）后，PulseBar 才能控制键盘。",
 "Dim after": "空闲多久后变暗",
 "never": "从不",
@@ -251,5 +250,6 @@
 "The API key is set.": "已设置 API 密钥。",
 "Turn the tile on in Appearance to start asking.": "在“外观”中打开磁贴即可开始查询。",
 "Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com.": "用量百分比和重置时间 — 来自 Grok CLI 账单，仅当您已登录（grok login）。令牌只读取，只发送到 grok.com。",
-"Your looks": "我的外观"
+"Your looks": "我的外观",
+"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "Claude 应用记录其中打开的账户的用量。若该账户也是 Claude Code 的登录账户，确切的重置时间来自 claude.ai；否则 PulseBar 根据应用历史估算（≈）。"
 }

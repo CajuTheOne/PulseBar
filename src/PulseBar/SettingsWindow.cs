@@ -1281,7 +1281,7 @@ internal sealed partial class SettingsWindow : Window
 		{
 			_s.ClaudeFollowApp = v == 0;
 		}));
-		p.Children.Add(Note(L.T("The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.")));
+		p.Children.Add(Note(L.T("The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).")));
 		TextBlock status = StatusText();
 		p.Children.Add(status);
 		p.Children.Add(SliderRow(L.T("Ask claude.ai every"), 1.0, 15.0, 1.0, () => _s.ClaudeIntervalMin, delegate(int v)
@@ -1301,7 +1301,7 @@ internal sealed partial class SettingsWindow : Window
 				return;
 			}
 			int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - c.Updated).TotalMinutes);
-			status.Text = account + L.T("5 hours") + ": " + Pct(c.FiveHour) + Reset(c.FiveHourReset) + "\n" + L.T("7 days") + ": " + Pct(c.SevenDay) + Reset(c.SevenDayReset) + "\n" + L.T("Updated") + ": " + L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")" + (c.Stale ? (" — " + L.T("out of date")) : "") + ((_host.ClaudeAppStatus.Length > 0) ? ("\n" + _host.ClaudeAppStatus) : "") + ((_host.ClaudeApiStatus.Length > 0) ? ("\nclaude.ai: " + _host.ClaudeApiStatus) : "");
+			status.Text = account + L.T("5 hours") + ": " + Pct(c.FiveHour) + Reset(c.FiveHourReset, c.ResetsEstimated) + "\n" + L.T("7 days") + ": " + Pct(c.SevenDay) + Reset(c.SevenDayReset, c.ResetsEstimated) + "\n" + L.T("Updated") + ": " + L.F("{0} min ago", ago) + " (" + ((c.Source == "api") ? "claude.ai" : L.T("Claude app")) + ")" + (c.Stale ? (" — " + L.T("out of date")) : "") + ((_host.ClaudeAppStatus.Length > 0) ? ("\n" + _host.ClaudeAppStatus) : "") + ((_host.ClaudeApiStatus.Length > 0) ? ("\nclaude.ai: " + _host.ClaudeApiStatus) : "");
 		}
 	}
 
@@ -1314,11 +1314,11 @@ internal sealed partial class SettingsWindow : Window
 		return "—";
 	}
 
-	private static string Reset(DateTimeOffset? at)
+	private static string Reset(DateTimeOffset? at, bool estimated = false)
 	{
 		if (at.HasValue && at.Value > DateTimeOffset.Now)
 		{
-			return " · " + L.F("reset at {0}", at.Value.ToLocalTime().ToString("ddd HH:mm"));
+			return " · " + L.F("reset at {0}", (estimated ? "≈" : "") + at.Value.ToLocalTime().ToString("ddd HH:mm"));
 		}
 		return "";
 	}

@@ -21,8 +21,9 @@ namespace PulseBar;
 //    Retry-After соблюдается, токен не продлевается — это делает сам Claude Code. Квота не тратится.
 internal sealed class ClaudeUsage : IDisposable
 {
+	// ResetsEstimated — время сброса оценено по истории приложения Claude (claude.ai его не дал), показывается с «≈».
 	public sealed record Snapshot(float FiveHour, float SevenDay, DateTimeOffset? FiveHourReset, DateTimeOffset? SevenDayReset,
-		DateTimeOffset Updated, string Source)
+		DateTimeOffset Updated, string Source, bool ResetsEstimated = false)
 	{
 		// Старше 20 минут — показываем бледным: приложение Claude обновляет историю раз в ~15 минут.
 		public bool Stale => DateTimeOffset.Now - Updated > TimeSpan.FromMinutes(20);
@@ -59,6 +60,9 @@ internal sealed class ClaudeUsage : IDisposable
 	private string? _historyLatestOrg;
 
 	private readonly Dictionary<string, (long T, float Fh, float Sd)> _historyByOrg = new Dictionary<string, (long, float, float)>();
+
+	// Все записи истории по организациям (для оценки времени сброса).
+	private readonly Dictionary<string, List<(long T, float Fh, float Sd)>> _series = new Dictionary<string, List<(long, float, float)>>();
 
 	// Кому принадлежат показанные лимиты: почта (если это аккаунт Claude Code) или «аккаунт из приложения Claude».
 	public string AccountLabel
@@ -154,6 +158,7 @@ internal sealed class ClaudeUsage : IDisposable
 					next = Newer(next, FromApi(token)) ?? next;
 				}
 				next = Newer(next, FromHistory(target));
+				next = Estimate(next, target);
 			}
 			next = Expire(next);
 			AppStatus = (next != null && next.Source == "claude app" && DateTimeOffset.Now - next.Updated > TimeSpan.FromMinutes(30) && AppPaused()) ? L.T("The Claude app paused usage updates: open its usage window (Claude icon in the tray)") : "";
@@ -181,11 +186,15 @@ internal sealed class ClaudeUsage : IDisposable
 		}
 		if (a == null || b.Updated > a.Updated)
 		{
-			// Время сброса в истории нет — оставить известное из API, пока оно не прошло.
+			// Времени сброса в истории нет — оставить известное (из API или оценку), пока оно не прошло; признак оценки — вместе с ним.
+			DateTimeOffset? five = b.FiveHourReset ?? Future(a?.FiveHourReset);
+			DateTimeOffset? week = b.SevenDayReset ?? Future(a?.SevenDayReset);
+			bool carried = (b.FiveHourReset == null && five != null) || (b.SevenDayReset == null && week != null);
 			return b with
 			{
-				FiveHourReset = b.FiveHourReset ?? Future(a?.FiveHourReset),
-				SevenDayReset = b.SevenDayReset ?? Future(a?.SevenDayReset)
+				FiveHourReset = five,
+				SevenDayReset = week,
+				ResetsEstimated = b.ResetsEstimated || (carried && (a?.ResetsEstimated ?? false))
 			};
 		}
 		return a;
@@ -202,8 +211,10 @@ internal sealed class ClaudeUsage : IDisposable
 			return null;
 		}
 		DateTimeOffset now = DateTimeOffset.Now;
-		bool fiveOld = s.FiveHourReset.HasValue ? (s.FiveHourReset <= now) : (now - s.Updated > TimeSpan.FromHours(5));
-		bool weekOld = s.SevenDayReset.HasValue ? (s.SevenDayReset <= now) : (now - s.Updated > TimeSpan.FromDays(7));
+		// Оценённый сброс — с запасом 30 минут: оценка может быть раньше настоящего.
+		TimeSpan slack = s.ResetsEstimated ? TimeSpan.FromMinutes(30) : TimeSpan.Zero;
+		bool fiveOld = s.FiveHourReset.HasValue ? (s.FiveHourReset + slack <= now) : (now - s.Updated > TimeSpan.FromHours(5));
+		bool weekOld = s.SevenDayReset.HasValue ? (s.SevenDayReset + slack <= now) : (now - s.Updated > TimeSpan.FromDays(7));
 		if (!fiveOld && !weekOld)
 		{
 			return s;
@@ -215,6 +226,104 @@ internal sealed class ClaudeUsage : IDisposable
 			SevenDay = weekOld ? float.NaN : s.SevenDay,
 			SevenDayReset = weekOld ? null : s.SevenDayReset
 		};
+	}
+
+	// Время сброса, когда claude.ai его не дал (в истории приложения его нет): оценка по записям истории.
+	private Snapshot? Estimate(Snapshot? s, string org)
+	{
+		if (s == null || s.Source != "claude app" || !_series.TryGetValue(org, out List<(long T, float Fh, float Sd)>? series))
+		{
+			return s;
+		}
+		long now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+		DateTimeOffset? five = s.FiveHourReset ?? EstimateFiveHourReset(series, now);
+		DateTimeOffset? week = s.SevenDayReset ?? EstimateWeeklyReset(series, now);
+		if (five == s.FiveHourReset && week == s.SevenDayReset)
+		{
+			return s;
+		}
+		return s with
+		{
+			FiveHourReset = five,
+			SevenDayReset = week,
+			ResetsEstimated = true
+		};
+	}
+
+	private const long Hour = 3600000L;
+
+	private const long Week = 7L * 24 * Hour;
+
+	// Окно 5 часов идёт от первого сообщения (история 31.10.2026: окно с 21:3x сбросилось в 02:3x, без округления до
+	// часа). Начало текущего окна — последняя запись, где процент поднялся с нуля или упал после сброса; оно между этой
+	// записью и предыдущей (приложение пишет раз в ~15 минут) — берётся середина. Пропуск больше 35 минут (приложение не
+	// обновляло историю) — начало неизвестно.
+	internal static DateTimeOffset? EstimateFiveHourReset(IReadOnlyList<(long T, float Fh, float Sd)> s, long nowMs)
+	{
+		if (s.Count < 2 || !(s[^1].Fh > 0f))
+		{
+			return null;
+		}
+		for (int i = s.Count - 1; i > 0; i--)
+		{
+			(long T, float Fh, float Sd) prev = s[i - 1];
+			(long T, float Fh, float Sd) cur = s[i];
+			bool started = cur.Fh > 0f && (!(prev.Fh > 0f) || cur.Fh < prev.Fh - 1f);
+			if (!started)
+			{
+				continue;
+			}
+			if (cur.T - prev.T > 35L * 60000L)
+			{
+				return null;
+			}
+			long reset = (prev.T + cur.T) / 2 + 5L * Hour;
+			return (reset > nowMs) ? DateTimeOffset.FromUnixTimeMilliseconds(reset) : null;
+		}
+		return null;
+	}
+
+	// Недельный сброс — в одно и то же время недели (история: пятница, около 03–08 ч). Каждое падение недельного процента
+	// даёт промежуток, где был сброс; промежутки разных недель, сдвинутые на целые недели к последнему, пересекаются —
+	// так время уточняется. Слишком широкая оценка (больше 6 часов) — не показывается.
+	internal static DateTimeOffset? EstimateWeeklyReset(IReadOnlyList<(long T, float Fh, float Sd)> s, long nowMs)
+	{
+		List<(long Lo, long Hi)> drops = new List<(long, long)>();
+		for (int i = 1; i < s.Count; i++)
+		{
+			float a = float.IsNaN(s[i - 1].Sd) ? 0f : s[i - 1].Sd;
+			float b = float.IsNaN(s[i].Sd) ? 0f : s[i].Sd;
+			if (b < a - 1f || (a > 0f && b == 0f))
+			{
+				drops.Add((s[i - 1].T, s[i].T));
+			}
+		}
+		if (drops.Count == 0)
+		{
+			return null;
+		}
+		(long lo, long hi) = drops[^1];
+		for (int i = drops.Count - 2; i >= 0; i--)
+		{
+			long shift = (long)Math.Round((double)(drops[^1].Hi - drops[i].Hi) / Week) * Week;
+			long l = Math.Max(lo, drops[i].Lo + shift);
+			long h = Math.Min(hi, drops[i].Hi + shift);
+			if (l <= h)
+			{
+				lo = l;
+				hi = h;
+			}
+		}
+		if (hi - lo > 6L * Hour)
+		{
+			return null;
+		}
+		long reset = (lo + hi) / 2;
+		while (reset <= nowMs)
+		{
+			reset += Week;
+		}
+		return DateTimeOffset.FromUnixTimeMilliseconds(reset);
 	}
 
 	// Приложение Claude опрашивает лимиты, только если его окно расхода открывали за последние 24 часа; иначе пишет в
@@ -479,6 +588,7 @@ internal sealed class ClaudeUsage : IDisposable
 		}
 		_historyTime = t;
 		_historyByOrg.Clear();
+		_series.Clear();
 		_historyLatestOrg = null;
 		foreach (JsonElement sample in samples.EnumerateArray())
 		{
@@ -489,6 +599,11 @@ internal sealed class ClaudeUsage : IDisposable
 			float fh = u.TryGetProperty("fh", out JsonElement a) && a.ValueKind == JsonValueKind.Number ? (float)a.GetDouble() : float.NaN;
 			float sd = u.TryGetProperty("sd", out JsonElement b) && b.ValueKind == JsonValueKind.Number ? (float)b.GetDouble() : float.NaN;
 			_historyByOrg[org] = (ts.GetInt64(), fh, sd);
+			if (!_series.TryGetValue(org, out List<(long T, float Fh, float Sd)>? list))
+			{
+				list = (_series[org] = new List<(long, float, float)>());
+			}
+			list.Add((ts.GetInt64(), fh, sd));
 			_historyLatestOrg = org;
 		}
 	}

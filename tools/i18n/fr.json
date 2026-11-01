@@ -110,7 +110,6 @@
 "account open in the Claude app": "compte ouvert dans l’application Claude",
 "Open in the Claude app": "Ouvert dans l’application Claude",
 "Claude Code sign-in": "Connexion Claude Code",
-"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "L’application Claude enregistre l’utilisation du compte qui y est ouvert. Les heures de réinitialisation viennent de claude.ai et ne s’affichent que si ce compte est aussi celui de Claude Code.",
 "While G HUB is running PulseBar only reads the battery. Close G HUB (and turn off its autostart) to let PulseBar control the keyboard.": "Tant que G HUB est lancé, PulseBar lit seulement la batterie. Fermez G HUB (et désactivez son démarrage automatique) pour que PulseBar contrôle le clavier.",
 "Dim after": "Atténuer après",
 "never": "jamais",
@@ -251,5 +250,6 @@
 "The API key is set.": "La clé API est définie.",
 "Turn the tile on in Appearance to start asking.": "Activez la tuile dans « Apparence » pour commencer à interroger.",
 "Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com.": "Utilisation en % et réinitialisation — depuis la facturation de Grok CLI, seulement si vous y êtes connecté (grok login). Le jeton est seulement lu et envoyé uniquement à grok.com.",
-"Your looks": "Vos apparences"
+"Your looks": "Vos apparences",
+"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "L'application Claude enregistre l'utilisation du compte ouvert. Les heures exactes de réinitialisation viennent de claude.ai si ce compte est aussi celui de Claude Code ; sinon PulseBar les estime d'après l'historique de l'application (≈)."
 }

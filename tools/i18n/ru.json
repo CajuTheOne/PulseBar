@@ -110,7 +110,6 @@
 "account open in the Claude app": "аккаунт, открытый в приложении Claude",
 "Open in the Claude app": "Открытый в приложении Claude",
 "Claude Code sign-in": "Вход Claude Code",
-"The Claude app records usage of the account open in it. Reset times come from claude.ai and are shown only when that account is also the Claude Code sign-in.": "Приложение Claude записывает лимиты аккаунта, открытого в нём. Время сброса приходит с claude.ai и показывается, только если это же аккаунт входа Claude Code.",
 "While G HUB is running PulseBar only reads the battery. Close G HUB (and turn off its autostart) to let PulseBar control the keyboard.": "Пока запущен G HUB, PulseBar только читает заряд. Чтобы PulseBar управлял клавиатурой, закройте G HUB (и выключите его автозапуск).",
 "Dim after": "Приглушать через",
 "never": "никогда",
@@ -251,5 +250,6 @@
 "The API key is set.": "Ключ API задан.",
 "Turn the tile on in Appearance to start asking.": "Включите плитку во вкладке «Вид», чтобы начать опрос.",
 "Usage in % and reset — from the Grok CLI billing, only when you are signed in to it (grok login). The token is only read and sent only to grok.com.": "Расход в % и сброс — из биллинга Grok CLI, только если вы вошли в него (grok login). Токен только читается и отправляется только на grok.com.",
-"Your looks": "Свой вид"
+"Your looks": "Свой вид",
+"The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).": "Приложение Claude записывает лимиты аккаунта, открытого в нём. Точное время сброса приходит с claude.ai, если это же аккаунт входа Claude Code; иначе PulseBar оценивает его по истории приложения (≈)."
 }
