@@ -469,8 +469,8 @@ internal sealed class LogiKeyboard
 
 	// Номера клавиш: карта 0x8081 fn0 [0, страница] → [0, страница, 14 байт — по биту на номер страница×112 + i]
 	// (у G915 страница 0 — все номера 0–111, страница 1 — мультимедиа, G1–G5, логотип). Карта говорит, какие номера
-	// клавиатура принимает, а не какие клавиши у неё есть, поэтому оставляем только клавиши раскладки: ANSI или ISO —
-	// по 0x4540.
+	// клавиатура принимает, а не какие клавиши у неё есть, поэтому оставляем только клавиши раскладки: ANSI, ISO или
+	// русская — по 0x4540.
 	private byte[] ReadKeyIds()
 	{
 		List<byte> ids = new List<byte>();
@@ -492,10 +492,9 @@ internal sealed class LogiKeyboard
 			}
 		}
 		int layout = Device.Has(LogiDevice.KeyboardLayout) ? (Device.Call(LogiDevice.KeyboardLayout, 0, ReadOnlySpan<byte>.Empty, out _, 2)?[0] ?? 0) : 0;
-		bool iso = KeyLayout.IsIso(layout);
-		HashSet<byte> physical = KeyLayout.Physical(iso);
+		HashSet<byte> physical = KeyLayout.Physical(layout);
 		byte[] keys = ids.Where(physical.Contains).ToArray();
-		Log.Write($"logi: layout {layout} ({(iso ? "ISO" : "ANSI")}), {ids.Count} key numbers, {keys.Length} keys");
+		Log.Write($"logi: layout {layout} ({KeyLayout.ShapeName(layout)}), {ids.Count} key numbers, {keys.Length} keys");
 		return keys;
 	}
 }

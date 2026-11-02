@@ -462,12 +462,23 @@ public class ServiceTests
 	[TestMethod]
 	public void KeyListFollowsTheLayout()
 	{
+		// Пользователь, 02.11.2026 (фото русской G915): «\» слева от большого Enter оставалась синей на всех профилях.
 		using (Rig r = new Rig())
 		{
-			Assert.IsTrue(r.Svc.KeyIds.Contains(KeyLayout.AnsiBackslash), "Russian layout is ANSI");
-			Assert.IsFalse(r.Svc.KeyIds.Contains(KeyLayout.IsoExtra));
+			Assert.IsTrue(r.Svc.KeyIds.Contains(KeyLayout.IsoHash), "Russian: backslash left of the two-row Enter");
+			Assert.IsFalse(r.Svc.KeyIds.Contains(KeyLayout.AnsiBackslash));
+			Assert.IsFalse(r.Svc.KeyIds.Contains(KeyLayout.IsoExtra), "long left Shift");
 			Assert.IsTrue(r.Svc.KeyIds.Contains((byte)180), "G1");
 			Assert.IsFalse(r.Svc.KeyIds.Contains((byte)0), "number 0 is accepted by the keyboard but is not a key");
+			Assert.IsTrue(r.Kb.Frame.ContainsKey(KeyLayout.IsoHash), "painted");
+			KeyDef[] editor = KeyLayout.For(r.Svc.KeyIds.ToArray());
+			Assert.AreEqual(2f, editor.Single((KeyDef k) => k.Id == 37).H, "Enter in two rows");
+			Assert.AreEqual("\\", editor.Single((KeyDef k) => k.Id == KeyLayout.IsoHash).Label);
+		}
+		using (Rig r = new Rig(null, kb => kb.Layout = 1))
+		{
+			Assert.IsTrue(r.Svc.KeyIds.Contains(KeyLayout.AnsiBackslash), "US layout is ANSI");
+			Assert.IsFalse(r.Svc.KeyIds.Contains(KeyLayout.IsoHash));
 		}
 		using (Rig r = new Rig(null, kb => kb.Layout = 4))
 		{

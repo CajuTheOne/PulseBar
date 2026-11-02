@@ -4,8 +4,10 @@ using System.Linq;
 namespace PulseBar.Logi;
 
 // Раскладка G915/G913 для редактора цветов клавиш (2.3): номер клавиши 0x8081 (= код HID − 3 у обычных клавиш),
-// подпись, положение и размер в ширинах клавиши. ANSI или ISO выбирается по клавишам, которые сообщила клавиатура:
-// ISO — есть клавиша 0x61 (лишняя слева от Z) и Enter в две строки; ANSI — длинный левый Shift и «\» над Enter.
+// подпись, положение и размер в ширинах клавиши. Форма выбирается по клавишам, которые сообщила клавиатура:
+// ISO — есть клавиша 0x61 (лишняя слева от Z) и Enter в две строки; ANSI — длинный левый Shift и «\» (46) над Enter;
+// русская — длинный левый Shift, Enter в две строки и «\» (47) слева от него (фото G915 пользователя, 02.11.2026:
+// эта клавиша оставалась синей — PulseBar считал русскую раскладку ANSI и красил 46).
 // Сама клавиатура принимает все номера 0–111 (карта 0x8081), поэтому список её клавиш строится по раскладке из 0x4540.
 internal static class KeyLayout
 {
@@ -19,23 +21,34 @@ internal static class KeyLayout
 
 	public static KeyDef[] For(IReadOnlyCollection<byte> ids)
 	{
-		bool iso = ids.Contains(IsoExtra);
-		KeyDef[] all = Build(iso, ids.Contains(AnsiBackslash) || !ids.Contains(IsoHash));
+		bool extra = ids.Contains(IsoExtra);
+		KeyDef[] all = Build(extra || (ids.Contains(IsoHash) && !ids.Contains(AnsiBackslash)), extra);
 		// Логотип — отдельная зона (своя подсветка); остальные — только подсвечиваемые клавиши, если список известен.
 		return all.Where(k => k.Id != Logo && (ids.Count == 0 || ids.Contains(k.Id))).ToArray();
 	}
 
 	// Раскладка из 0x4540 (1 — US, 2 — US International, 3 — UK, 4 — немецкая, 5 — французская, …, 7 — русская):
-	// у US и русской клавиатур Logitech форма ANSI, у европейских — ISO. 0 — не сообщила: ANSI.
+	// у европейских — форма ISO (клавиша 0x61 слева от Z). 0 — не сообщила: ANSI.
 	public static bool IsIso(int layout)
 	{
 		return layout != 0 && layout != 1 && layout != 2 && layout != 7;
 	}
 
-	// Номера всех клавиш раскладки, включая логотип.
-	public static HashSet<byte> Physical(bool iso)
+	// Enter в две строки: ISO и русская.
+	public static bool BigEnter(int layout)
 	{
-		return new HashSet<byte>(Build(iso, !iso).Select(k => k.Id));
+		return IsIso(layout) || layout == 7;
+	}
+
+	public static string ShapeName(int layout)
+	{
+		return IsIso(layout) ? "ISO" : (BigEnter(layout) ? "Russian, Enter in two rows" : "ANSI");
+	}
+
+	// Номера всех клавиш раскладки, включая логотип.
+	public static HashSet<byte> Physical(int layout)
+	{
+		return new HashSet<byte>(Build(BigEnter(layout), IsIso(layout)).Select(k => k.Id));
 	}
 
 	// Быстрые группы редактора.
@@ -50,7 +63,8 @@ internal static class KeyLayout
 		("G-keys", new byte[5] { 180, 181, 182, 183, 184 })
 	};
 
-	private static KeyDef[] Build(bool iso, bool ansiBackslash)
+	// bigEnter — Enter в две строки и клавиша 47 слева от него; extra — короткий левый Shift и клавиша 0x61.
+	private static KeyDef[] Build(bool bigEnter, bool extra)
 	{
 		List<KeyDef> k = new List<KeyDef>();
 		Add(Logo, "G", 0f, -1.25f);
@@ -93,13 +107,13 @@ internal static class KeyLayout
 		}
 		Add(44, "[", 13f, y);
 		Add(45, "]", 14f, y);
-		if (iso)
+		if (bigEnter)
 		{
 			Add(37, "Enter", 15.25f, y, 1.25f, 2f);
 		}
 		else
 		{
-			Add(ansiBackslash ? AnsiBackslash : IsoHash, "\\", 15f, y, 1.5f);
+			Add(AnsiBackslash, "\\", 15f, y, 1.5f);
 		}
 		Add(73, "Del", 16.75f, y);
 		Add(74, "End", 17.75f, y);
@@ -117,9 +131,9 @@ internal static class KeyLayout
 		}
 		Add(48, ";", 12.25f, y);
 		Add(49, "'", 13.25f, y);
-		if (iso)
+		if (bigEnter)
 		{
-			Add(IsoHash, "#", 14.25f, y);
+			Add(IsoHash, extra ? "#" : "\\", 14.25f, y);
 		}
 		else
 		{
@@ -129,7 +143,7 @@ internal static class KeyLayout
 		Add(90, "5", 21f, y);
 		Add(91, "6", 22f, y);
 		y = 4.25f;
-		if (iso)
+		if (extra)
 		{
 			Add(105, "Shift", 1.5f, y, 1.25f);
 			Add(IsoExtra, "\\", 2.75f, y);
