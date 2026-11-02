@@ -315,6 +315,16 @@ internal sealed class Overlay : Form
 			_logi.BackupNow();
 			return;
 		}
+		if (m.Msg == SettingsProcess.MsgLogiDetect)
+		{
+			_logi.Detect();
+			return;
+		}
+		if (m.Msg == SettingsProcess.MsgLogiReport)
+		{
+			_logi.WriteReport();
+			return;
+		}
 		if (_msgTaskbarCreated != 0 && m.Msg == _msgTaskbarCreated)
 		{
 			_tray = IntPtr.Zero;

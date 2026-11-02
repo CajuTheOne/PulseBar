@@ -8,6 +8,9 @@ internal sealed class PointingDevice
 
 	public ushort Pid;
 
+	// Клавиатура другой фирмы (2.4.0-beta.8: только для списка «Определить» — PulseBar показывает её настройки Windows).
+	public bool Keyboard;
+
 	public int BatteryPercent = -1;
 
 	public bool Charging;

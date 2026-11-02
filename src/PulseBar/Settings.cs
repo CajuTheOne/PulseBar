@@ -67,8 +67,27 @@ internal sealed class Settings
 
 	public bool Beta;
 
-	// Блок Claude: 0 — выключен, 1 — компактный (между блоками), 2 — большой (полосы 5h и 7d).
-	public int ClaudeStyle = 1;
+	// Блок Claude: 0 — выключен, 1 — компактный (между блоками), 2 — большой (полосы 5h и 7d). Выключенный блок помнит
+	// свой вид (ClaudeOnStyle): плитка в «Виде» включает его таким, каким он был (пользователь, 02.11.2026).
+	public int ClaudeStyle
+	{
+		get
+		{
+			return _claudeStyle;
+		}
+		set
+		{
+			if (value != 0)
+			{
+				ClaudeOnStyle = value;
+			}
+			_claudeStyle = value;
+		}
+	}
+
+	private int _claudeStyle = 1;
+
+	public int ClaudeOnStyle = 1;
 
 	// Чьи лимиты Claude: true — аккаунта, открытого в приложении Claude; false — аккаунта Claude Code.
 	public bool ClaudeFollowApp = true;
@@ -94,7 +113,7 @@ internal sealed class Settings
 			}
 			else if (ClaudeStyle == 0)
 			{
-				ClaudeStyle = 1;
+				ClaudeStyle = ClaudeOnStyle;
 			}
 		}
 	}
@@ -139,7 +158,25 @@ internal sealed class Settings
 
 	// Строка ИИ (2.4): ChatGPT (лимиты Codex), Grok (Grok CLI), DeepSeek (баланс API); Gemini — пока без данных.
 	// Блок ChatGPT — как Claude: 0 — выключен, 1 — компактный, 2 — большой (полосы 5h и 7d); свои размеры полос.
-	public int GptStyle;
+	public int GptStyle
+	{
+		get
+		{
+			return _gptStyle;
+		}
+		set
+		{
+			if (value != 0)
+			{
+				GptOnStyle = value;
+			}
+			_gptStyle = value;
+		}
+	}
+
+	private int _gptStyle;
+
+	public int GptOnStyle = 1;
 
 	public int GptBarLength = 78;
 
@@ -161,7 +198,7 @@ internal sealed class Settings
 			}
 			else if (GptStyle == 0)
 			{
-				GptStyle = 1;
+				GptStyle = GptOnStyle;
 			}
 		}
 	}
@@ -174,7 +211,8 @@ internal sealed class Settings
 	// Что входит в «вид»: раскладка, элементы, размеры, цвета; язык, видеокарта, ключи и пороги — нет.
 	private static readonly HashSet<string> AppearanceKeys = new HashSet<string>
 	{
-		"layout", "blueNormal", "textSize", "showRamGb", "showVram", "groupGap", "trayGap", "showBattery", "claudeStyle",
+		"layout", "blueNormal", "textSize", "showRamGb", "showVram", "groupGap", "trayGap", "showBattery", "claudeStyle", "claudeOnStyle",
+		"gptOnStyle",
 		"claudeBarLength", "claudeBarHeight", "claudeSegments", "snap", "snapGap", "sepGap", "groups", "hoverTip", "hoverChart",
 		"showCpu", "showGpu", "showRam", "blocks", "showChatGpt", "gptStyle", "gptBarLength", "gptBarHeight", "gptSegments",
 		"showGrok", "showDeepSeek", "showGemini", "aiTiles", "normalColor", "warnColor", "hotColor"
@@ -613,6 +651,9 @@ internal sealed class Settings
 		case "claudeStyle":
 			this.ClaudeStyle = Math.Clamp(result, 0, 2);
 			break;
+		case "claudeOnStyle":
+			this.ClaudeOnStyle = Math.Clamp(result, 1, 2);
+			break;
 		case "claudeBarLength":
 			this.ClaudeBarLength = Math.Clamp(result, 40, 240);
 			break;
@@ -703,6 +744,9 @@ internal sealed class Settings
 		case "gptStyle":
 			this.GptStyle = Math.Clamp(result, 0, 2);
 			break;
+		case "gptOnStyle":
+			this.GptOnStyle = Math.Clamp(result, 1, 2);
+			break;
 		case "gptBarLength":
 			this.GptBarLength = Math.Clamp(result, 40, 240);
 			break;
@@ -775,6 +819,7 @@ internal sealed class Settings
 			w.WriteBoolean("embed", Embed);
 			w.WriteBoolean("beta", Beta);
 			w.WriteNumber("claudeStyle", ClaudeStyle);
+			w.WriteNumber("claudeOnStyle", ClaudeOnStyle);
 			w.WriteBoolean("claudeFollowApp", ClaudeFollowApp);
 			w.WriteNumber("claudeBarLength", ClaudeBarLength);
 			w.WriteNumber("claudeBarHeight", ClaudeBarHeight);
@@ -818,6 +863,7 @@ internal sealed class Settings
 			WriteLimit(w, "claude", Claude);
 			w.WriteBoolean("showChatGpt", ShowChatGpt);
 			w.WriteNumber("gptStyle", GptStyle);
+			w.WriteNumber("gptOnStyle", GptOnStyle);
 			w.WriteNumber("gptBarLength", GptBarLength);
 			w.WriteNumber("gptBarHeight", GptBarHeight);
 			w.WriteNumber("gptSegments", GptSegments);

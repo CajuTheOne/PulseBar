@@ -71,7 +71,9 @@ internal interface ISettingsHost
 	// Logitech: состояние клавиатуры (от строки) и команды строке — устройством владеет она. Mode: off, ghub, none,
 	// offline, host, starting; KeyEffects / LogoEffects — эффекты зон, которые есть у клавиатуры; KeyIds — подсвечиваемые клавиши;
 	// Foreign — подсветку меняет другая программа: lamparray («Динамическое освещение» Windows), other или "".
-	sealed record Logitech(string Device, bool Online, int Battery, string Mode, bool GHub, string Result, string[] KeyEffects, string[] LogoEffects, byte[] KeyIds, string Foreign = "")
+	// Devices — найденные клавиатуры и мыши, KeyboardId / MouseId — выбранные (или первые подходящие), Scans — сколько
+	// раз искали (сменилось — «Определить» закончил), Report — путь последнего отчёта об устройствах.
+	sealed record Logitech(string Device, bool Online, int Battery, string Mode, bool GHub, string Result, string[] KeyEffects, string[] LogoEffects, byte[] KeyIds, string Foreign = "", Logi.FoundDevice[]? Devices = null, string KeyboardId = "", string MouseId = "", int Scans = 0, string Report = "")
 	{
 		public static readonly Logitech Empty = new Logitech("", Online: false, -1, "", GHub: false, "", Array.Empty<string>(), Array.Empty<string>(), Array.Empty<byte>());
 	}
@@ -83,6 +85,11 @@ internal interface ISettingsHost
 	void LogiRestore();
 
 	void LogiBackup();
+
+	// Найти клавиатуры и мыши заново; записать отчёт об устройствах.
+	void LogiDetect();
+
+	void LogiReport();
 }
 
 // Окно настроек: вкладки слева, тема Fluent (как в Windows 11, светлая/тёмная — по системе).
@@ -123,8 +130,10 @@ internal sealed partial class SettingsWindow : Window
 		WindowStartupLocation = WindowStartupLocation.CenterScreen;
 		_pages.Add((L.T("Appearance"), AppearancePage));
 		_pages.Add((L.T("Thresholds and colours"), ThresholdsPage));
-		_pages.Add((L.T("Keyboard"), KeyboardPage));
-		_pages.Add((L.T("Mouse"), MousePage));
+		_keyboardPage = _pages.Count;
+		_pages.Add((DeviceTitle(keyboard: true), KeyboardPage));
+		_mousePage = _pages.Count;
+		_pages.Add((DeviceTitle(keyboard: false), MousePage));
 		_pages.Add((L.T("AI"), AiPage));
 		_pages.Add((L.T("About"), AboutPage));
 		foreach (var (title, _) in _pages)
@@ -162,6 +171,7 @@ internal sealed partial class SettingsWindow : Window
 		_timer.Tick += delegate
 		{
 			_refresh?.Invoke();
+			UpdateDeviceTitles();
 			UpdatePreview();
 		};
 		_timer.Start();
@@ -983,7 +993,13 @@ internal sealed partial class SettingsWindow : Window
 
 	private UIElement MousePage()
 	{
-		StackPanel p = Page(L.T("Mouse"));
+		StackPanel p = Page(DeviceTitle(keyboard: false));
+		p.Children.Add(DeviceHeader(keyboard: false, PageTitle(p), out Action device));
+		_refresh = device;
+		if (!LogiCfg().MouseOn)
+		{
+			return p;
+		}
 		p.Children.Add(Caption(L.T("Windows mouse settings (all mice)")));
 		p.Children.Add(SliderRow(L.T("Pointer speed"), 1.0, 20.0, 1.0, () => MouseSys.Speed, delegate(int v)
 		{
@@ -1282,14 +1298,14 @@ internal sealed partial class SettingsWindow : Window
 		{
 			_s.ClaudeFollowApp = v == 0;
 		}));
-		p.Children.Add(Note(L.T("The Claude app records usage of the account open in it. Exact reset times come from claude.ai when that account is also the Claude Code sign-in; otherwise PulseBar estimates them from the app history (≈).")));
+		p.Children.Add(Note(L.T("Usage of the account open in the Claude app comes from claude.ai with the app's own sign-in: exact percentages and reset times, even when the app stays in the tray. Without it — from the app history, reset times estimated (≈).")));
 		TextBlock status = StatusText();
 		p.Children.Add(status);
 		p.Children.Add(SliderRow(L.T("Ask claude.ai every"), 1.0, 15.0, 1.0, () => _s.ClaudeIntervalMin, delegate(int v)
 		{
 			_s.ClaudeIntervalMin = v;
 		}, (int v) => L.F("{0} min", v)));
-		p.Children.Add(Note(L.T("Usage comes from the Claude app history (about every 15 min, no limits) and from claude.ai with your Claude Code sign-in. claude.ai rejects frequent requests, so PulseBar asks it rarely and waits as long as it is told. The token is only read, never refreshed; no quota is spent.")));
+		p.Children.Add(Note(L.T("PulseBar reads the sign-in of the Claude app (or of Claude Code) only to ask claude.ai about usage: the token is only read, never refreshed or saved, and is sent only to api.anthropic.com; no quota is spent. claude.ai rejects frequent requests, so PulseBar asks it rarely and waits as long as it is told.")));
 		refresh = Refresh;
 		return p;
 		void Refresh()
@@ -1298,7 +1314,7 @@ internal sealed partial class SettingsWindow : Window
 			string account = (_host.ClaudeAccount.Length > 0) ? (L.T("Account") + ": " + _host.ClaudeAccount + "\n") : "";
 			if (c == null)
 			{
-				status.Text = account + L.T("No data: Claude Code is not signed in on this PC.");
+				status.Text = account + L.T("No data: neither the Claude app nor Claude Code is signed in on this PC.");
 				return;
 			}
 			int ago = (int)Math.Max(0.0, (DateTimeOffset.Now - c.Updated).TotalMinutes);

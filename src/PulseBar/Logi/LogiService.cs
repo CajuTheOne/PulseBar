@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using Microsoft.Win32;
 
@@ -40,6 +41,15 @@ internal sealed class LogiService : IDisposable
 	private readonly Dictionary<LogiDevice, (int Percent, bool Charging, bool Online)> _state = new Dictionary<LogiDevice, (int, bool, bool)>();
 
 	private List<PointingDevice> _otherMice = new List<PointingDevice>();
+
+	// Клавиатуры других фирм — только для списка «Определить» (у них PulseBar показывает настройки Windows).
+	private List<PointingDevice> _otherKeyboards = new List<PointingDevice>();
+
+	// Устройства Logitech, бывшие на связи (devices.json; Id → имя, вид, функции).
+	private Dictionary<string, KnownDevice>? _known;
+
+	// Сколько раз пересканировали: окно настроек ждёт смены числа после «Определить».
+	private int _scans;
 
 	private string _miceNames = "";
 
@@ -120,6 +130,9 @@ internal sealed class LogiService : IDisposable
 
 	// Последний результат работы с памятью клавиатуры (для окна настроек).
 	public string LastResult { get; private set; } = "";
+
+	// Последний отчёт об устройствах («Сохранить отчёт об устройствах»), путь к файлу.
+	public string LastReport { get; private set; } = "";
 
 	public event Action? Changed;
 
@@ -286,7 +299,7 @@ internal sealed class LogiService : IDisposable
 		}
 	}
 
-	private bool Controlling => Config.Enabled && !_ghub && !_readOnly;
+	private bool Controlling => Config.Enabled && Config.KeyboardOn && !_ghub && !_readOnly;
 
 	// ---------- устройства ----------
 
@@ -316,8 +329,16 @@ internal sealed class LogiService : IDisposable
 
 	private void Rescan()
 	{
-		IReadOnlyCollection<string> present = _env.PresentPaths();
-		bool same = present.Count == _links.Count && present.All((string path) => _links.Any((HidppLink l) => l.Alive && l.Path == path));
+		Rescan(force: false);
+	}
+
+	// force — «Определить»: открыть всё заново, даже если состав не менялся. Клавиатура и мышь выключены — ничего не
+	// открывать и не опрашивать.
+	private void Rescan(bool force)
+	{
+		bool any = Config.KeyboardOn || Config.MouseOn;
+		IReadOnlyCollection<string> present = any ? _env.PresentPaths() : Array.Empty<string>();
+		bool same = !force && present.Count == _links.Count && present.All((string path) => _links.Any((HidppLink l) => l.Alive && l.Path == path));
 		if (!same)
 		{
 			// Клавиатура остаётся в режиме PulseBar: новый объект настроит её заново при сверке.
@@ -326,7 +347,7 @@ internal sealed class LogiService : IDisposable
 				l.Dispose();
 			}
 			_kb = null;
-			List<HidppLink> links = _env.OpenLinks();
+			List<HidppLink> links = any ? _env.OpenLinks() : new List<HidppLink>();
 			List<LogiDevice> devices = new List<LogiDevice>();
 			foreach (HidppLink link in links)
 			{
@@ -376,11 +397,16 @@ internal sealed class LogiService : IDisposable
 					_state[d] = (-1, false, d.Features.Count > 0);
 				}
 			}
-			LogiDevice? kb = devices.FirstOrDefault((LogiDevice d) => d.IsKeyboard && d.Has(LogiDevice.OnboardProfiles));
+			foreach (LogiDevice d in devices)
+			{
+				Remember(d);
+			}
+			LogiDevice? kb = PickKeyboard(devices);
 			_kb = (kb != null) ? new LogiKeyboard(kb) : null;
-			Log.Write("logi: devices: " + (devices.Count == 0 ? "none" : string.Join(", ", devices.Select((LogiDevice d) => $"{d.Name} ({(d.Features.Count > 0 ? "online" : "asleep")})"))));
+			Log.Write("logi: devices: " + (devices.Count == 0 ? (any ? "none" : "keyboard and mouse are off") : string.Join(", ", devices.Select((LogiDevice d) => $"{d.Name} ({(d.Features.Count > 0 ? "online" : "asleep")})"))));
 		}
-		List<PointingDevice> mice = _env.FindMice();
+		List<PointingDevice> mice = Config.MouseOn ? _env.FindMice() : new List<PointingDevice>();
+		List<PointingDevice> keyboards = Config.KeyboardOn ? _env.FindKeyboards() : new List<PointingDevice>();
 		string names = string.Join(", ", mice.Select((PointingDevice m) => $"{m.Name} {m.Vid:X4}:{m.Pid:X4}{(m.RazerPath != null ? " (Razer)" : "")}"));
 		if (names != _miceNames)
 		{
@@ -402,9 +428,243 @@ internal sealed class LogiService : IDisposable
 				}
 			}
 			_otherMice = mice;
+			_otherKeyboards = keyboards;
 		}
+		Interlocked.Increment(ref _scans);
 		ReadBatteries();
 		Kick();
+	}
+
+	// Клавиатура, которой управляет PulseBar: выбранная кнопкой «Определить», иначе первая клавиатура Logitech с профилями
+	// в памяти. Выбранная спит или не умеет — не брать другую; выбрана клавиатура другой фирмы — никакой.
+	private LogiDevice? PickKeyboard(List<LogiDevice> devices)
+	{
+		if (!Config.KeyboardOn)
+		{
+			return null;
+		}
+		string want = Config.KeyboardDevice;
+		LogiDevice? chosen = devices.FirstOrDefault((LogiDevice d) => Id(d) == want);
+		if (chosen != null)
+		{
+			return (chosen.IsKeyboard && chosen.Has(LogiDevice.OnboardProfiles)) ? chosen : null;
+		}
+		if (want.StartsWith("hid:", StringComparison.Ordinal))
+		{
+			return null;
+		}
+		return devices.FirstOrDefault((LogiDevice d) => d.IsKeyboard && d.Has(LogiDevice.OnboardProfiles));
+	}
+
+	internal static string Id(LogiDevice d)
+	{
+		return $"logi:{d.Link.Pid:X4}:{d.Index:X2}";
+	}
+
+	internal static string Id(PointingDevice d)
+	{
+		return $"hid:{d.Vid:X4}:{d.Pid:X4}";
+	}
+
+	// Функции HID++, по которым окно настроек решает, какие разделы показать.
+	internal static string FeatureList(LogiDevice d)
+	{
+		List<string> list = new List<string> { "hidpp" };
+		void Add(string name, params ushort[] ids)
+		{
+			if (ids.Any(d.Has))
+			{
+				list.Add(name);
+			}
+		}
+		Add("lighting", LogiDevice.PerKeyLighting, 0x8080);
+		Add("effects", LogiDevice.RgbEffects, 0x8070);
+		Add("brightness", LogiDevice.Brightness);
+		Add("gkeys", LogiDevice.GKeys);
+		Add("mkeys", LogiDevice.MKeys);
+		Add("macro", LogiDevice.MacroRecord);
+		Add("memory", LogiDevice.OnboardProfiles);
+		Add("battery", LogiDevice.BatteryStatus, LogiDevice.BatteryVoltage, LogiDevice.UnifiedBattery);
+		Add("dpi", 0x2201);
+		return string.Join(",", list);
+	}
+
+	private Dictionary<string, KnownDevice> Known
+	{
+		get
+		{
+			if (_known == null)
+			{
+				_known = new Dictionary<string, KnownDevice>();
+				try
+				{
+					string path = Path.Combine(AppData, "devices.json");
+					if (File.Exists(path))
+					{
+						_known = JsonSerializer.Deserialize(File.ReadAllText(path), LogiJson.Default.DictionaryStringKnownDevice) ?? _known;
+					}
+				}
+				catch (Exception ex)
+				{
+					Log.Write("logi: devices.json: " + ex.Message);
+				}
+			}
+			return _known;
+		}
+	}
+
+	// Устройство на связи — запомнить имя, вид и функции (если изменились).
+	private void Remember(LogiDevice d)
+	{
+		if (d.Features.Count == 0)
+		{
+			return;
+		}
+		KnownDevice k = new KnownDevice
+		{
+			Name = d.Name,
+			Keyboard = d.IsKeyboard,
+			Features = FeatureList(d)
+		};
+		lock (_lock)
+		{
+			if (Known.TryGetValue(Id(d), out KnownDevice? old) && old.Name == k.Name && old.Keyboard == k.Keyboard && old.Features == k.Features)
+			{
+				return;
+			}
+			Known[Id(d)] = k;
+			try
+			{
+				Directory.CreateDirectory(AppData);
+				File.WriteAllText(Path.Combine(AppData, "devices.json"), JsonSerializer.Serialize(Known, LogiJson.Default.DictionaryStringKnownDevice));
+			}
+			catch (Exception ex)
+			{
+				Log.Write("logi: devices.json: " + ex.Message);
+			}
+		}
+	}
+
+	// Клавиатура ли устройство Logitech: на связи — по его ответу, спящее — по devices.json.
+	private bool IsKeyboardDevice(LogiDevice d)
+	{
+		if (d.Features.Count > 0)
+		{
+			return d.IsKeyboard;
+		}
+		lock (_lock)
+		{
+			return Known.TryGetValue(Id(d), out KnownDevice? k) && k.Keyboard;
+		}
+	}
+
+	// «Определить»: найти все устройства заново.
+	public void Detect()
+	{
+		Post(delegate
+		{
+			Log.Write("logi: detect");
+			Rescan(force: true);
+		});
+	}
+
+	public int Scans => Volatile.Read(ref _scans);
+
+	// «Сохранить отчёт об устройствах»: всё, что известно о клавиатурах и мышах, — для поддержки новых моделей. Без путей
+	// устройств и серийных номеров.
+	public void WriteReport()
+	{
+		Post(delegate
+		{
+			try
+			{
+				string dir = Path.GetDirectoryName(Log.FilePath)!;
+				Directory.CreateDirectory(dir);
+				string path = Path.Combine(dir, $"devices-report-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
+				File.WriteAllText(path, Report(), new UTF8Encoding(false));
+				LastReport = path;
+				Log.Write("logi: device report -> " + path);
+			}
+			catch (Exception ex)
+			{
+				LastReport = "";
+				Log.Write("logi: device report: " + ex.Message);
+			}
+			RaiseChanged();
+		});
+	}
+
+	private string Report()
+	{
+		StringBuilder sb = new StringBuilder();
+		sb.AppendLine($"PulseBar {Updater.Current} — devices, {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+		sb.AppendLine($"Keyboard {(Config.KeyboardOn ? "on" : "off")} ({(Config.KeyboardDevice.Length > 0 ? Config.KeyboardDevice : "auto")}), mouse {(Config.MouseOn ? "on" : "off")} ({(Config.MouseDevice.Length > 0 ? Config.MouseDevice : "auto")}), control {(Config.Enabled ? "on" : "off")}, G HUB {(_ghub ? "running" : "not running")}, mode {Mode}");
+		sb.AppendLine($"Controlled keyboard: {KeyboardId} {KeyboardName}; mouse on the bar: {MouseId}");
+		sb.AppendLine();
+		sb.AppendLine("== Logitech (HID++)");
+		List<HidppLink> links;
+		List<LogiDevice> devices;
+		lock (_lock)
+		{
+			links = _links;
+			devices = _devices;
+		}
+		foreach (HidppLink link in links)
+		{
+			sb.AppendLine($"channel {link.Pid:X4} {(link.IsReceiver ? "receiver" : "device")} {(link.Alive ? "" : "(closed)")}");
+		}
+		foreach (LogiDevice d in devices)
+		{
+			_state.TryGetValue(d, out var s);
+			sb.AppendLine();
+			sb.AppendLine($"{Id(d)}  {d.Name}");
+			sb.AppendLine($"  kind {d.Kind}, HID++ {d.Protocol}, {(d.Features.Count > 0 ? (s.Online ? "online" : "offline") : "asleep (features unknown)")}, battery {(s.Percent >= 0 ? $"{s.Percent}%" : "?")}{(s.Charging ? ", charging" : "")}");
+			if (d.Features.Count > 0)
+			{
+				sb.AppendLine($"  sections: {FeatureList(d)}");
+				foreach (var (id, f) in d.Features.OrderBy((KeyValuePair<ushort, (byte Index, byte Version)> x) => x.Value.Index))
+				{
+					sb.AppendLine($"  {f.Index,3}  {id:X4} v{f.Version}  {LogiDevice.FeatureName(id)}");
+				}
+			}
+			else if (Known.TryGetValue(Id(d), out KnownDevice? k))
+			{
+				sb.AppendLine($"  last seen as {k.Name}, {(k.Keyboard ? "keyboard" : "not a keyboard")}, sections: {k.Features}");
+			}
+		}
+		sb.AppendLine();
+		sb.AppendLine("== Other keyboards and mice (HID)");
+		try
+		{
+			foreach (IGrouping<(ushort Vid, ushort Pid), HidInfo> g in Hid.Enumerate((string p) => p.Contains("vid_", StringComparison.OrdinalIgnoreCase) && !p.Contains("vid_046d", StringComparison.OrdinalIgnoreCase)).GroupBy((HidInfo h) => (h.Vid, h.Pid)))
+			{
+				if (!g.Any((HidInfo h) => h.UsagePage == 1 && (h.Usage == 2 || h.Usage == 6)))
+				{
+					continue;
+				}
+				string name = g.Select((HidInfo h) => h.Product).FirstOrDefault((string n) => n.Length > 0) ?? "";
+				sb.AppendLine();
+				sb.AppendLine($"hid:{g.Key.Vid:X4}:{g.Key.Pid:X4}  {name}  ({FoundDevice.BrandOf(g.Key.Vid)})");
+				foreach (HidInfo h in g)
+				{
+					sb.AppendLine($"  usage {h.UsagePage:X4}/{h.Usage:X4}  in {h.InLen}  out {h.OutLen}  feature {h.FeatureLen}");
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			sb.AppendLine("  error: " + ex.Message);
+		}
+		List<PointingDevice> mice;
+		lock (_lock)
+		{
+			mice = _otherMice;
+		}
+		foreach (PointingDevice m in mice.Where((PointingDevice x) => x.RazerPath != null))
+		{
+			sb.AppendLine($"razer {Id(m)} {m.Name}: battery {(m.BatteryPercent >= 0 ? $"{m.BatteryPercent}%" : "?")}, last status {OtherMice.Reason(m.RazerStatus)}");
+		}
+		return sb.ToString();
 	}
 
 	private void OnConnection(HidppLink link, byte dev, bool linked)
@@ -419,15 +679,19 @@ internal sealed class LogiService : IDisposable
 			return;
 		}
 		// Спавшее при запуске устройство: функции читаются при первом подключении.
-		if (linked && d.Features.Count == 0 && !d.Refresh())
+		if (linked && d.Features.Count == 0)
 		{
-			return;
+			if (!d.Refresh())
+			{
+				return;
+			}
+			Remember(d);
 		}
 		lock (_lock)
 		{
 			_state[d] = (_state.TryGetValue(d, out var s) ? s.Percent : (-1), s.Charging, linked);
 		}
-		if (_kb == null && linked && d.IsKeyboard && d.Has(LogiDevice.OnboardProfiles))
+		if (_kb == null && linked && PickKeyboard(_devices) == d)
 		{
 			_kb = new LogiKeyboard(d);
 		}
@@ -764,11 +1028,18 @@ internal sealed class LogiService : IDisposable
 		{
 			bool was = Controlling;
 			int active = Config.Active;
+			LogiConfig old = Config;
 			Config = LogiConfig.Load(_env.ConfigPath);
 			Config.Active = active;
-			if (was && !Controlling)
+			bool devices = old.KeyboardOn != Config.KeyboardOn || old.MouseOn != Config.MouseOn || old.KeyboardDevice != Config.KeyboardDevice || old.MouseDevice != Config.MouseDevice;
+			if (was && (!Controlling || devices))
 			{
-				ReleaseKeyboard("disabled");
+				ReleaseKeyboard(Config.KeyboardOn ? "disabled" : "keyboard off");
+			}
+			if (devices)
+			{
+				Log.Write($"logi: keyboard {(Config.KeyboardOn ? "on" : "off")} {Config.KeyboardDevice}, mouse {(Config.MouseOn ? "on" : "off")} {Config.MouseDevice}");
+				Rescan(force: true);
 			}
 			if (_exe.Length > 0)
 			{
@@ -1122,7 +1393,7 @@ internal sealed class LogiService : IDisposable
 	{
 		foreach (LogiDevice d in _devices)
 		{
-			if (IsOnline(d))
+			if (IsOnline(d) && (IsKeyboardDevice(d) ? Config.KeyboardOn : Config.MouseOn))
 			{
 				ReadBattery(d);
 			}
@@ -1160,18 +1431,105 @@ internal sealed class LogiService : IDisposable
 		}
 	}
 
-	private (int Percent, bool Charging) KeyboardBatteryState()
+	// Клавиатура Logitech для строки и окна: та, которой управляет PulseBar, иначе выбранная или первая (только заряд).
+	private LogiDevice? KeyboardDevice()
 	{
 		LogiKeyboard? kb = _kb;
+		if (kb != null)
+		{
+			return kb.Device;
+		}
+		if (!Config.KeyboardOn)
+		{
+			return null;
+		}
+		List<LogiDevice> devices;
 		lock (_lock)
 		{
-			return (kb != null && _state.TryGetValue(kb.Device, out var s) && s.Online) ? (s.Percent, s.Charging) : (-1, false);
+			devices = _devices;
+		}
+		string want = Config.KeyboardDevice;
+		if (want.Length > 0)
+		{
+			return devices.FirstOrDefault((LogiDevice d) => Id(d) == want);
+		}
+		return devices.FirstOrDefault(IsKeyboardDevice);
+	}
+
+	private (int Percent, bool Charging) KeyboardBatteryState()
+	{
+		LogiDevice? kb = KeyboardDevice();
+		lock (_lock)
+		{
+			return (kb != null && _state.TryGetValue(kb, out var s) && s.Online) ? (s.Percent, s.Charging) : (-1, false);
 		}
 	}
 
-	public string KeyboardName => _kb?.Device.Name ?? "";
+	public string KeyboardName => KeyboardDevice()?.Name ?? "";
 
-	public bool KeyboardOnline => _kb != null && IsOnline(_kb.Device);
+	public bool KeyboardOnline => KeyboardDevice() is LogiDevice d && IsOnline(d);
+
+	// Выбранные (или первые подходящие) клавиатура и мышь — Id из Found; "" — нет.
+	public string KeyboardId
+	{
+		get
+		{
+			if (!Config.KeyboardOn)
+			{
+				return "";
+			}
+			LogiDevice? d = KeyboardDevice();
+			if (d != null)
+			{
+				return Id(d);
+			}
+			lock (_lock)
+			{
+				PointingDevice? k = _otherKeyboards.FirstOrDefault((PointingDevice x) => Id(x) == Config.KeyboardDevice) ?? _otherKeyboards.FirstOrDefault();
+				return (k != null) ? Id(k) : "";
+			}
+		}
+	}
+
+	public string MouseId => CurrentMouseId();
+
+	// Все найденные клавиатуры и мыши (включённых видов) — для списка «Определить».
+	public IReadOnlyList<FoundDevice> Found
+	{
+		get
+		{
+			List<FoundDevice> list = new List<FoundDevice>();
+			lock (_lock)
+			{
+				foreach (LogiDevice d in _devices)
+				{
+					Known.TryGetValue(Id(d), out KnownDevice? k);
+					bool live = d.Features.Count > 0;
+					bool keyboard = live ? d.IsKeyboard : (k?.Keyboard ?? false);
+					if (keyboard ? !Config.KeyboardOn : !Config.MouseOn)
+					{
+						continue;
+					}
+					string features = live ? FeatureList(d) : (k?.Features ?? "");
+					string[] f = features.Split(',');
+					string support = (features.Length == 0) ? "" : ((keyboard && f.Contains("memory")) ? "full" : (f.Contains("battery") ? "battery" : "windows"));
+					_state.TryGetValue(d, out var s);
+					bool online = live && s.Online;
+					list.Add(new FoundDevice(Id(d), keyboard, live ? d.Name : (k?.Name ?? d.Name), "Logitech", online, online ? s.Percent : -1, online && s.Charging, support, features));
+				}
+				foreach (PointingDevice m in _otherMice)
+				{
+					bool razer = m.RazerPath != null;
+					list.Add(new FoundDevice(Id(m), Keyboard: false, m.Name, FoundDevice.BrandOf(m.Vid), Online: true, m.BatteryPercent, m.Charging, razer ? "battery" : "windows", razer ? "battery" : ""));
+				}
+				foreach (PointingDevice m in _otherKeyboards)
+				{
+					list.Add(new FoundDevice(Id(m), Keyboard: true, m.Name, FoundDevice.BrandOf(m.Vid), Online: true, -1, Charging: false, "windows", ""));
+				}
+			}
+			return list;
+		}
+	}
 
 	public float KeyboardBattery
 	{
@@ -1189,6 +1547,10 @@ internal sealed class LogiService : IDisposable
 	{
 		get
 		{
+			if (!Config.KeyboardOn)
+			{
+				return "disabled";
+			}
 			if (!Config.Enabled)
 			{
 				return "off";
@@ -1224,26 +1586,67 @@ internal sealed class LogiService : IDisposable
 	public IReadOnlyList<byte> KeyIds => _kb?.KeyIds ?? Array.Empty<byte>();
 
 	// Мышь для строки: Logitech на связи с известным зарядом, иначе другая мышь с зарядом (Razer).
+	// Выбрана кнопкой «Определить» — она, даже без заряда.
 	public (string Name, float Battery, bool Charging, bool Online) CurrentMouse
 	{
 		get
 		{
+			string id = CurrentMouseId();
+			if (id.Length == 0)
+			{
+				return ("", float.NaN, false, false);
+			}
 			lock (_lock)
 			{
-				foreach (LogiDevice d in _devices)
+				LogiDevice? d = _devices.FirstOrDefault((LogiDevice x) => Id(x) == id);
+				if (d != null)
 				{
-					if (d != _kb?.Device && !d.IsKeyboard && _state.TryGetValue(d, out var s) && s.Online && s.Percent >= 0)
-					{
-						return (d.Name, s.Percent, s.Charging, true);
-					}
+					bool on = _state.TryGetValue(d, out var s) && s.Online && d.Features.Count > 0;
+					return (d.Name, (on && s.Percent >= 0) ? s.Percent : float.NaN, on && s.Charging, on);
 				}
-				PointingDevice? m = _otherMice.FirstOrDefault((PointingDevice x) => x.BatteryPercent >= 0) ?? _otherMice.FirstOrDefault();
+				PointingDevice? m = _otherMice.FirstOrDefault((PointingDevice x) => Id(x) == id);
 				if (m != null)
 				{
 					return (m.Name, (m.BatteryPercent >= 0) ? m.BatteryPercent : float.NaN, m.Charging, true);
 				}
 			}
 			return ("", float.NaN, false, false);
+		}
+	}
+
+	private string CurrentMouseId()
+	{
+		if (!Config.MouseOn)
+		{
+			return "";
+		}
+		List<LogiDevice> devices;
+		lock (_lock)
+		{
+			devices = _devices;
+		}
+		LogiDevice? kb = _kb?.Device;
+		List<LogiDevice> logi = devices.Where((LogiDevice x) => x != kb && !IsKeyboardDevice(x)).ToList();
+		lock (_lock)
+		{
+			string want = Config.MouseDevice;
+			if (want.Length > 0 && (logi.Any((LogiDevice x) => Id(x) == want) || _otherMice.Any((PointingDevice x) => Id(x) == want)))
+			{
+				return want;
+			}
+			foreach (LogiDevice d in logi)
+			{
+				if (_state.TryGetValue(d, out var s) && s.Online && s.Percent >= 0)
+				{
+					return Id(d);
+				}
+			}
+			PointingDevice? m = _otherMice.FirstOrDefault((PointingDevice x) => x.BatteryPercent >= 0) ?? _otherMice.FirstOrDefault();
+			if (m != null)
+			{
+				return Id(m);
+			}
+			return (logi.Count > 0) ? Id(logi[0]) : "";
 		}
 	}
 
@@ -1255,7 +1658,7 @@ internal sealed class LogiService : IDisposable
 		{
 			foreach (LogiDevice d in _devices)
 			{
-				if (_state.TryGetValue(d, out var s) && s.Online && s.Percent >= 0)
+				if (_state.TryGetValue(d, out var s) && s.Online && s.Percent >= 0 && (d.IsKeyboard ? Config.KeyboardOn : Config.MouseOn))
 				{
 					list.Add(Short(d.Name) + " " + $"{s.Percent}%{(s.Charging ? "⚡" : "")}");
 				}
@@ -1559,6 +1962,8 @@ internal sealed class LogiEnv
 	public Func<long> IdleMs = LogiService.WindowsIdleMs;
 
 	public Func<List<PointingDevice>> FindMice = OtherMice.Find;
+
+	public Func<List<PointingDevice>> FindKeyboards = OtherMice.FindKeyboards;
 
 	public Action<KeyAction> RunAction = Macro.Run;
 

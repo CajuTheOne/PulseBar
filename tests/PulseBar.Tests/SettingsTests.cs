@@ -53,4 +53,22 @@ public class SettingsTests
 		s.ShowChatGpt = false;
 		Assert.AreEqual(0, s.GptStyle);
 	}
+
+	// Пользователь, 02.11.2026: выключенные и снова включённые плитки ИИ в «Виде» включались маленькими.
+	[TestMethod]
+	public void AiTilesTurnBackOnInTheirStyle()
+	{
+		Settings s = new Settings { ClaudeStyle = 2, GptStyle = 2 };
+		s.SetShown("claude", false);
+		s.SetShown("chatgpt", false);
+		Assert.AreEqual(0, s.ClaudeStyle);
+		Assert.AreEqual(0, s.GptStyle);
+		Settings t = new Settings();
+		t.ApplyAppearance(s.AppearanceJson());
+		Assert.IsFalse(t.IsShown("claude"));
+		t.SetShown("claude", true);
+		t.SetShown("chatgpt", true);
+		Assert.AreEqual(2, t.ClaudeStyle, "large again, also after saving");
+		Assert.AreEqual(2, t.GptStyle);
+	}
 }

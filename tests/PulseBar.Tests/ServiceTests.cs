@@ -35,6 +35,13 @@ public class ServiceTests
 		// Время с последнего ввода в Windows, мс.
 		public long IdleMs = 60000;
 
+		// Сколько раз открывали каналы HID++; мыши и клавиатуры других фирм, которые «найдёт» служба.
+		public int Opens;
+
+		public readonly List<PointingDevice> Mice = new List<PointingDevice>();
+
+		public readonly List<PointingDevice> Keyboards = new List<PointingDevice>();
+
 		public Rig(Action<LogiConfig>? edit = null, Action<FakeG915>? before = null)
 		{
 			Dir = Path.Combine(Path.GetTempPath(), "PulseBarTests", Guid.NewGuid().ToString("N"));
@@ -54,10 +61,15 @@ public class ServiceTests
 			c.Save(ConfigPath);
 			LogiEnv env = new LogiEnv
 			{
-				OpenLinks = () => new List<HidppLink> { new HidppLink(Kb, 0xC541, receiver: true, "fake") },
+				OpenLinks = delegate
+				{
+					Interlocked.Increment(ref Opens);
+					return new List<HidppLink> { new HidppLink(Kb, 0xC541, receiver: true, "fake") };
+				},
 				PresentPaths = () => new string[1] { "fake" },
 				GHubRunning = () => GHub,
-				FindMice = () => new List<PointingDevice>(),
+				FindMice = () => Mice.ToList(),
+				FindKeyboards = () => Keyboards.ToList(),
 				RunAction = a => Actions.Add(a.Value),
 				ConfigPath = ConfigPath,
 				AppData = Dir,
@@ -480,6 +492,117 @@ public class ServiceTests
 		r.Svc.DisplayChanged(on: true);
 		r.Settle();
 		Assert.AreEqual(12, r.Kb.Brightness);
+	}
+
+	// Пользователь, 02.11.2026: клавиатуру и мышь можно выключить целиком — «не всем эти опции нужны».
+	[TestMethod]
+	public void KeyboardOffReturnsItToItsMemoryAndHidesIt()
+	{
+		using Rig r = new Rig();
+		Assert.AreEqual(2, r.Kb.Mode);
+		Assert.IsFalse(float.IsNaN(r.Svc.KeyboardBattery));
+		LogiConfig c = LogiConfig.Load(r.ConfigPath);
+		c.KeyboardOn = false;
+		c.Save(r.ConfigPath);
+		r.Svc.ReloadConfig();
+		r.Settle();
+		Assert.AreEqual(1, r.Kb.Mode, "keyboard memory");
+		Assert.AreEqual("disabled", r.Svc.Mode);
+		Assert.IsTrue(float.IsNaN(r.Svc.KeyboardBattery), "no charge on the bar");
+		Assert.AreEqual("", r.Svc.KeyboardId);
+		Assert.IsFalse(r.Svc.Found.Any((FoundDevice d) => d.Keyboard));
+		c.KeyboardOn = true;
+		c.Save(r.ConfigPath);
+		r.Svc.ReloadConfig();
+		r.Settle();
+		Assert.AreEqual(2, r.Kb.Mode, "PulseBar mode again");
+		Assert.AreEqual("host", r.Svc.Mode);
+	}
+
+	[TestMethod]
+	public void KeyboardAndMouseOffOpenNothing()
+	{
+		using Rig r = new Rig(c =>
+		{
+			c.KeyboardOn = false;
+			c.MouseOn = false;
+		});
+		r.Mice.Add(new PointingDevice { Name = "Some Mouse", Vid = 0x1234, Pid = 1 });
+		r.Svc.Detect();
+		r.Settle();
+		Assert.AreEqual(0, r.Opens, "no HID++ channel opened");
+		Assert.AreEqual(0, r.Svc.Found.Count);
+		Assert.AreEqual(1, r.Kb.Mode, "keyboard untouched");
+		Assert.AreEqual("", r.Svc.CurrentMouse.Name);
+	}
+
+	// «Определить»: все клавиатуры и мыши с тем, что PulseBar с ними умеет; выбор мыши для строки.
+	[TestMethod]
+	public void DetectListsDevicesAndTheChosenMouseIsShown()
+	{
+		using Rig r = new Rig();
+		r.Mice.Add(new PointingDevice { Name = "Razer Naga V3 Pro", Vid = 0x1532, Pid = 0x00E8, RazerPath = "no-such-device", BatteryPercent = 82 });
+		r.Mice.Add(new PointingDevice { Name = "USB Optical Mouse", Vid = 0x1234, Pid = 0x5678 });
+		r.Keyboards.Add(new PointingDevice { Name = "USB Keyboard", Vid = 0x258A, Pid = 0x002A, Keyboard = true });
+		int scans = r.Svc.Scans;
+		r.Svc.Detect();
+		r.Settle();
+		Assert.AreNotEqual(scans, r.Svc.Scans);
+		IReadOnlyList<FoundDevice> found = r.Svc.Found;
+		FoundDevice g915 = found.Single((FoundDevice d) => d.Brand == "Logitech");
+		Assert.IsTrue(g915.Keyboard);
+		Assert.AreEqual("full", g915.Support);
+		Assert.IsTrue(g915.Has("lighting") && g915.Has("brightness") && g915.Has("gkeys") && g915.Has("memory") && g915.Has("battery"), g915.Features);
+		Assert.AreEqual("Logitech G915", g915.Title);
+		Assert.AreEqual(g915.Id, r.Svc.KeyboardId);
+		FoundDevice naga = found.Single((FoundDevice d) => d.Id == "hid:1532:00E8");
+		Assert.AreEqual("battery", naga.Support);
+		Assert.AreEqual("Razer Naga V3 Pro", naga.Title);
+		Assert.AreEqual("windows", found.Single((FoundDevice d) => d.Id == "hid:258A:002A").Support);
+		Assert.AreEqual("hid:1532:00E8", r.Svc.MouseId, "the mouse with a charge");
+		LogiConfig c = LogiConfig.Load(r.ConfigPath);
+		c.MouseDevice = "hid:1234:5678";
+		c.Save(r.ConfigPath);
+		r.Svc.ReloadConfig();
+		r.Settle();
+		Assert.AreEqual("hid:1234:5678", r.Svc.MouseId);
+		Assert.AreEqual("USB Optical Mouse", r.Svc.CurrentMouse.Name);
+		Assert.IsTrue(float.IsNaN(r.Svc.CurrentMouse.Battery), "no charge, but the chosen one");
+		Assert.AreEqual(2, r.Kb.Mode, "the keyboard stays in PulseBar mode");
+	}
+
+	// Клавиатура уснула до «Определить»: вид, имя и функции — из devices.json, разделы окна не пропадают.
+	[TestMethod]
+	public void AsleepKeyboardIsKnownFromBefore()
+	{
+		using Rig r = new Rig();
+		Assert.IsTrue(File.Exists(Path.Combine(r.Dir, "devices.json")));
+		r.Kb.Sleep();
+		r.Settle();
+		r.Svc.Detect();
+		r.Settle();
+		FoundDevice kb = r.Svc.Found.Single();
+		Assert.IsFalse(kb.Online);
+		Assert.IsTrue(kb.Keyboard);
+		Assert.AreEqual(FakeG915.Name, kb.Name);
+		Assert.AreEqual("full", kb.Support);
+		Assert.AreEqual(kb.Id, r.Svc.KeyboardId);
+		r.Kb.Wake();
+		r.Settle();
+		Assert.AreEqual(2, r.Kb.Mode, "set up when it wakes");
+	}
+
+	// Выбрана клавиатура другой фирмы: G915 остаётся в своей памяти.
+	[TestMethod]
+	public void OtherKeyboardChosenLeavesTheLogitechOneAlone()
+	{
+		using Rig r = new Rig(c => c.KeyboardDevice = "hid:258A:002A");
+		r.Keyboards.Add(new PointingDevice { Name = "USB Keyboard", Vid = 0x258A, Pid = 0x002A, Keyboard = true });
+		r.Svc.Detect();
+		r.Settle();
+		Assert.AreEqual(1, r.Kb.Mode);
+		Assert.AreEqual("hid:258A:002A", r.Svc.KeyboardId);
+		Assert.AreEqual("none", r.Svc.Mode);
 	}
 
 	[TestMethod]

@@ -25,6 +25,17 @@ internal sealed class LogiConfig
 
 	public bool Enabled { get; set; } = true;
 
+	// Клавиатура и мышь целиком (2.4.0-beta.8, пользователь: «не всем эти опции нужны»): выключено — устройства этого
+	// вида не ищутся и не опрашиваются, заряда на панели нет, клавиатура возвращается своей памяти.
+	public bool KeyboardOn { get; set; } = true;
+
+	public bool MouseOn { get; set; } = true;
+
+	// Выбранные кнопкой «Определить» (FoundDevice.Id); "" — первое подходящее.
+	public string KeyboardDevice { get; set; } = "";
+
+	public string MouseDevice { get; set; } = "";
+
 	public int Active { get; set; }
 
 	public List<Profile> Profiles { get; set; } = new List<Profile>();

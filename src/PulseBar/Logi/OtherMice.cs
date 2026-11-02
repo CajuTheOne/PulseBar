@@ -10,27 +10,45 @@ internal static class OtherMice
 {
 	public static List<PointingDevice> Find()
 	{
-		List<HidInfo> source = Hid.Enumerate((string p) => p.Contains("vid_", StringComparison.OrdinalIgnoreCase) && !p.Contains("vid_046d", StringComparison.OrdinalIgnoreCase));
+		return Scan().Where((PointingDevice d) => !d.Keyboard).ToList();
+	}
+
+	public static List<PointingDevice> FindKeyboards()
+	{
+		return Scan().Where((PointingDevice d) => d.Keyboard).ToList();
+	}
+
+	// Мыши и клавиатуры не Logitech: устройство (VID:PID) с коллекцией мыши (1/2) или клавиатуры (1/6). У игровых мышей
+	// бывает и коллекция клавиатуры (боковые кнопки Naga), у клавиатур — мыши, поэтому сначала — слова в имени, потом —
+	// есть ли коллекция мыши.
+	private static List<PointingDevice> Scan()
+	{
+		List<HidInfo> source = Hid.Enumerate((string p) => p.Contains("vid_", StringComparison.OrdinalIgnoreCase) && !p.Contains("vid_046d", StringComparison.OrdinalIgnoreCase) && !p.Contains("vid_0000", StringComparison.OrdinalIgnoreCase));
 		List<PointingDevice> list = new List<PointingDevice>();
 		foreach (IGrouping<(ushort, ushort), HidInfo> item in from h in source
 			group h by (Vid: h.Vid, Pid: h.Pid))
 		{
-			if (!item.Any((HidInfo h) => h.UsagePage == 1 && h.Usage == 2))
+			bool mouse = item.Any((HidInfo h) => h.UsagePage == 1 && h.Usage == 2);
+			bool keyboard = item.Any((HidInfo h) => h.UsagePage == 1 && h.Usage == 6);
+			if (!mouse && !keyboard)
 			{
 				continue;
 			}
 			string text = item.Select((HidInfo h) => h.Product).FirstOrDefault((string n) => n.Length > 0) ?? "";
+			string lower = text.ToLowerInvariant();
+			bool isKeyboard = (lower.Contains("keyboard") || lower.Contains("kbd") || lower.Contains("keypad")) || (!lower.Contains("mouse") && !mouse);
 			if (text.Length == 0)
 			{
-				text = $"USB mouse {item.Key.Item1:X4}:{item.Key.Item2:X4}";
+				text = $"USB {(isKeyboard ? "keyboard" : "mouse")} {item.Key.Item1:X4}:{item.Key.Item2:X4}";
 			}
 			PointingDevice pointingDevice = new PointingDevice
 			{
 				Name = text,
 				Vid = item.Key.Item1,
-				Pid = item.Key.Item2
+				Pid = item.Key.Item2,
+				Keyboard = isKeyboard
 			};
-			if (pointingDevice.Vid == 5426)
+			if (pointingDevice.Vid == 5426 && !isKeyboard)
 			{
 				pointingDevice.RazerPath = item.FirstOrDefault((HidInfo h) => h.FeatureLen == 91)?.Path;
 			}

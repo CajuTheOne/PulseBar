@@ -6,13 +6,16 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
+using PulseBar.Ai;
 
 namespace PulseBar;
 
 // Лимиты подписки Claude (5 часов и 7 дней), как на claude.ai.
 // Аккаунт — тот, в который вошёл Claude Code (~\.claude\.credentials.json); его организацию узнаём один раз на токен
 // через api/oauth/profile и запоминаем в %LOCALAPPDATA%\PulseBar\claude-account.json.
-// Два источника, берётся более свежий:
+// Три источника, берётся более свежий:
+//  - вход самого приложения Claude (ClaudeAppAuth, с 2.4.0-beta.8) — GET api/oauth/usage за аккаунт, открытый в
+//    приложении: точные проценты и время сброса, приложение может быть свёрнуто в трей сколько угодно;
 //  - %APPDATA%\Claude\plan-usage-history.json — приложение Claude пишет туда проценты примерно раз в 15 мин;
 //    токен не нужен, лимитов на запросы нет, но нет времени сброса. Приложение может быть в другом аккаунте или
 //    организации (у каждой записи есть "org"), поэтому берутся только записи организации Claude Code;
@@ -47,6 +50,18 @@ internal sealed class ClaudeUsage : IDisposable
 	// Почта аккаунта Claude Code (пусто — ещё не известна).
 	public volatile string Account = "";
 
+	// Вход приложения Claude: организация его токена, почта аккаунта (api/oauth/profile, один раз на токен).
+	private volatile string? _appOrg;
+
+	private string? _appProfileToken;
+
+	private DateTimeOffset _appProfileRetryAt = DateTimeOffset.MinValue;
+
+	private volatile string _appEmail = "";
+
+	// Что видно о входе приложения — в журнал, только когда меняется.
+	private string _appState = "";
+
 	// true — показывать аккаунт, открытый сейчас в приложении Claude (организация последней записи его истории);
 	// false — аккаунт, в который вошёл Claude Code.
 	public volatile bool FollowApp = true;
@@ -73,6 +88,10 @@ internal sealed class ClaudeUsage : IDisposable
 			if (target == null)
 			{
 				return "";
+			}
+			if (target == _appOrg && _appEmail.Length > 0)
+			{
+				return _appEmail;
 			}
 			if (!(target == _org) || Account.Length <= 0)
 			{
@@ -135,8 +154,16 @@ internal sealed class ClaudeUsage : IDisposable
 				next = null; // данные прежнего аккаунта больше не подходят
 			}
 			ReadHistory();
+			ClaudeAppAuth.Token? app = _api ? ClaudeAppAuth.Pick(_historyLatestOrg) : null;
+			_appOrg = app?.Org;
+			string state = (app == null) ? "none" : "ok";
+			if (_api && state != _appState)
+			{
+				_appState = state;
+				Log.Write((app == null) ? "claude: no Claude app sign-in" : "claude: using the Claude app sign-in");
+			}
 			string? codeOrg = (loggedIn ? _org : null);
-			string? target = (FollowApp ? (_historyLatestOrg ?? codeOrg) : codeOrg);
+			string? target = (FollowApp ? (app?.Org ?? _historyLatestOrg ?? codeOrg) : codeOrg);
 			if (target != _target)
 			{
 				_target = target;
@@ -152,10 +179,16 @@ internal sealed class ClaudeUsage : IDisposable
 			}
 			else
 			{
-				// claude.ai отвечает за аккаунт Claude Code — его данные годятся, только если показываем этот же аккаунт.
-				if (_api && token != null && target == _org && DateTimeOffset.Now >= _nextApi)
+				// claude.ai отвечает за аккаунт токена: вход приложения — за организацию его токена, вход Claude Code — за
+				// свою; данные годятся, только если показываем этот же аккаунт.
+				string? apiToken = (app != null && app.Org == target) ? app.Value : ((token != null && target == _org) ? token : null);
+				if (_api && apiToken != null && DateTimeOffset.Now >= _nextApi)
 				{
-					next = Newer(next, FromApi(token)) ?? next;
+					if (app != null && apiToken == app.Value)
+					{
+						AppProfile(app.Value);
+					}
+					next = Newer(next, FromApi(apiToken)) ?? next;
 				}
 				next = Newer(next, FromHistory(target));
 				next = Estimate(next, target);
@@ -532,6 +565,44 @@ internal sealed class ClaudeUsage : IDisposable
 			_profileRetryAt = DateTimeOffset.Now + TimeSpan.FromMinutes(10);
 			Log.Write("claude profile: " + ex.Message);
 			return false;
+		}
+	}
+
+	// Почта аккаунта входа приложения Claude — для подписи «Аккаунт»; запрос — когда сменился токен (или раз в 10 мин
+	// после ошибки).
+	private void AppProfile(string token)
+	{
+		if (token == _appProfileToken || DateTimeOffset.Now < _appProfileRetryAt)
+		{
+			return;
+		}
+		try
+		{
+			using HttpClient http = new() { Timeout = TimeSpan.FromSeconds(30) };
+			using HttpRequestMessage req = new(HttpMethod.Get, "https://api.anthropic.com/api/oauth/profile");
+			req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+			req.Headers.Add("anthropic-beta", "oauth-2025-04-20");
+			req.Headers.UserAgent.ParseAdd("PulseBar/" + Updater.Current);
+			using HttpResponseMessage resp = http.Send(req);
+			if (!resp.IsSuccessStatusCode)
+			{
+				_appProfileRetryAt = DateTimeOffset.Now + TimeSpan.FromMinutes(10);
+				Log.Write($"claude app profile: {(int)resp.StatusCode}");
+				return;
+			}
+			using JsonDocument doc = JsonDocument.Parse(resp.Content.ReadAsStream());
+			string email = "";
+			if (doc.RootElement.TryGetProperty("account", out JsonElement a))
+			{
+				email = (a.TryGetProperty("email", out JsonElement e) ? e.GetString() : (a.TryGetProperty("email_address", out JsonElement e2) ? e2.GetString() : null)) ?? "";
+			}
+			_appProfileToken = token;
+			_appEmail = email;
+		}
+		catch (Exception ex)
+		{
+			_appProfileRetryAt = DateTimeOffset.Now + TimeSpan.FromMinutes(10);
+			Log.Write("claude app profile: " + ex.Message);
 		}
 	}
 

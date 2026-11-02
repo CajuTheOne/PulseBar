@@ -38,6 +38,11 @@ internal static class SettingsProcess
 
 	public static readonly uint MsgLogiBackup = RegisterWindowMessageW("PulseBar.LogiBackup");
 
+	// «Определить» на вкладках «Клавиатура» и «Мышь» и «Сохранить отчёт об устройствах».
+	public static readonly uint MsgLogiDetect = RegisterWindowMessageW("PulseBar.LogiDetect");
+
+	public static readonly uint MsgLogiReport = RegisterWindowMessageW("PulseBar.LogiReport");
+
 	public static string StatusPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "status.json");
 
 	private static nint _bar;
@@ -141,6 +146,26 @@ internal static class SettingsProcess
 				w.WriteString("logoEffects", string.Join(",", logi.Effects(1)));
 				w.WriteString("keyIds", Convert.ToHexString(logi.KeyIds.ToArray()));
 				w.WriteString("foreign", logi.ForeignLighting);
+				w.WriteString("kbId", logi.KeyboardId);
+				w.WriteString("mouseId", logi.MouseId);
+				w.WriteNumber("scans", logi.Scans);
+				w.WriteString("report", logi.LastReport);
+				w.WriteStartArray("devices");
+				foreach (Logi.FoundDevice d in logi.Found)
+				{
+					w.WriteStartObject();
+					w.WriteString("id", d.Id);
+					w.WriteBoolean("keyboard", d.Keyboard);
+					w.WriteString("name", d.Name);
+					w.WriteString("brand", d.Brand);
+					w.WriteBoolean("online", d.Online);
+					w.WriteNumber("battery", d.Battery);
+					w.WriteBoolean("charging", d.Charging);
+					w.WriteString("support", d.Support);
+					w.WriteString("features", d.Features);
+					w.WriteEndObject();
+				}
+				w.WriteEndArray();
 				w.WriteEndObject();
 				w.WriteStartArray("adapters");
 				foreach (GpuSensor.Adapter a in adapters)
@@ -326,6 +351,16 @@ internal static class SettingsProcess
 			Notify(MsgLogiBackup);
 		}
 
+		public void LogiDetect()
+		{
+			Notify(MsgLogiDetect);
+		}
+
+		public void LogiReport()
+		{
+			Notify(MsgLogiReport);
+		}
+
 		public Updater Updater { get; } = new Updater();
 
 		public IReadOnlyList<GpuSensor.Adapter> Adapters => _adapters;
@@ -394,6 +429,11 @@ internal static class SettingsProcess
 			return e.TryGetProperty(name, out JsonElement v) ? (v.GetString() ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries) : Array.Empty<string>();
 		}
 
+		private static string Str(JsonElement e, string name)
+		{
+			return (e.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.String) ? (v.GetString() ?? "") : "";
+		}
+
 		private void ReadStatus()
 		{
 			try
@@ -457,7 +497,15 @@ internal static class SettingsProcess
 				}
 				if (e.TryGetProperty("logi", out JsonElement lg) && lg.ValueKind == JsonValueKind.Object)
 				{
-					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""), lg.TryGetProperty("foreign", out JsonElement fl) ? (fl.GetString() ?? "") : "");
+					List<Logi.FoundDevice> found = new List<Logi.FoundDevice>();
+					if (lg.TryGetProperty("devices", out JsonElement dv) && dv.ValueKind == JsonValueKind.Array)
+					{
+						foreach (JsonElement d in dv.EnumerateArray())
+						{
+							found.Add(new Logi.FoundDevice(Str(d, "id"), d.GetProperty("keyboard").GetBoolean(), Str(d, "name"), Str(d, "brand"), d.GetProperty("online").GetBoolean(), d.GetProperty("battery").GetInt32(), d.GetProperty("charging").GetBoolean(), Str(d, "support"), Str(d, "features")));
+						}
+					}
+					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""), Str(lg, "foreign"), found.ToArray(), Str(lg, "kbId"), Str(lg, "mouseId"), lg.TryGetProperty("scans", out JsonElement sc) && sc.TryGetInt32(out int scans) ? scans : 0, Str(lg, "report"));
 				}
 				_claudeAccount = e.TryGetProperty("claudeAccount", out JsonElement acc) ? (acc.GetString() ?? "") : "";
 				_adapters = new List<GpuSensor.Adapter>();

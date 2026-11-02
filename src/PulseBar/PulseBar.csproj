@@ -8,6 +8,8 @@
     <UseWPF>true</UseWPF>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Значок exe (меню «Пуск», Проводник, окно настроек): рисунок значка в трее, tools\make-icon.ps1. -->
+    <ApplicationIcon>PulseBar.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
     <LangVersion>12.0</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

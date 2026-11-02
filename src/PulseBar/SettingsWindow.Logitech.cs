@@ -106,21 +106,34 @@ internal sealed partial class SettingsWindow
 
 	private UIElement KeyboardPage()
 	{
-		if (_logi == null)
-		{
-			_logi = LogiConfig.Load();
-			_logiStamp = LogiFileTime();
-		}
-		LogiConfig c = _logi;
+		LogiConfig c = LogiCfg();
 		ISettingsHost.Logitech st = _host.LogiStatus;
 		if (_logiProfile < 0 || _logiProfile >= c.Profiles.Count)
 		{
 			_logiProfile = Math.Clamp(c.Active, 0, c.Profiles.Count - 1);
 		}
 		Profile pr = c.Profiles[_logiProfile];
-		StackPanel p = Page(L.T("Keyboard"));
+		StackPanel p = Page(DeviceTitle(keyboard: true));
 		p.MaxWidth = 660.0;
 		p.Children[0].SetValue(FrameworkElement.MarginProperty, new Thickness(0.0, 0.0, 0.0, 8.0));
+		p.Children.Add(DeviceHeader(keyboard: true, PageTitle(p), out Action device));
+		_refresh = device;
+		if (!c.KeyboardOn)
+		{
+			return p;
+		}
+		// Разделы — по тому, что клавиатура заявила (2.4.0-beta.8). Ничего не найдено или клавиатура ещё ни разу не была на
+		// связи — показывается всё, как раньше: профили можно настроить заранее.
+		FoundDevice? kb = Chosen(keyboard: true);
+		if (kb != null && (kb.Support == "battery" || kb.Support == "windows"))
+		{
+			WindowsKeyboardSettings(p);
+			p.Children.Add(Note((kb.Support == "battery") ? L.T("PulseBar shows the charge of this keyboard; its lighting and keys are not supported yet. Save a device report (Detect) to help add it.") : L.T("PulseBar can change only the Windows settings of this keyboard.")));
+			return p;
+		}
+		bool known = kb != null && kb.FeaturesKnown;
+		bool lighting = !known || kb!.Has("lighting") || kb.Has("effects");
+		bool gkeys = !known || kb!.Has("gkeys");
 		// Профиль и меню «…».
 		ComboBox profile = new ComboBox
 		{
@@ -173,23 +186,32 @@ internal sealed partial class SettingsWindow
 		top.Children.Add(more);
 		top.Children.Add(status);
 		p.Children.Add(top);
-		UIElement[] pages = new UIElement[3]
+		List<UIElement> pages = new List<UIElement> { GeneralTab(c, out Action refreshGeneral) };
+		List<string> headers = new List<string> { L.T("General") };
+		if (lighting)
 		{
-			GeneralTab(c, out Action refreshGeneral),
-			LightingTab(c, pr, st),
-			KeysTab(pr)
-		};
-		p.Children.Add(Segmented(new string[3] { L.T("General"), L.T("Lighting"), L.T("G-keys") }, pages, _keyboardTab, delegate(int i)
+			pages.Add(LightingTab(c, pr, st));
+			headers.Add(L.T("Lighting"));
+		}
+		if (gkeys)
+		{
+			pages.Add(KeysTab(pr));
+			headers.Add(L.T("G-keys"));
+		}
+		p.Children.Add(Segmented(headers.ToArray(), pages.ToArray(), Math.Min(_keyboardTab, pages.Count - 1), delegate(int i)
 		{
 			_keyboardTab = i;
 		}));
-		_refresh = Refresh;
+		_refresh = delegate
+		{
+			device();
+			Refresh();
+		};
 		Refresh();
 		return p;
 		void Refresh()
 		{
 			ISettingsHost.Logitech s = _host.LogiStatus;
-			string device = (s.Device.Length > 0) ? (ShortName(s.Device) + " · " + (s.Online ? ((s.Battery >= 0) ? $"{s.Battery}%" : L.T("connected")) : L.T("asleep or off"))) : L.T("No Logitech G keyboard found");
 			string mode = s.Mode switch
 			{
 				"ghub" => "G HUB",
@@ -198,7 +220,7 @@ internal sealed partial class SettingsWindow
 				"starting" => L.T("Connecting…"),
 				_ => ""
 			};
-			status.Text = device + ((mode.Length > 0) ? (" · " + mode) : "");
+			status.Text = mode;
 			refreshGeneral();
 			// Строка поменяла файл (кнопка яркости на клавиатуре, выбор M1–M3): яркость профилей — оттуда, ползунок — за ней.
 			// Иначе окно при следующем сохранении вернуло бы старую яркость.
@@ -215,12 +237,6 @@ internal sealed partial class SettingsWindow
 				_brightnessRefresh?.Invoke();
 			}
 		}
-	}
-
-	private static string ShortName(string device)
-	{
-		string[] w = device.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-		return (w.Length > 0) ? w[0] : device;
 	}
 
 	// «Имя · M1, M3» — профиль на слотах; «Имя · программы» — только для программ.
@@ -411,19 +427,7 @@ internal sealed partial class SettingsWindow
 		{
 			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
 		};
-		p.Children.Add(Caption(L.T("Windows keyboard settings (all keyboards)")));
-		p.Children.Add(SliderRow(L.T("Repeat delay"), 0.0, 3.0, 1.0, () => KeyboardSys.RepeatDelay, delegate(int v)
-		{
-			KeyboardSys.RepeatDelay = v;
-		}, (int v) => $"{250 * (v + 1)} ms", apply: false));
-		p.Children.Add(SliderRow(L.T("Repeat rate"), 0.0, 31.0, 1.0, () => KeyboardSys.RepeatRate, delegate(int v)
-		{
-			KeyboardSys.RepeatRate = v;
-		}, (int v) => L.F("{0} per second", (int)Math.Round(2.5 + v * 27.5 / 31.0)), apply: false));
-		p.Children.Add(SliderRow(L.T("Cursor blink rate"), 0.0, 1200.0, 100.0, () => KeyboardSys.CaretBlinkMs, delegate(int v)
-		{
-			KeyboardSys.CaretBlinkMs = v;
-		}, (int v) => (v == 0) ? L.T("no blinking") : $"{v} ms", apply: false));
+		WindowsKeyboardSettings(p);
 		p.Children.Add(Caption("Logitech G"));
 		p.Children.Add(Check(L.T("Control Logitech devices (instead of G HUB)"), () => c.Enabled, delegate(bool v)
 		{

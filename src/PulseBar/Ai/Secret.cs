@@ -29,8 +29,39 @@ internal static class Secret
 	[DllImport("crypt32.dll", SetLastError = true)]
 	private static extern bool CryptUnprotectData(ref DataBlob dataIn, IntPtr description, ref DataBlob entropy, IntPtr reserved, IntPtr prompt, int flags, out DataBlob dataOut);
 
+	[DllImport("crypt32.dll", EntryPoint = "CryptUnprotectData", SetLastError = true)]
+	private static extern bool CryptUnprotectDataNoEntropy(ref DataBlob dataIn, IntPtr description, IntPtr entropy, IntPtr reserved, IntPtr prompt, int flags, out DataBlob dataOut);
+
 	[DllImport("kernel32.dll")]
 	private static extern IntPtr LocalFree(IntPtr mem);
+
+	// Данные другой программы под DPAPI текущего пользователя без энтропии (ключ шифрования приложения Claude, см.
+	// ClaudeAppAuth); null — не расшифровалось. Вызывающий стирает результат после использования.
+	public static byte[]? UnprotectUser(byte[] data)
+	{
+		GCHandle dataPin = GCHandle.Alloc(data, GCHandleType.Pinned);
+		DataBlob output = default;
+		try
+		{
+			DataBlob input = new DataBlob { Size = data.Length, Data = dataPin.AddrOfPinnedObject() };
+			if (!CryptUnprotectDataNoEntropy(ref input, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, CRYPTPROTECT_UI_FORBIDDEN, out output) || output.Data == IntPtr.Zero)
+			{
+				return null;
+			}
+			byte[] result = new byte[output.Size];
+			Marshal.Copy(output.Data, result, 0, output.Size);
+			return result;
+		}
+		finally
+		{
+			if (output.Data != IntPtr.Zero)
+			{
+				Marshal.Copy(new byte[output.Size], 0, output.Data, output.Size);
+				LocalFree(output.Data);
+			}
+			dataPin.Free();
+		}
+	}
 
 	// Строка → base64 зашифрованных байтов; пустая строка остаётся пустой.
 	public static string Protect(string plain)

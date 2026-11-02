@@ -36,6 +36,7 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\PulseBar.exe
+SetupIconFile=..\src\PulseBar\PulseBar.ico
 UninstallDisplayName=PulseBar
 
 [Languages]
