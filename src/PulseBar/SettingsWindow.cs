@@ -313,6 +313,12 @@ internal sealed partial class SettingsWindow : Window
 		{
 			_s.SepGap = v;
 		}, (int v) => $"{v} px"));
+		// Порядок значков в блоке заряда (2.4.0-beta.11): в «Двух строках» 1-е над 2-м, 3-е рядом.
+		layout.Children.Add(Caption(L.T("Battery icons")));
+		StackPanel order = new StackPanel();
+		layout.Children.Add(order);
+		layout.Children.Add(Note(L.T("In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up.")));
+		FillOrder();
 		WrapPanel buttons = new WrapPanel
 		{
 			Margin = new Thickness(0.0, 8.0, 0.0, 16.0)
@@ -341,6 +347,66 @@ internal sealed partial class SettingsWindow : Window
 		{
 			edit.IsChecked = _host.EditMode;
 		};
+		void FillOrder()
+		{
+			order.Children.Clear();
+			string[] list = _s.BatteryOrderList();
+			for (int i = 0; i < list.Length; i++)
+			{
+				int at = i;
+				DockPanel row = new DockPanel
+				{
+					Margin = new Thickness(0.0, 2.0, 0.0, 2.0)
+				};
+				Button up = new Button
+				{
+					Content = "▲",
+					MinWidth = 34.0,
+					IsEnabled = at > 0,
+					ToolTip = L.T("Move up")
+				};
+				Button down = new Button
+				{
+					Content = "▼",
+					MinWidth = 34.0,
+					Margin = new Thickness(4.0, 0.0, 0.0, 0.0),
+					IsEnabled = at < list.Length - 1,
+					ToolTip = L.T("Move down")
+				};
+				up.Click += delegate
+				{
+					Move(at, at - 1);
+				};
+				down.Click += delegate
+				{
+					Move(at, at + 1);
+				};
+				string name = list[at] switch
+				{
+					"keyboard" => L.T("Keyboard"),
+					"mouse" => L.T("Mouse"),
+					_ => L.T("Headset")
+				};
+				TextBlock text = new TextBlock
+				{
+					Text = $"{at + 1}. {name}",
+					Width = 160.0,
+					VerticalAlignment = VerticalAlignment.Center
+				};
+				row.Children.Add(text);
+				row.Children.Add(up);
+				row.Children.Add(down);
+				row.LastChildFill = false;
+				order.Children.Add(row);
+			}
+			void Move(int from, int to)
+			{
+				(list[from], list[to]) = (list[to], list[from]);
+				_s.BatteryOrder = string.Join(",", list);
+				Changed();
+				FillOrder();
+			}
+		}
 		StackPanel more = new StackPanel();
 		more.Children.Add(Combo(L.T("Layout"), new string[2]
 		{

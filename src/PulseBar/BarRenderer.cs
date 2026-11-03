@@ -244,6 +244,21 @@ internal sealed class BarRenderer : IDisposable
 		};
 	}
 
+	// Значки блока заряда по порядку из настроек (0 — клавиатура, 1 — мышь, 2 — наушники): только те, что есть в mask.
+	internal static int[] BatteryItems(string[] order, int mask)
+	{
+		List<int> list = new List<int>(3);
+		foreach (string device in order)
+		{
+			int kind = Array.IndexOf(Settings.BatteryDevices, device);
+			if (kind >= 0 && (mask & (1 << kind)) != 0)
+			{
+				list.Add(kind);
+			}
+		}
+		return list.ToArray();
+	}
+
 	// Блок заряда: в одну строку — подряд; в две — по два друг над другом, нечётный последний — посередине.
 	private float BatteryWidth(bool two)
 	{
@@ -433,17 +448,14 @@ internal sealed class BarRenderer : IDisposable
 		case "battery":
 		{
 			List<(int Kind, float Pct, bool Charging)> items = new List<(int, float, bool)>(3);
-			if ((Batteries & 1) != 0)
+			foreach (int kind in BatteryItems(s.BatteryOrderList(), Batteries))
 			{
-				items.Add((0, r.KbBattery, r.KbCharging));
-			}
-			if ((Batteries & 2) != 0)
-			{
-				items.Add((1, r.MouseBattery, r.MouseCharging));
-			}
-			if ((Batteries & 4) != 0)
-			{
-				items.Add((2, r.HeadsetBattery, r.HeadsetCharging));
+				items.Add(kind switch
+				{
+					0 => (0, r.KbBattery, r.KbCharging),
+					1 => (1, r.MouseBattery, r.MouseCharging),
+					_ => (2, r.HeadsetBattery, r.HeadsetCharging)
+				});
 			}
 			float num2 = 8f * _k;
 			for (int i = 0; i < items.Count; i++)

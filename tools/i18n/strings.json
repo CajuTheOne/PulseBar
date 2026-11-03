@@ -292,5 +292,9 @@
 "Off: PulseBar does not look for headsets and shows no charge.",
 "does not report its charge",
 "last {0}%",
-"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.",
+"Battery icons",
+"Move up",
+"Move down",
+"In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."
 ]

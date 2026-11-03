@@ -292,5 +292,9 @@
 "Off: PulseBar does not look for headsets and shows no charge.": "オフ：PulseBar はヘッドセットを探さず、バッテリーも表示しません。",
 "does not report its charge": "バッテリー残量を通知しません",
 "last {0}%": "前回 {0}%",
-"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Bluetooth ヘッドセット：バッテリーは Windows の「Bluetooth とデバイス」に表示される値で、約 1 分ごとに読み取ります。そこにバッテリーが表示されないヘッドセットは通知しません。"
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Bluetooth ヘッドセット：バッテリーは Windows の「Bluetooth とデバイス」に表示される値で、約 1 分ごとに読み取ります。そこにバッテリーが表示されないヘッドセットは通知しません。",
+"Battery icons": "バッテリーのアイコン",
+"Move up": "上へ",
+"Move down": "下へ",
+"In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up.": "「2 行」では 1 番目のアイコンが 2 番目の上に、3 番目はその横に並びます。オフや未接続のデバイスは飛ばされ、ペアは詰めて組み直されます。"
 }

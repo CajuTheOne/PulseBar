@@ -303,7 +303,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "Выключено: PulseBar не ищет наушники и не показывает их заряд.",
 			["does not report its charge"] = "не сообщает заряд",
 			["last {0}%"] = "последний раз {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Наушники Bluetooth: заряд — тот, что Windows показывает в «Bluetooth и устройства»; читается примерно раз в минуту. Если там у наушников нет заряда, они его не сообщают."
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Наушники Bluetooth: заряд — тот, что Windows показывает в «Bluetooth и устройства»; читается примерно раз в минуту. Если там у наушников нет заряда, они его не сообщают.",
+			["Battery icons"] = "Значки заряда",
+			["Move up"] = "Выше",
+			["Move down"] = "Ниже",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "В «Двух строках» 1-й значок — над 2-м, 3-й — рядом. Выключенные и неподключённые устройства пропускаются, пары складываются заново."
 		},
 		["uk"] = new Dictionary<string, string>
 		{
@@ -600,7 +604,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "Вимкнено: PulseBar не шукає навушники й не показує їхній заряд.",
 			["does not report its charge"] = "не повідомляє заряд",
 			["last {0}%"] = "востаннє {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Навушники Bluetooth: заряд — той, що Windows показує в «Bluetooth і пристрої»; читається приблизно раз на хвилину. Якщо там у навушників немає заряду, вони його не повідомляють."
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Навушники Bluetooth: заряд — той, що Windows показує в «Bluetooth і пристрої»; читається приблизно раз на хвилину. Якщо там у навушників немає заряду, вони його не повідомляють.",
+			["Battery icons"] = "Значки заряду",
+			["Move up"] = "Вище",
+			["Move down"] = "Нижче",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "У «Двох рядках» 1-й значок — над 2-м, 3-й — поруч. Вимкнені й непідключені пристрої пропускаються, пари складаються заново."
 		},
 		["de"] = new Dictionary<string, string>
 		{
@@ -897,7 +905,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "Aus: PulseBar sucht keine Headsets und zeigt keinen Akkustand an.",
 			["does not report its charge"] = "meldet keinen Akkustand",
 			["last {0}%"] = "zuletzt {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Bluetooth-Headsets: Der Akkustand ist der, den Windows unter „Bluetooth und Geräte“ anzeigt; er wird etwa einmal pro Minute gelesen. Ein Headset, das dort keinen Akkustand hat, meldet ihn nicht."
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Bluetooth-Headsets: Der Akkustand ist der, den Windows unter „Bluetooth und Geräte“ anzeigt; er wird etwa einmal pro Minute gelesen. Ein Headset, das dort keinen Akkustand hat, meldet ihn nicht.",
+			["Battery icons"] = "Akku-Symbole",
+			["Move up"] = "Nach oben",
+			["Move down"] = "Nach unten",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "In „Zwei Zeilen“ steht das 1. Symbol über dem 2., das 3. daneben. Ausgeschaltete und nicht verbundene Geräte werden übersprungen, die Paare rücken nach."
 		},
 		["fr"] = new Dictionary<string, string>
 		{
@@ -1194,7 +1206,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "Désactivé : PulseBar ne cherche pas de casques et n'affiche pas leur batterie.",
 			["does not report its charge"] = "n'indique pas sa batterie",
 			["last {0}%"] = "dernier {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Casques Bluetooth : la batterie est celle qu'affiche Windows dans « Bluetooth et appareils » ; elle est lue environ une fois par minute. Un casque sans batterie affichée là-bas ne l'indique pas."
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Casques Bluetooth : la batterie est celle qu'affiche Windows dans « Bluetooth et appareils » ; elle est lue environ une fois par minute. Un casque sans batterie affichée là-bas ne l'indique pas.",
+			["Battery icons"] = "Icônes de batterie",
+			["Move up"] = "Monter",
+			["Move down"] = "Descendre",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "En « Deux lignes », la 1re icône est au-dessus de la 2e et la 3e à côté. Les appareils éteints ou non connectés sont ignorés et les paires se reforment."
 		},
 		["es"] = new Dictionary<string, string>
 		{
@@ -1491,7 +1507,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "Desactivado: PulseBar no busca auriculares ni muestra su batería.",
 			["does not report its charge"] = "no informa de su batería",
 			["last {0}%"] = "último {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Auriculares Bluetooth: la batería es la que Windows muestra en «Bluetooth y dispositivos»; se lee aproximadamente una vez por minuto. Si allí no aparece la batería, los auriculares no la informan."
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Auriculares Bluetooth: la batería es la que Windows muestra en «Bluetooth y dispositivos»; se lee aproximadamente una vez por minuto. Si allí no aparece la batería, los auriculares no la informan.",
+			["Battery icons"] = "Iconos de batería",
+			["Move up"] = "Subir",
+			["Move down"] = "Bajar",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "En «Dos líneas», el 1.er icono va sobre el 2.º y el 3.º al lado. Los dispositivos apagados o no conectados se omiten y las parejas se rehacen."
 		},
 		["pt"] = new Dictionary<string, string>
 		{
@@ -1788,7 +1808,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "Desligado: o PulseBar não procura fones nem mostra a bateria.",
 			["does not report its charge"] = "não informa a bateria",
 			["last {0}%"] = "último {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Fones Bluetooth: a bateria é a que o Windows mostra em “Bluetooth e dispositivos”; é lida cerca de uma vez por minuto. Se ali o fone não tiver bateria, ele não a informa."
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Fones Bluetooth: a bateria é a que o Windows mostra em “Bluetooth e dispositivos”; é lida cerca de uma vez por minuto. Se ali o fone não tiver bateria, ele não a informa.",
+			["Battery icons"] = "Ícones de bateria",
+			["Move up"] = "Mover para cima",
+			["Move down"] = "Mover para baixo",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "Em “Duas linhas”, o 1º ícone fica acima do 2º e o 3º ao lado. Dispositivos desligados ou não conectados são ignorados e os pares se refazem."
 		},
 		["it"] = new Dictionary<string, string>
 		{
@@ -2085,7 +2109,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "Disattivato: PulseBar non cerca cuffie e non ne mostra la batteria.",
 			["does not report its charge"] = "non comunica la batteria",
 			["last {0}%"] = "ultimo {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Cuffie Bluetooth: la batteria è quella che Windows mostra in «Bluetooth e dispositivi»; viene letta circa una volta al minuto. Se lì le cuffie non hanno la batteria, non la comunicano."
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Cuffie Bluetooth: la batteria è quella che Windows mostra in «Bluetooth e dispositivi»; viene letta circa una volta al minuto. Se lì le cuffie non hanno la batteria, non la comunicano.",
+			["Battery icons"] = "Icone della batteria",
+			["Move up"] = "Sposta su",
+			["Move down"] = "Sposta giù",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "In «Due righe» la 1ª icona sta sopra la 2ª e la 3ª accanto. I dispositivi spenti o non collegati vengono saltati e le coppie si ricompongono."
 		},
 		["pl"] = new Dictionary<string, string>
 		{
@@ -2382,7 +2410,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "Wyłączone: PulseBar nie szuka słuchawek i nie pokazuje ich baterii.",
 			["does not report its charge"] = "nie podaje poziomu baterii",
 			["last {0}%"] = "ostatnio {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Słuchawki Bluetooth: poziom baterii to ten, który Windows pokazuje w „Bluetooth i urządzenia”; jest odczytywany mniej więcej raz na minutę. Jeśli słuchawki nie mają tam baterii, nie podają jej."
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Słuchawki Bluetooth: poziom baterii to ten, który Windows pokazuje w „Bluetooth i urządzenia”; jest odczytywany mniej więcej raz na minutę. Jeśli słuchawki nie mają tam baterii, nie podają jej.",
+			["Battery icons"] = "Ikony baterii",
+			["Move up"] = "W górę",
+			["Move down"] = "W dół",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "W „Dwóch wierszach” 1. ikona jest nad 2., a 3. obok. Wyłączone i niepodłączone urządzenia są pomijane, a pary układają się na nowo."
 		},
 		["zh"] = new Dictionary<string, string>
 		{
@@ -2679,7 +2711,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "已关闭：PulseBar 不查找耳机，也不显示电量。",
 			["does not report its charge"] = "不报告电量",
 			["last {0}%"] = "上次 {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "蓝牙耳机：电量与 Windows 在“蓝牙和其他设备”中显示的一致，大约每分钟读取一次。若那里没有显示耳机电量，则耳机不报告电量。"
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "蓝牙耳机：电量与 Windows 在“蓝牙和其他设备”中显示的一致，大约每分钟读取一次。若那里没有显示耳机电量，则耳机不报告电量。",
+			["Battery icons"] = "电量图标",
+			["Move up"] = "上移",
+			["Move down"] = "下移",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "在“两行”中，第 1 个图标在第 2 个上方，第 3 个在旁边。关闭或未连接的设备会被跳过，配对会重新排列。"
 		},
 		["ja"] = new Dictionary<string, string>
 		{
@@ -2976,7 +3012,11 @@ internal static partial class L
 			["Off: PulseBar does not look for headsets and shows no charge."] = "オフ：PulseBar はヘッドセットを探さず、バッテリーも表示しません。",
 			["does not report its charge"] = "バッテリー残量を通知しません",
 			["last {0}%"] = "前回 {0}%",
-			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Bluetooth ヘッドセット：バッテリーは Windows の「Bluetooth とデバイス」に表示される値で、約 1 分ごとに読み取ります。そこにバッテリーが表示されないヘッドセットは通知しません。"
+			["Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."] = "Bluetooth ヘッドセット：バッテリーは Windows の「Bluetooth とデバイス」に表示される値で、約 1 分ごとに読み取ります。そこにバッテリーが表示されないヘッドセットは通知しません。",
+			["Battery icons"] = "バッテリーのアイコン",
+			["Move up"] = "上へ",
+			["Move down"] = "下へ",
+			["In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up."] = "「2 行」では 1 番目のアイコンが 2 番目の上に、3 番目はその横に並びます。オフや未接続のデバイスは飛ばされ、ペアは詰めて組み直されます。"
 		}
 	};
 }

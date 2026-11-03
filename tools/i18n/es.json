@@ -292,5 +292,9 @@
 "Off: PulseBar does not look for headsets and shows no charge.": "Desactivado: PulseBar no busca auriculares ni muestra su batería.",
 "does not report its charge": "no informa de su batería",
 "last {0}%": "último {0}%",
-"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Auriculares Bluetooth: la batería es la que Windows muestra en «Bluetooth y dispositivos»; se lee aproximadamente una vez por minuto. Si allí no aparece la batería, los auriculares no la informan."
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Auriculares Bluetooth: la batería es la que Windows muestra en «Bluetooth y dispositivos»; se lee aproximadamente una vez por minuto. Si allí no aparece la batería, los auriculares no la informan.",
+"Battery icons": "Iconos de batería",
+"Move up": "Subir",
+"Move down": "Bajar",
+"In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up.": "En «Dos líneas», el 1.er icono va sobre el 2.º y el 3.º al lado. Los dispositivos apagados o no conectados se omiten y las parejas se rehacen."
 }

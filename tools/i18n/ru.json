@@ -292,5 +292,9 @@
 "Off: PulseBar does not look for headsets and shows no charge.": "Выключено: PulseBar не ищет наушники и не показывает их заряд.",
 "does not report its charge": "не сообщает заряд",
 "last {0}%": "последний раз {0}%",
-"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Наушники Bluetooth: заряд — тот, что Windows показывает в «Bluetooth и устройства»; читается примерно раз в минуту. Если там у наушников нет заряда, они его не сообщают."
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Наушники Bluetooth: заряд — тот, что Windows показывает в «Bluetooth и устройства»; читается примерно раз в минуту. Если там у наушников нет заряда, они его не сообщают.",
+"Battery icons": "Значки заряда",
+"Move up": "Выше",
+"Move down": "Ниже",
+"In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up.": "В «Двух строках» 1-й значок — над 2-м, 3-й — рядом. Выключенные и неподключённые устройства пропускаются, пары складываются заново."
 }

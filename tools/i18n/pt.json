@@ -292,5 +292,9 @@
 "Off: PulseBar does not look for headsets and shows no charge.": "Desligado: o PulseBar não procura fones nem mostra a bateria.",
 "does not report its charge": "não informa a bateria",
 "last {0}%": "último {0}%",
-"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Fones Bluetooth: a bateria é a que o Windows mostra em “Bluetooth e dispositivos”; é lida cerca de uma vez por minuto. Se ali o fone não tiver bateria, ele não a informa."
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Fones Bluetooth: a bateria é a que o Windows mostra em “Bluetooth e dispositivos”; é lida cerca de uma vez por minuto. Se ali o fone não tiver bateria, ele não a informa.",
+"Battery icons": "Ícones de bateria",
+"Move up": "Mover para cima",
+"Move down": "Mover para baixo",
+"In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up.": "Em “Duas linhas”, o 1º ícone fica acima do 2º e o 3º ao lado. Dispositivos desligados ou não conectados são ignorados e os pares se refazem."
 }

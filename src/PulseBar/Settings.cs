@@ -214,7 +214,7 @@ internal sealed class Settings
 	private static readonly HashSet<string> AppearanceKeys = new HashSet<string>
 	{
 		"layout", "blueNormal", "textSize", "showRamGb", "showVram", "groupGap", "trayGap", "showBattery", "claudeStyle", "claudeOnStyle",
-		"gptOnStyle",
+		"gptOnStyle", "batteryOrder",
 		"claudeBarLength", "claudeBarHeight", "claudeSegments", "snap", "snapGap", "sepGap", "groups", "hoverTip", "hoverChart",
 		"showCpu", "showGpu", "showRam", "blocks", "showChatGpt", "gptStyle", "gptBarLength", "gptBarHeight", "gptSegments",
 		"showGrok", "showDeepSeek", "showGemini", "aiTiles", "normalColor", "warnColor", "hotColor"
@@ -317,6 +317,25 @@ internal sealed class Settings
 	public Limit MouseBattery = Defaults.MouseBattery;
 
 	public Limit HeadsetBattery = Defaults.HeadsetBattery;
+
+	// Порядок значков в блоке заряда (2.4.0-beta.11, пользователь: «надо уметь делать наушники + мышь, наушники +
+	// клавиатура»): в «Двух строках» 1-е над 2-м, 3-е рядом; выключенные и отключённые пропускаются, пары — заново.
+	public static readonly string[] BatteryDevices = new string[3] { "keyboard", "mouse", "headset" };
+
+	public string BatteryOrder = "keyboard,mouse,headset";
+
+	public string[] BatteryOrderList()
+	{
+		return NormalizeBatteryOrder(BatteryOrder);
+	}
+
+	// Каждое устройство ровно один раз; неизвестные — прочь, недостающие — в конец.
+	public static string[] NormalizeBatteryOrder(string text)
+	{
+		List<string> list = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where((string x) => BatteryDevices.Contains(x)).Distinct().ToList();
+		list.AddRange(BatteryDevices.Where((string x) => !list.Contains(x)));
+		return list.ToArray();
+	}
 
 	public Limit Claude = Defaults.Claude;
 
@@ -730,6 +749,9 @@ internal sealed class Settings
 		case "headsetBattery":
 			this.HeadsetBattery = ParseLow(text4, this.HeadsetBattery);
 			break;
+		case "batteryOrder":
+			this.BatteryOrder = string.Join(",", NormalizeBatteryOrder(text4));
+			break;
 		case "showChatGpt":
 			this.ShowChatGpt = result != 0;
 			break;
@@ -868,6 +890,7 @@ internal sealed class Settings
 			WriteLimit(w, "kbBattery", KbBattery);
 			WriteLimit(w, "mouseBattery", MouseBattery);
 			WriteLimit(w, "headsetBattery", HeadsetBattery);
+			w.WriteString("batteryOrder", BatteryOrder);
 			WriteLimit(w, "claude", Claude);
 			w.WriteBoolean("showChatGpt", ShowChatGpt);
 			w.WriteNumber("gptStyle", GptStyle);

@@ -75,6 +75,20 @@ public class SettingsTests
 		Assert.AreEqual("chatgpt,claude,cpu,gpu,vram,ram,battery", string.Join(",", s.LayoutGroups[0].Items.FindAll((string i) => i != "grok" && i != "deepseek")), "order kept; blocks the look did not have are added hidden");
 	}
 
+	// Пользователь, 03.11.2026: пары в блоке заряда — наушники + мышь, наушники + клавиатура и т. д.
+	[TestMethod]
+	public void BatteryOrderPairsAndSkipsMissingDevices()
+	{
+		Settings s = new Settings { BatteryOrder = "headset,mouse,keyboard" };
+		CollectionAssert.AreEqual(new[] { 2, 1, 0 }, BarRenderer.BatteryItems(s.BatteryOrderList(), 7));
+		CollectionAssert.AreEqual(new[] { 1, 0 }, BarRenderer.BatteryItems(s.BatteryOrderList(), 3), "headset not connected: mouse and keyboard pair up");
+		CollectionAssert.AreEqual(new[] { 2, 0 }, BarRenderer.BatteryItems(s.BatteryOrderList(), 5), "mouse off");
+		CollectionAssert.AreEqual(new[] { "mouse", "keyboard", "headset" }, Settings.NormalizeBatteryOrder("mouse, nonsense, mouse,keyboard"));
+		Settings t = new Settings();
+		t.ApplyAppearance(s.AppearanceJson());
+		Assert.AreEqual("headset,mouse,keyboard", t.BatteryOrder, "part of the look");
+	}
+
 	// Пользователь, 02.11.2026: выключенные и снова включённые плитки ИИ в «Виде» включались маленькими.
 	[TestMethod]
 	public void AiTilesTurnBackOnInTheirStyle()

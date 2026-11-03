@@ -292,5 +292,9 @@
 "Off: PulseBar does not look for headsets and shows no charge.": "已关闭：PulseBar 不查找耳机，也不显示电量。",
 "does not report its charge": "不报告电量",
 "last {0}%": "上次 {0}%",
-"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "蓝牙耳机：电量与 Windows 在“蓝牙和其他设备”中显示的一致，大约每分钟读取一次。若那里没有显示耳机电量，则耳机不报告电量。"
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "蓝牙耳机：电量与 Windows 在“蓝牙和其他设备”中显示的一致，大约每分钟读取一次。若那里没有显示耳机电量，则耳机不报告电量。",
+"Battery icons": "电量图标",
+"Move up": "上移",
+"Move down": "下移",
+"In two lines the 1st icon is above the 2nd and the 3rd stands next to them. Devices that are off or not connected are skipped and the pairs close up.": "在“两行”中，第 1 个图标在第 2 个上方，第 3 个在旁边。关闭或未连接的设备会被跳过，配对会重新排列。"
 }
