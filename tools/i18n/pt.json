@@ -47,7 +47,7 @@
 "VRAM — video memory": "VRAM — memória de vídeo",
 "RAM — memory": "RAM — memória",
 "Claude — 5-hour and 7-day limits": "Claude — limites de 5 horas e 7 dias",
-"Keyboard and mouse battery": "Bateria do teclado e do mouse",
+"Keyboard, mouse and headset battery": "Bateria do teclado, do mouse e do fone",
 "Claude limits, %": "Limites do Claude, %",
 "Keyboard charge, %": "Bateria do teclado, %",
 "Mouse charge, %": "Bateria do mouse, %",
@@ -216,7 +216,7 @@
 "Thresholds and colours": "Limites e cores",
 "Usage": "Uso",
 "Warning": "Aviso",
-"keyboard, mouse": "teclado, mouse",
+"devices": "dispositivos",
 "load and °C": "carga e °C",
 "memory": "memória",
 "no data yet": "ainda sem dados",
@@ -283,5 +283,14 @@
 "everything": "tudo",
 "not known yet: it has not been on": "ainda desconhecido: o dispositivo ainda não foi ligado",
 "per-key lighting": "iluminação por tecla",
-"profiles in memory": "perfis na memória"
+"profiles in memory": "perfis na memória",
+"Headset": "Fone de ouvido",
+"Headset charge, %": "Bateria do fone, %",
+"Headsets in PulseBar": "Fones no PulseBar",
+"Look for headsets again and choose which one PulseBar shows": "Procurar fones novamente e escolher qual o PulseBar mostra",
+"No headset found": "Nenhum fone encontrado",
+"Off: PulseBar does not look for headsets and shows no charge.": "Desligado: o PulseBar não procura fones nem mostra a bateria.",
+"does not report its charge": "não informa a bateria",
+"last {0}%": "último {0}%",
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Fones Bluetooth: a bateria é a que o Windows mostra em “Bluetooth e dispositivos”; é lida cerca de uma vez por minuto. Se ali o fone não tiver bateria, ele não a informa."
 }

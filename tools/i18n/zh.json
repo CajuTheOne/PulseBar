@@ -47,7 +47,7 @@
 "VRAM — video memory": "VRAM — 显存",
 "RAM — memory": "RAM — 内存",
 "Claude — 5-hour and 7-day limits": "Claude — 5 小时和 7 天限额",
-"Keyboard and mouse battery": "键盘和鼠标电量",
+"Keyboard, mouse and headset battery": "键盘、鼠标和耳机电量",
 "Claude limits, %": "Claude 限额，%",
 "Keyboard charge, %": "键盘电量，%",
 "Mouse charge, %": "鼠标电量，%",
@@ -216,7 +216,7 @@
 "Thresholds and colours": "阈值和颜色",
 "Usage": "用量",
 "Warning": "警告",
-"keyboard, mouse": "键盘、鼠标",
+"devices": "设备",
 "load and °C": "负载和 °C",
 "memory": "内存",
 "no data yet": "暂无数据",
@@ -283,5 +283,14 @@
 "everything": "全部",
 "not known yet: it has not been on": "尚不清楚：设备尚未开启过",
 "per-key lighting": "逐键灯光",
-"profiles in memory": "板载配置文件"
+"profiles in memory": "板载配置文件",
+"Headset": "耳机",
+"Headset charge, %": "耳机电量，%",
+"Headsets in PulseBar": "在 PulseBar 中使用耳机",
+"Look for headsets again and choose which one PulseBar shows": "重新查找耳机并选择 PulseBar 显示哪一个",
+"No headset found": "未找到耳机",
+"Off: PulseBar does not look for headsets and shows no charge.": "已关闭：PulseBar 不查找耳机，也不显示电量。",
+"does not report its charge": "不报告电量",
+"last {0}%": "上次 {0}%",
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "蓝牙耳机：电量与 Windows 在“蓝牙和其他设备”中显示的一致，大约每分钟读取一次。若那里没有显示耳机电量，则耳机不报告电量。"
 }

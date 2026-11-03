@@ -47,7 +47,7 @@
 "VRAM — video memory": "VRAM — ビデオメモリ",
 "RAM — memory": "RAM — メモリ",
 "Claude — 5-hour and 7-day limits": "Claude — 5 時間と 7 日の上限",
-"Keyboard and mouse battery": "キーボードとマウスのバッテリー",
+"Keyboard, mouse and headset battery": "キーボード・マウス・ヘッドセットのバッテリー",
 "Claude limits, %": "Claude の上限、%",
 "Keyboard charge, %": "キーボードのバッテリー、%",
 "Mouse charge, %": "マウスのバッテリー、%",
@@ -216,7 +216,7 @@
 "Thresholds and colours": "しきい値と色",
 "Usage": "使用量",
 "Warning": "警告",
-"keyboard, mouse": "キーボード、マウス",
+"devices": "デバイス",
 "load and °C": "負荷と °C",
 "memory": "メモリ",
 "no data yet": "データなし",
@@ -283,5 +283,14 @@
 "everything": "すべて",
 "not known yet: it has not been on": "まだ不明：デバイスがまだ電源オンになっていません",
 "per-key lighting": "キーごとのライティング",
-"profiles in memory": "オンボードプロファイル"
+"profiles in memory": "オンボードプロファイル",
+"Headset": "ヘッドセット",
+"Headset charge, %": "ヘッドセットのバッテリー、%",
+"Headsets in PulseBar": "PulseBar でヘッドセットを使う",
+"Look for headsets again and choose which one PulseBar shows": "ヘッドセットを再検索し、PulseBar が表示するものを選びます",
+"No headset found": "ヘッドセットが見つかりません",
+"Off: PulseBar does not look for headsets and shows no charge.": "オフ：PulseBar はヘッドセットを探さず、バッテリーも表示しません。",
+"does not report its charge": "バッテリー残量を通知しません",
+"last {0}%": "前回 {0}%",
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Bluetooth ヘッドセット：バッテリーは Windows の「Bluetooth とデバイス」に表示される値で、約 1 分ごとに読み取ります。そこにバッテリーが表示されないヘッドセットは通知しません。"
 }

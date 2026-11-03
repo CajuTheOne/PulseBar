@@ -113,10 +113,10 @@ internal sealed partial class SettingsWindow
 			_logiProfile = Math.Clamp(c.Active, 0, c.Profiles.Count - 1);
 		}
 		Profile pr = c.Profiles[_logiProfile];
-		StackPanel p = Page(DeviceTitle(keyboard: true));
+		StackPanel p = Page(DeviceTitle("keyboard"));
 		p.MaxWidth = 660.0;
 		p.Children[0].SetValue(FrameworkElement.MarginProperty, new Thickness(0.0, 0.0, 0.0, 8.0));
-		p.Children.Add(DeviceHeader(keyboard: true, PageTitle(p), out Action device));
+		p.Children.Add(DeviceHeader("keyboard", PageTitle(p), out Action device));
 		_refresh = device;
 		if (!c.KeyboardOn)
 		{
@@ -124,7 +124,7 @@ internal sealed partial class SettingsWindow
 		}
 		// Разделы — по тому, что клавиатура заявила (2.4.0-beta.8). Ничего не найдено или клавиатура ещё ни разу не была на
 		// связи — показывается всё, как раньше: профили можно настроить заранее.
-		FoundDevice? kb = Chosen(keyboard: true);
+		FoundDevice? kb = Chosen("keyboard");
 		if (kb != null && (kb.Support == "battery" || kb.Support == "windows"))
 		{
 			WindowsKeyboardSettings(p);

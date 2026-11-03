@@ -47,7 +47,7 @@
 "VRAM — video memory": "VRAM — memoria video",
 "RAM — memory": "RAM — memoria",
 "Claude — 5-hour and 7-day limits": "Claude — limiti di 5 ore e 7 giorni",
-"Keyboard and mouse battery": "Batteria di tastiera e mouse",
+"Keyboard, mouse and headset battery": "Batteria di tastiera, mouse e cuffie",
 "Claude limits, %": "Limiti di Claude, %",
 "Keyboard charge, %": "Batteria della tastiera, %",
 "Mouse charge, %": "Batteria del mouse, %",
@@ -216,7 +216,7 @@
 "Thresholds and colours": "Soglie e colori",
 "Usage": "Utilizzo",
 "Warning": "Avviso",
-"keyboard, mouse": "tastiera, mouse",
+"devices": "dispositivi",
 "load and °C": "carico e °C",
 "memory": "memoria",
 "no data yet": "ancora nessun dato",
@@ -283,5 +283,14 @@
 "everything": "tutto",
 "not known yet: it has not been on": "ancora sconosciuto: il dispositivo non è stato ancora acceso",
 "per-key lighting": "illuminazione per tasto",
-"profiles in memory": "profili in memoria"
+"profiles in memory": "profili in memoria",
+"Headset": "Cuffie",
+"Headset charge, %": "Batteria delle cuffie, %",
+"Headsets in PulseBar": "Cuffie in PulseBar",
+"Look for headsets again and choose which one PulseBar shows": "Cerca di nuovo le cuffie e scegli quali mostra PulseBar",
+"No headset found": "Nessuna cuffia trovata",
+"Off: PulseBar does not look for headsets and shows no charge.": "Disattivato: PulseBar non cerca cuffie e non ne mostra la batteria.",
+"does not report its charge": "non comunica la batteria",
+"last {0}%": "ultimo {0}%",
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Cuffie Bluetooth: la batteria è quella che Windows mostra in «Bluetooth e dispositivi»; viene letta circa una volta al minuto. Se lì le cuffie non hanno la batteria, non la comunicano."
 }

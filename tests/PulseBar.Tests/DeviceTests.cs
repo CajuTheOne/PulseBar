@@ -23,7 +23,40 @@ public class DeviceTests
 
 	private static string Title(string name, string brand)
 	{
-		return new FoundDevice("id", Keyboard: true, name, brand, Online: true, -1, Charging: false, "full", "").Title;
+		return new FoundDevice("id", "keyboard", name, brand, Online: true, -1, Charging: false, "full", "").Title;
+	}
+
+	// Узлы Bluetooth одного устройства собираются по адресу из идентификатора узла.
+	[TestMethod]
+	public void BluetoothAddressFromInstanceId()
+	{
+		Assert.AreEqual("8099E74265A2", Headsets.Address("BTHENUM\\DEV_8099E74265A2\\A&69DB629&0&BLUETOOTHDEVICE_8099E74265A2"));
+		Assert.AreEqual("8099E74265A2", Headsets.Address("BTHENUM\\{0000110B-0000-1000-8000-00805F9B34FB}_VID&0002054C_PID&0DF0\\A&69DB629&0&8099E74265A2_C00000000"));
+		Assert.IsNull(Headsets.Address("BTHENUM\\{0000110B-0000-1000-8000-00805F9B34FB}_LOCALMFG&0000\\7&1234ABCD&0&000000000000_00000000"), "enumerator node");
+	}
+
+	// Блок заряда: в одну строку — подряд, в две — по два в столбце.
+	[TestMethod]
+	public void BatteryBlockGrowsWithHeadset()
+	{
+		using BarRenderer r = new BarRenderer();
+		Settings s = new Settings { Layout = 0 };
+		r.Configure(1f, 48, s);
+		r.Batteries = 3;
+		float two = r.ElementWidth("battery");
+		r.Batteries = 7;
+		float three = r.ElementWidth("battery");
+		r.Batteries = 4;
+		float one = r.ElementWidth("battery");
+		Assert.IsTrue(three > two && two > one && one > 0f);
+		r.Batteries = 0;
+		Assert.AreEqual(0f, r.ElementWidth("battery"));
+		s.Layout = 1;
+		r.Configure(1f, 48, s);
+		r.Batteries = 3;
+		float column = r.ElementWidth("battery");
+		r.Batteries = 7;
+		Assert.IsTrue(r.ElementWidth("battery") > column * 1.5f, "two columns");
 	}
 
 	// Ключ: "acct:<аккаунт>|<клиент>:<организация>:<адрес API>:<права>" — нужен токен с user:profile.

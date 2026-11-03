@@ -984,6 +984,12 @@ internal sealed class Overlay : Form
 		(string, float, bool, bool) currentMouse = _logi.CurrentMouse;
 		_r.MouseBattery = currentMouse.Item2;
 		_r.MouseCharging = currentMouse.Item3;
+		// Наушники — в блоке, только пока на связи (Windows помнит заряд и отключённых).
+		(string, float, bool) headset = _logi.CurrentHeadset;
+		_r.HeadsetBattery = headset.Item2;
+		_r.HeadsetCharging = false;
+		_r.BatteryKinds = (_logi.Config.KeyboardOn ? 1 : 0) | (_logi.Config.MouseOn ? 2 : 0) | (headset.Item3 ? 4 : 0);
+		_renderer.Batteries = _r.BatteryKinds;
 	}
 
 	// Окно настроек — отдельный процесс (см. SettingsProcess): строка не загружает WPF.
@@ -1071,6 +1077,10 @@ internal sealed class Overlay : Form
 				return _claude.Available;
 			}
 			return false;
+		}
+		if (id == "battery")
+		{
+			return _s.ShowBattery && _r.BatteryKinds != 0;
 		}
 		return _s.IsShown(id);
 	}

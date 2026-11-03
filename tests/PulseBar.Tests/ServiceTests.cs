@@ -42,6 +42,8 @@ public class ServiceTests
 
 		public readonly List<PointingDevice> Keyboards = new List<PointingDevice>();
 
+		public readonly List<Headsets.Headset> Phones = new List<Headsets.Headset>();
+
 		public Rig(Action<LogiConfig>? edit = null, Action<FakeG915>? before = null)
 		{
 			Dir = Path.Combine(Path.GetTempPath(), "PulseBarTests", Guid.NewGuid().ToString("N"));
@@ -70,6 +72,7 @@ public class ServiceTests
 				GHubRunning = () => GHub,
 				FindMice = () => Mice.ToList(),
 				FindKeyboards = () => Keyboards.ToList(),
+				FindHeadsets = () => Phones.ToList(),
 				RunAction = a => Actions.Add(a.Value),
 				ConfigPath = ConfigPath,
 				AppData = Dir,
@@ -601,6 +604,41 @@ public class ServiceTests
 		r.Kb.Wake();
 		r.Settle();
 		Assert.AreEqual(2, r.Kb.Mode, "set up when it wakes");
+	}
+
+	// Пользователь, 03.11.2026: «давай добавим наушники, показывать заряд оставшийся, по аналогии с мышкой и клавиатурой».
+	[TestMethod]
+	public void HeadsetChargeWhileConnectedAndTheChoiceIsKept()
+	{
+		using Rig r = new Rig();
+		r.Phones.Add(new Headsets.Headset { Id = "bt:08EBEDDF38AC", Name = "JBL TUNE215BT", Battery = 70, Online = false });
+		r.Phones.Add(new Headsets.Headset { Id = "bt:8099E74265A2", Name = "WH-1000XM5", Brand = "Sony", Battery = 80, Online = true });
+		r.Svc.Detect();
+		r.Settle();
+		Assert.AreEqual("bt:8099E74265A2", r.Svc.HeadsetId, "the connected one with a charge");
+		Assert.AreEqual(80f, r.Svc.CurrentHeadset.Battery);
+		FoundDevice sony = r.Svc.Found.Single((FoundDevice d) => d.Id == "bt:8099E74265A2");
+		Assert.AreEqual("headset", sony.Kind);
+		Assert.AreEqual("battery", sony.Support);
+		Assert.AreEqual("Sony WH-1000XM5", sony.Title);
+		StringAssert.Contains(r.Svc.ShortStatus(), "WH-1000XM5 80%");
+		int opens = r.Opens;
+		LogiConfig c = LogiConfig.Load(r.ConfigPath);
+		c.HeadsetDevice = "bt:08EBEDDF38AC";
+		c.Save(r.ConfigPath);
+		r.Svc.ReloadConfig();
+		r.Settle();
+		Assert.AreEqual("JBL TUNE215BT", r.Svc.CurrentHeadset.Name);
+		Assert.IsFalse(r.Svc.CurrentHeadset.Online);
+		Assert.IsTrue(float.IsNaN(r.Svc.CurrentHeadset.Battery), "no charge while not connected");
+		Assert.AreEqual(opens, r.Opens, "headset choice does not reopen the keyboard");
+		Assert.AreEqual(2, r.Kb.Mode);
+		c.HeadsetOn = false;
+		c.Save(r.ConfigPath);
+		r.Svc.ReloadConfig();
+		r.Settle();
+		Assert.AreEqual("", r.Svc.CurrentHeadset.Name);
+		Assert.IsFalse(r.Svc.Found.Any((FoundDevice d) => d.Kind == "headset"));
 	}
 
 	// Выбрана клавиатура другой фирмы: G915 остаётся в своей памяти.

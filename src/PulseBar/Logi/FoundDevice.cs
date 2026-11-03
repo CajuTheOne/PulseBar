@@ -4,14 +4,17 @@ using System.Linq;
 
 namespace PulseBar.Logi;
 
-// Найденная клавиатура или мышь — для вкладок «Клавиатура» и «Мышь» (кнопка «Определить», 2.4.0-beta.8).
-// Id: Logitech — "logi:<PID канала>:<номер на приёмнике>" (не меняется, пока устройство не сопрягут заново),
-// другие — "hid:<VID>:<PID>". Support: full — PulseBar ведёт устройство (клавиатура Logitech с профилями в памяти),
-// battery — только заряд, windows — только настройки Windows, "" — спит, умения неизвестны.
+// Найденная клавиатура, мышь или наушники — для вкладок устройств (кнопка «Определить», 2.4.0-beta.8; наушники —
+// beta.10). Kind: keyboard, mouse, headset. Id: Logitech — "logi:<PID канала>:<номер на приёмнике>" (не меняется,
+// пока устройство не сопрягут заново), другие — "hid:<VID>:<PID>", наушники Bluetooth — "bt:<адрес>".
+// Support: full — PulseBar ведёт устройство (клавиатура Logitech с профилями в памяти), battery — только заряд, windows — только настройки Windows, nobattery — наушники, которые не сообщают заряд,
+// "" — спит, умения неизвестны.
 // Features — функции HID++, которые устройство заявило: lighting, effects, brightness, gkeys, mkeys, macro, memory,
 // battery ("" — неизвестно: устройство ещё ни разу не было на связи).
-internal sealed record FoundDevice(string Id, bool Keyboard, string Name, string Brand, bool Online, int Battery, bool Charging, string Support, string Features)
+internal sealed record FoundDevice(string Id, string Kind, string Name, string Brand, bool Online, int Battery, bool Charging, string Support, string Features)
 {
+	public bool Keyboard => Kind == "keyboard";
+
 	// Марка по VID (USB-IF): чего нет в списке — марка пустая, показывается имя устройства.
 	private static readonly Dictionary<ushort, string> Brands = new Dictionary<ushort, string>
 	{

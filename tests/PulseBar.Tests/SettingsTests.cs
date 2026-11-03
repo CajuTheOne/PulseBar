@@ -54,6 +54,27 @@ public class SettingsTests
 		Assert.AreEqual(0, s.GptStyle);
 	}
 
+	// Пользователь, 03.11.2026: после «Одной строки» (разделители) свой вид без разделителей должен вернуть и расположение.
+	[TestMethod]
+	public void LookPresetBringsBackItsLayoutWithoutSeparators()
+	{
+		Settings mine = new Settings { Layout = 1 };
+		mine.Groups = new List<Settings.Group>
+		{
+			new Settings.Group { X = 38, Items = new List<string> { "chatgpt", "claude", "cpu", "gpu", "vram", "ram", "battery" } }
+		};
+		string look = mine.AppearanceJson();
+		Settings s = new Settings { Layout = 0 };
+		s.ResetLayout();
+		Assert.IsTrue(s.LayoutGroups[0].Items.Exists((string i) => i.StartsWith("sep")), "one line has separators");
+		s.ApplyAppearance(look);
+		Assert.AreEqual(1, s.Layout);
+		Assert.AreEqual(1, s.LayoutGroups.Count);
+		Assert.AreEqual(38, s.LayoutGroups[0].X);
+		Assert.IsFalse(s.LayoutGroups[0].Items.Exists((string i) => i.StartsWith("sep")), "no separators");
+		Assert.AreEqual("chatgpt,claude,cpu,gpu,vram,ram,battery", string.Join(",", s.LayoutGroups[0].Items.FindAll((string i) => i != "grok" && i != "deepseek")), "order kept; blocks the look did not have are added hidden");
+	}
+
 	// Пользователь, 02.11.2026: выключенные и снова включённые плитки ИИ в «Виде» включались маленькими.
 	[TestMethod]
 	public void AiTilesTurnBackOnInTheirStyle()

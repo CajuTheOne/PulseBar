@@ -47,7 +47,7 @@
 "VRAM — video memory": "VRAM — відеопам'ять",
 "RAM — memory": "RAM — оперативна пам'ять",
 "Claude — 5-hour and 7-day limits": "Claude — ліміти на 5 годин і 7 днів",
-"Keyboard and mouse battery": "Заряд клавіатури і миші",
+"Keyboard, mouse and headset battery": "Заряд клавіатури, миші й навушників",
 "Claude limits, %": "Ліміти Claude, %",
 "Keyboard charge, %": "Клавіатура, %",
 "Mouse charge, %": "Миша, %",
@@ -216,7 +216,7 @@
 "Thresholds and colours": "Пороги й кольори",
 "Usage": "Витрата",
 "Warning": "Попередження",
-"keyboard, mouse": "клавіатура, миша",
+"devices": "пристрої",
 "load and °C": "навантаження й °C",
 "memory": "пам'ять",
 "no data yet": "даних поки немає",
@@ -283,5 +283,14 @@
 "everything": "усе",
 "not known yet: it has not been on": "поки невідомо: пристрій ще не вмикався",
 "per-key lighting": "підсвічування за клавішами",
-"profiles in memory": "профілі в пам'яті"
+"profiles in memory": "профілі в пам'яті",
+"Headset": "Навушники",
+"Headset charge, %": "Заряд навушників, %",
+"Headsets in PulseBar": "Навушники в PulseBar",
+"Look for headsets again and choose which one PulseBar shows": "Знайти навушники заново й вибрати, чий заряд показує PulseBar",
+"No headset found": "Навушники не знайдено",
+"Off: PulseBar does not look for headsets and shows no charge.": "Вимкнено: PulseBar не шукає навушники й не показує їхній заряд.",
+"does not report its charge": "не повідомляє заряд",
+"last {0}%": "востаннє {0}%",
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Навушники Bluetooth: заряд — той, що Windows показує в «Bluetooth і пристрої»; читається приблизно раз на хвилину. Якщо там у навушників немає заряду, вони його не повідомляють."
 }

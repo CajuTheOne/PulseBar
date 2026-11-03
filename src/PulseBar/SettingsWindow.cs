@@ -47,8 +47,9 @@ internal interface ISettingsHost
 
 	IReadOnlyList<GpuSensor.Adapter> Adapters { get; }
 
-	// Сохранить настройки и перерисовать строку.
-	void Apply();
+	// Сохранить настройки и перерисовать строку. Расположение на панели меняет строка, поэтому оно берётся из файла;
+	// layout = true — записать и своё (загрузка пресета вида).
+	void Apply(bool layout = false);
 
 	void SelectGpu(string key);
 
@@ -73,7 +74,7 @@ internal interface ISettingsHost
 	// Foreign — подсветку меняет другая программа: lamparray («Динамическое освещение» Windows), other или "".
 	// Devices — найденные клавиатуры и мыши, KeyboardId / MouseId — выбранные (или первые подходящие), Scans — сколько
 	// раз искали (сменилось — «Определить» закончил), Report — путь последнего отчёта об устройствах.
-	sealed record Logitech(string Device, bool Online, int Battery, string Mode, bool GHub, string Result, string[] KeyEffects, string[] LogoEffects, byte[] KeyIds, string Foreign = "", Logi.FoundDevice[]? Devices = null, string KeyboardId = "", string MouseId = "", int Scans = 0, string Report = "")
+	sealed record Logitech(string Device, bool Online, int Battery, string Mode, bool GHub, string Result, string[] KeyEffects, string[] LogoEffects, byte[] KeyIds, string Foreign = "", Logi.FoundDevice[]? Devices = null, string KeyboardId = "", string MouseId = "", int Scans = 0, string Report = "", string HeadsetId = "")
 	{
 		public static readonly Logitech Empty = new Logitech("", Online: false, -1, "", GHub: false, "", Array.Empty<string>(), Array.Empty<string>(), Array.Empty<byte>());
 	}
@@ -131,9 +132,11 @@ internal sealed partial class SettingsWindow : Window
 		_pages.Add((L.T("Appearance"), AppearancePage));
 		_pages.Add((L.T("Thresholds and colours"), ThresholdsPage));
 		_keyboardPage = _pages.Count;
-		_pages.Add((DeviceTitle(keyboard: true), KeyboardPage));
+		_pages.Add((DeviceTitle("keyboard"), KeyboardPage));
 		_mousePage = _pages.Count;
-		_pages.Add((DeviceTitle(keyboard: false), MousePage));
+		_pages.Add((DeviceTitle("mouse"), MousePage));
+		_headsetPage = _pages.Count;
+		_pages.Add((DeviceTitle("headset"), HeadsetPage));
 		_pages.Add((L.T("AI"), AiPage));
 		_pages.Add((L.T("About"), AboutPage));
 		foreach (var (title, _) in _pages)
@@ -473,8 +476,11 @@ internal sealed partial class SettingsWindow : Window
 		{
 			if (looks.SelectedIndex >= 0)
 			{
+				// Пользователь, 03.11.2026: после «Одной строки» загрузка своего вида оставляла разделители и прежние места
+				// элементов — Apply брал расположение из файла строки. Пресет повторяет вид целиком, с расположением.
 				_s.ApplyAppearance(_s.Presets[looks.SelectedIndex].Json);
-				Changed();
+				_host.Apply(layout: true);
+				UpdatePreview();
 				ShowPage(_nav.SelectedIndex);
 			}
 		};
@@ -485,6 +491,8 @@ internal sealed partial class SettingsWindow : Window
 			{
 				return;
 			}
+			// Расположение — то, что сейчас на панели (его двигает строка), а не копия окна.
+			_s.Groups = Settings.Load().Groups;
 			Settings.LookPreset look = new Settings.LookPreset(name, _s.AppearanceJson());
 			int same = _s.Presets.FindIndex((Settings.LookPreset x) => string.Equals(x.Name, name, StringComparison.CurrentCultureIgnoreCase));
 			if (same >= 0)
@@ -577,7 +585,7 @@ internal sealed partial class SettingsWindow : Window
 			"cpu" or "gpu" => L.T("load and °C"),
 			"vram" => L.T("video memory"),
 			"ram" => L.T("memory"),
-			"battery" => L.T("keyboard, mouse"),
+			"battery" => L.T("devices"),
 			"claude" or "chatgpt" => L.T("5 h and 7 days"),
 			"grok" => L.T("usage"),
 			"gemini" => L.T("no data yet"),
@@ -705,11 +713,12 @@ internal sealed partial class SettingsWindow : Window
 		int h = (int)MathF.Round(48f * scale);
 		Readings r = _host.Readings;
 		_previewRenderer.Configure(scale, h, _s);
+		_previewRenderer.Batteries = r.BatteryKinds;
 		// Превью — видимые элементы подряд, слева направо (группы, дальние от трея, — левее).
 		List<string> ids = (from g in _s.LayoutGroups
 			orderby g.X descending
 			from id in g.Items
-			where BarRenderer.IsSeparator(id) || (id == "claude" ? (_s.ClaudeStyle != 0 && _host.Claude != null) : _s.IsShown(id))
+			where BarRenderer.IsSeparator(id) || (id == "claude" ? (_s.ClaudeStyle != 0 && _host.Claude != null) : (_s.IsShown(id) && (id != "battery" || r.BatteryKinds != 0)))
 			select id).ToList();
 		int w = Math.Max(1, (int)MathF.Ceiling(_previewRenderer.RowWidth(ids)));
 		using Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppPArgb);
@@ -740,7 +749,7 @@ internal sealed partial class SettingsWindow : Window
 			"vram" => L.T("VRAM — video memory"),
 			"ram" => L.T("RAM — memory"),
 			"claude" => L.T("Claude — 5-hour and 7-day limits"),
-			"battery" => L.T("Keyboard and mouse battery"),
+			"battery" => L.T("Keyboard, mouse and headset battery"),
 			_ => key,
 		};
 	}
@@ -871,6 +880,10 @@ internal sealed partial class SettingsWindow : Window
 		{
 			_s.MouseBattery = l;
 		}, low: true);
+		Row(L.T("Headset charge, %"), () => _s.HeadsetBattery, delegate(Limit l)
+		{
+			_s.HeadsetBattery = l;
+		}, low: true);
 		Row(L.T("DeepSeek balance"), () => _s.DeepSeek, delegate(Limit l)
 		{
 			_s.DeepSeek = l;
@@ -893,6 +906,7 @@ internal sealed partial class SettingsWindow : Window
 			_s.Claude = Settings.Defaults.Claude;
 			_s.KbBattery = Settings.Defaults.KbBattery;
 			_s.MouseBattery = Settings.Defaults.MouseBattery;
+			_s.HeadsetBattery = Settings.Defaults.HeadsetBattery;
 			_s.ChatGpt = Settings.Defaults.ChatGpt;
 			_s.Grok = Settings.Defaults.Grok;
 			_s.DeepSeek = Settings.Defaults.DeepSeek;
@@ -993,8 +1007,8 @@ internal sealed partial class SettingsWindow : Window
 
 	private UIElement MousePage()
 	{
-		StackPanel p = Page(DeviceTitle(keyboard: false));
-		p.Children.Add(DeviceHeader(keyboard: false, PageTitle(p), out Action device));
+		StackPanel p = Page(DeviceTitle("mouse"));
+		p.Children.Add(DeviceHeader("mouse", PageTitle(p), out Action device));
 		_refresh = device;
 		if (!LogiCfg().MouseOn)
 		{

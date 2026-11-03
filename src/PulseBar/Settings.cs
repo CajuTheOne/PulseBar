@@ -27,6 +27,8 @@ internal sealed class Settings
 
 		public static readonly Limit MouseBattery = new Limit(20, 10);
 
+		public static readonly Limit HeadsetBattery = new Limit(20, 10);
+
 		public static readonly Limit Claude = new Limit(70, 90);
 
 		public static readonly Limit ChatGpt = new Limit(70, 90);
@@ -313,6 +315,8 @@ internal sealed class Settings
 	public Limit KbBattery = Defaults.KbBattery;
 
 	public Limit MouseBattery = Defaults.MouseBattery;
+
+	public Limit HeadsetBattery = Defaults.HeadsetBattery;
 
 	public Limit Claude = Defaults.Claude;
 
@@ -723,6 +727,9 @@ internal sealed class Settings
 		case "mouseBattery":
 			this.MouseBattery = ParseLow(text4, this.MouseBattery);
 			break;
+		case "headsetBattery":
+			this.HeadsetBattery = ParseLow(text4, this.HeadsetBattery);
+			break;
 		case "showChatGpt":
 			this.ShowChatGpt = result != 0;
 			break;
@@ -860,6 +867,7 @@ internal sealed class Settings
 			WriteLimit(w, "ram", Ram);
 			WriteLimit(w, "kbBattery", KbBattery);
 			WriteLimit(w, "mouseBattery", MouseBattery);
+			WriteLimit(w, "headsetBattery", HeadsetBattery);
 			WriteLimit(w, "claude", Claude);
 			w.WriteBoolean("showChatGpt", ShowChatGpt);
 			w.WriteNumber("gptStyle", GptStyle);

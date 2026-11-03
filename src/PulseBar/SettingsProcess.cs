@@ -78,6 +78,8 @@ internal static class SettingsProcess
 				Num(w, "ramGb", r.RamUsedGb);
 				Num(w, "kb", r.KbBattery);
 				Num(w, "mouse", r.MouseBattery);
+				Num(w, "headset", r.HeadsetBattery);
+				w.WriteNumber("batteries", r.BatteryKinds);
 				w.WriteBoolean("kbCharging", r.KbCharging);
 				w.WriteBoolean("mouseCharging", r.MouseCharging);
 				Num(w, "gpt1", r.GptFirst);
@@ -148,6 +150,7 @@ internal static class SettingsProcess
 				w.WriteString("foreign", logi.ForeignLighting);
 				w.WriteString("kbId", logi.KeyboardId);
 				w.WriteString("mouseId", logi.MouseId);
+				w.WriteString("headsetId", logi.HeadsetId);
 				w.WriteNumber("scans", logi.Scans);
 				w.WriteString("report", logi.LastReport);
 				w.WriteStartArray("devices");
@@ -155,7 +158,7 @@ internal static class SettingsProcess
 				{
 					w.WriteStartObject();
 					w.WriteString("id", d.Id);
-					w.WriteBoolean("keyboard", d.Keyboard);
+					w.WriteString("kind", d.Kind);
 					w.WriteString("name", d.Name);
 					w.WriteString("brand", d.Brand);
 					w.WriteBoolean("online", d.Online);
@@ -390,10 +393,14 @@ internal static class SettingsProcess
 			}
 		}
 
-		public void Apply()
+		public void Apply(bool layout = false)
 		{
-			// Расположение меняет только строка (перетаскиванием) — не затирать его своей устаревшей копией.
-			Settings.Groups = Settings.Load().Groups;
+			// Расположение меняет только строка (перетаскиванием) — не затирать его своей устаревшей копией. Кроме загрузки
+			// пресета вида: там расположение — часть вида.
+			if (!layout)
+			{
+				Settings.Groups = Settings.Load().Groups;
+			}
 			Settings.Save();
 			Notify(MsgSettingsChanged);
 		}
@@ -466,6 +473,8 @@ internal static class SettingsProcess
 					RamUsedGb = F(e, "ramGb"),
 					KbBattery = F(e, "kb"),
 					MouseBattery = F(e, "mouse"),
+					HeadsetBattery = F(e, "headset"),
+					BatteryKinds = (e.TryGetProperty("batteries", out JsonElement bk) && bk.TryGetInt32(out int kinds)) ? kinds : 3,
 					KbCharging = e.TryGetProperty("kbCharging", out JsonElement kc) && kc.GetBoolean(),
 					MouseCharging = e.TryGetProperty("mouseCharging", out JsonElement mc) && mc.GetBoolean(),
 					GptFirst = F(e, "gpt1"),
@@ -502,10 +511,10 @@ internal static class SettingsProcess
 					{
 						foreach (JsonElement d in dv.EnumerateArray())
 						{
-							found.Add(new Logi.FoundDevice(Str(d, "id"), d.GetProperty("keyboard").GetBoolean(), Str(d, "name"), Str(d, "brand"), d.GetProperty("online").GetBoolean(), d.GetProperty("battery").GetInt32(), d.GetProperty("charging").GetBoolean(), Str(d, "support"), Str(d, "features")));
+							found.Add(new Logi.FoundDevice(Str(d, "id"), Str(d, "kind"), Str(d, "name"), Str(d, "brand"), d.GetProperty("online").GetBoolean(), d.GetProperty("battery").GetInt32(), d.GetProperty("charging").GetBoolean(), Str(d, "support"), Str(d, "features")));
 						}
 					}
-					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""), Str(lg, "foreign"), found.ToArray(), Str(lg, "kbId"), Str(lg, "mouseId"), lg.TryGetProperty("scans", out JsonElement sc) && sc.TryGetInt32(out int scans) ? scans : 0, Str(lg, "report"));
+					_logi = new ISettingsHost.Logitech(lg.GetProperty("device").GetString() ?? "", lg.GetProperty("online").GetBoolean(), lg.GetProperty("battery").GetInt32(), lg.GetProperty("mode").GetString() ?? "", lg.GetProperty("ghub").GetBoolean(), lg.GetProperty("result").GetString() ?? "", List(lg, "keyEffects"), List(lg, "logoEffects"), Convert.FromHexString(lg.TryGetProperty("keyIds", out JsonElement ids) ? (ids.GetString() ?? "") : ""), Str(lg, "foreign"), found.ToArray(), Str(lg, "kbId"), Str(lg, "mouseId"), lg.TryGetProperty("scans", out JsonElement sc) && sc.TryGetInt32(out int scans) ? scans : 0, Str(lg, "report"), Str(lg, "headsetId"));
 				}
 				_claudeAccount = e.TryGetProperty("claudeAccount", out JsonElement acc) ? (acc.GetString() ?? "") : "";
 				_adapters = new List<GpuSensor.Adapter>();

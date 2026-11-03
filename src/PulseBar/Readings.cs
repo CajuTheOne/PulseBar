@@ -28,6 +28,13 @@ internal struct Readings
 
 	public bool MouseCharging;
 
+	// Наушники (NaN — нет на связи). BatteryKinds — что в блоке заряда: 1 — клавиатура, 2 — мышь, 4 — наушники.
+	public float HeadsetBattery;
+
+	public bool HeadsetCharging;
+
+	public int BatteryKinds;
+
 	public bool ClaudeShown;
 
 	public float ClaudeFiveHour;

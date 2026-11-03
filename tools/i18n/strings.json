@@ -47,7 +47,7 @@
 "VRAM — video memory",
 "RAM — memory",
 "Claude — 5-hour and 7-day limits",
-"Keyboard and mouse battery",
+"Keyboard, mouse and headset battery",
 "Claude limits, %",
 "Keyboard charge, %",
 "Mouse charge, %",
@@ -217,7 +217,7 @@
 "Thresholds and colours",
 "Usage",
 "Warning",
-"keyboard, mouse",
+"devices",
 "load and °C",
 "memory",
 "no data yet",
@@ -283,5 +283,14 @@
 "everything",
 "not known yet: it has not been on",
 "per-key lighting",
-"profiles in memory"
+"profiles in memory",
+"Headset",
+"Headset charge, %",
+"Headsets in PulseBar",
+"Look for headsets again and choose which one PulseBar shows",
+"No headset found",
+"Off: PulseBar does not look for headsets and shows no charge.",
+"does not report its charge",
+"last {0}%",
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it."
 ]

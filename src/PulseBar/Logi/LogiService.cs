@@ -45,6 +45,13 @@ internal sealed class LogiService : IDisposable
 	// Клавиатуры других фирм — только для списка «Определить» (у них PulseBar показывает настройки Windows).
 	private List<PointingDevice> _otherKeyboards = new List<PointingDevice>();
 
+	// Наушники Bluetooth (Headsets): заряд и связь — из свойств устройств Windows, раз в минуту.
+	private List<Headsets.Headset> _headsets = new List<Headsets.Headset>();
+
+	private string _headsetNames = "";
+
+	private readonly Timer _headsetTimer;
+
 	// Устройства Logitech, бывшие на связи (devices.json; Id → имя, вид, функции).
 	private Dictionary<string, KnownDevice>? _known;
 
@@ -158,6 +165,10 @@ internal sealed class LogiService : IDisposable
 		{
 			Post(ReadBatteries);
 		}, null, -1, -1);
+		_headsetTimer = new Timer(delegate
+		{
+			Post(RefreshHeadsets);
+		}, null, -1, -1);
 		_anim = new Timer(delegate
 		{
 			if (Interlocked.Exchange(ref _animPending, 1) == 0)
@@ -193,6 +204,7 @@ internal sealed class LogiService : IDisposable
 			_tick.Change(500, 500);
 			_slow.Change(3000, 3000);
 			_battery.Change(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+			_headsetTimer.Change(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 		}
 		// PULSEBAR_LOGI_TRACE=1 — все пакеты HID++ в logi-trace-*.txt (для разбора ошибок на настоящей клавиатуре).
 		if (Environment.GetEnvironmentVariable("PULSEBAR_LOGI_TRACE") == "1")
@@ -218,6 +230,7 @@ internal sealed class LogiService : IDisposable
 		_tick.Dispose();
 		_slow.Dispose();
 		_battery.Dispose();
+		_headsetTimer.Dispose();
 		_anim.Dispose();
 		if (!_readOnly && _env.SystemEvents)
 		{
@@ -430,6 +443,7 @@ internal sealed class LogiService : IDisposable
 			_otherMice = mice;
 			_otherKeyboards = keyboards;
 		}
+		RefreshHeadsets();
 		Interlocked.Increment(ref _scans);
 		ReadBatteries();
 		Kick();
@@ -558,6 +572,72 @@ internal sealed class LogiService : IDisposable
 		}
 	}
 
+	// Наушники Bluetooth: заряд и связь меняются без событий USB — перечитываются раз в минуту и при каждом поиске.
+	private void RefreshHeadsets()
+	{
+		List<Headsets.Headset> headsets = new List<Headsets.Headset>();
+		if (Config.HeadsetOn)
+		{
+			try
+			{
+				headsets = _env.FindHeadsets();
+			}
+			catch (Exception ex)
+			{
+				Log.Write("headsets: " + ex.Message);
+			}
+		}
+		string names = string.Join(", ", headsets.Select((Headsets.Headset h) => $"{h.Name} ({(h.Online ? ((h.Battery >= 0) ? $"{h.Battery}%" : "no charge") : "off")})"));
+		bool changed;
+		lock (_lock)
+		{
+			changed = !headsets.Select((Headsets.Headset h) => h.Id + h.Battery + h.Online).SequenceEqual(_headsets.Select((Headsets.Headset h) => h.Id + h.Battery + h.Online));
+			_headsets = headsets;
+		}
+		// В журнал — когда меняется состав или связь, не каждый процент.
+		string online = string.Join(",", headsets.Select((Headsets.Headset h) => h.Id + h.Online));
+		if (online != _headsetNames)
+		{
+			_headsetNames = online;
+			Log.Write("headsets: " + ((names.Length > 0) ? names : "none"));
+		}
+		if (changed)
+		{
+			RaiseChanged();
+		}
+	}
+
+	// Наушники для строки: выбранные кнопкой «Определить», иначе первые на связи с зарядом, иначе первые на связи,
+	// иначе первые из известных Windows. null — нет или наушники выключены.
+	private Headsets.Headset? PickHeadset()
+	{
+		if (!Config.HeadsetOn)
+		{
+			return null;
+		}
+		lock (_lock)
+		{
+			string want = Config.HeadsetDevice;
+			return ((want.Length > 0) ? _headsets.FirstOrDefault((Headsets.Headset h) => h.Id == want) : null) ?? _headsets.FirstOrDefault((Headsets.Headset h) => h.Online && h.Battery >= 0) ?? _headsets.FirstOrDefault((Headsets.Headset h) => h.Online) ?? _headsets.FirstOrDefault();
+		}
+	}
+
+	// Заряд — только когда наушники на связи (Windows помнит последний и после отключения).
+	public (string Name, float Battery, bool Online) CurrentHeadset
+	{
+		get
+		{
+			Headsets.Headset? h = PickHeadset();
+			if (h == null)
+			{
+				return ("", float.NaN, false);
+			}
+			return (h.Name, (h.Online && h.Battery >= 0) ? h.Battery : float.NaN, h.Online);
+		}
+	}
+
+	public string HeadsetId => PickHeadset()?.Id ?? "";
+
 	// «Определить»: найти все устройства заново.
 	public void Detect()
 	{
@@ -663,6 +743,17 @@ internal sealed class LogiService : IDisposable
 		foreach (PointingDevice m in mice.Where((PointingDevice x) => x.RazerPath != null))
 		{
 			sb.AppendLine($"razer {Id(m)} {m.Name}: battery {(m.BatteryPercent >= 0 ? $"{m.BatteryPercent}%" : "?")}, last status {OtherMice.Reason(m.RazerStatus)}");
+		}
+		sb.AppendLine();
+		sb.AppendLine($"== Headsets (Bluetooth), {(Config.HeadsetOn ? "on" : "off")} ({(Config.HeadsetDevice.Length > 0 ? Config.HeadsetDevice : "auto")})");
+		List<Headsets.Headset> headsets;
+		lock (_lock)
+		{
+			headsets = _headsets;
+		}
+		foreach (Headsets.Headset h in headsets)
+		{
+			sb.AppendLine($"{h.Id}  {h.Name}  ({h.Brand})  {(h.Online ? "connected" : "not connected")}, battery {(h.Battery >= 0 ? $"{h.Battery}%" : "not reported")}");
 		}
 		return sb.ToString();
 	}
@@ -1032,6 +1123,12 @@ internal sealed class LogiService : IDisposable
 			Config = LogiConfig.Load(_env.ConfigPath);
 			Config.Active = active;
 			bool devices = old.KeyboardOn != Config.KeyboardOn || old.MouseOn != Config.MouseOn || old.KeyboardDevice != Config.KeyboardDevice || old.MouseDevice != Config.MouseDevice;
+			// Наушники — без пересканирования HID++: клавиатура остаётся как есть.
+			if (!devices && (old.HeadsetOn != Config.HeadsetOn || old.HeadsetDevice != Config.HeadsetDevice))
+			{
+				Log.Write($"logi: headsets {(Config.HeadsetOn ? "on" : "off")} {Config.HeadsetDevice}");
+				RefreshHeadsets();
+			}
 			if (was && (!Controlling || devices))
 			{
 				ReleaseKeyboard(Config.KeyboardOn ? "disabled" : "keyboard off");
@@ -1506,7 +1603,13 @@ internal sealed class LogiService : IDisposable
 					Known.TryGetValue(Id(d), out KnownDevice? k);
 					bool live = d.Features.Count > 0;
 					bool keyboard = live ? d.IsKeyboard : (k?.Keyboard ?? false);
-					if (keyboard ? !Config.KeyboardOn : !Config.MouseOn)
+					string kind = keyboard ? "keyboard" : ((live && d.Kind == LogiDevice.DeviceKind.Headset) ? "headset" : "mouse");
+					if (!(kind switch
+					{
+						"keyboard" => Config.KeyboardOn,
+						"mouse" => Config.MouseOn,
+						_ => Config.HeadsetOn
+					}))
 					{
 						continue;
 					}
@@ -1515,16 +1618,20 @@ internal sealed class LogiService : IDisposable
 					string support = (features.Length == 0) ? "" : ((keyboard && f.Contains("memory")) ? "full" : (f.Contains("battery") ? "battery" : "windows"));
 					_state.TryGetValue(d, out var s);
 					bool online = live && s.Online;
-					list.Add(new FoundDevice(Id(d), keyboard, live ? d.Name : (k?.Name ?? d.Name), "Logitech", online, online ? s.Percent : -1, online && s.Charging, support, features));
+					list.Add(new FoundDevice(Id(d), kind, live ? d.Name : (k?.Name ?? d.Name), "Logitech", online, online ? s.Percent : -1, online && s.Charging, support, features));
 				}
 				foreach (PointingDevice m in _otherMice)
 				{
 					bool razer = m.RazerPath != null;
-					list.Add(new FoundDevice(Id(m), Keyboard: false, m.Name, FoundDevice.BrandOf(m.Vid), Online: true, m.BatteryPercent, m.Charging, razer ? "battery" : "windows", razer ? "battery" : ""));
+					list.Add(new FoundDevice(Id(m), "mouse", m.Name, FoundDevice.BrandOf(m.Vid), Online: true, m.BatteryPercent, m.Charging, razer ? "battery" : "windows", razer ? "battery" : ""));
 				}
 				foreach (PointingDevice m in _otherKeyboards)
 				{
-					list.Add(new FoundDevice(Id(m), Keyboard: true, m.Name, FoundDevice.BrandOf(m.Vid), Online: true, -1, Charging: false, "windows", ""));
+					list.Add(new FoundDevice(Id(m), "keyboard", m.Name, FoundDevice.BrandOf(m.Vid), Online: true, -1, Charging: false, "windows", ""));
+				}
+				foreach (Headsets.Headset h in _headsets)
+				{
+					list.Add(new FoundDevice(h.Id, "headset", h.Name, h.Brand, h.Online, h.Battery, Charging: false, (h.Battery >= 0) ? "battery" : "nobattery", (h.Battery >= 0) ? "battery" : ""));
 				}
 			}
 			return list;
@@ -1626,7 +1733,7 @@ internal sealed class LogiService : IDisposable
 			devices = _devices;
 		}
 		LogiDevice? kb = _kb?.Device;
-		List<LogiDevice> logi = devices.Where((LogiDevice x) => x != kb && !IsKeyboardDevice(x)).ToList();
+		List<LogiDevice> logi = devices.Where((LogiDevice x) => x != kb && !IsKeyboardDevice(x) && x.Kind != LogiDevice.DeviceKind.Headset).ToList();
 		lock (_lock)
 		{
 			string want = Config.MouseDevice;
@@ -1668,6 +1775,13 @@ internal sealed class LogiService : IDisposable
 				if (m.BatteryPercent >= 0)
 				{
 					list.Add(Short(m.Name) + " " + $"{m.BatteryPercent}%{(m.Charging ? "⚡" : "")}");
+				}
+			}
+			foreach (Headsets.Headset h in _headsets)
+			{
+				if (h.Online && h.Battery >= 0)
+				{
+					list.Add(Short(h.Name) + " " + $"{h.Battery}%");
 				}
 			}
 		}
@@ -1964,6 +2078,8 @@ internal sealed class LogiEnv
 	public Func<List<PointingDevice>> FindMice = OtherMice.Find;
 
 	public Func<List<PointingDevice>> FindKeyboards = OtherMice.FindKeyboards;
+
+	public Func<List<Headsets.Headset>> FindHeadsets = Headsets.Find;
 
 	public Action<KeyAction> RunAction = Macro.Run;
 

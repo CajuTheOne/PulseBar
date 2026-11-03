@@ -47,7 +47,7 @@
 "VRAM — video memory": "VRAM — mémoire vidéo",
 "RAM — memory": "RAM — mémoire",
 "Claude — 5-hour and 7-day limits": "Claude — limites sur 5 heures et 7 jours",
-"Keyboard and mouse battery": "Batterie du clavier et de la souris",
+"Keyboard, mouse and headset battery": "Batterie du clavier, de la souris et du casque",
 "Claude limits, %": "Limites Claude, %",
 "Keyboard charge, %": "Batterie du clavier, %",
 "Mouse charge, %": "Batterie de la souris, %",
@@ -216,7 +216,7 @@
 "Thresholds and colours": "Seuils et couleurs",
 "Usage": "Utilisation",
 "Warning": "Avertissement",
-"keyboard, mouse": "clavier, souris",
+"devices": "appareils",
 "load and °C": "charge et °C",
 "memory": "mémoire",
 "no data yet": "pas encore de données",
@@ -283,5 +283,14 @@
 "everything": "tout",
 "not known yet: it has not been on": "inconnu pour l'instant : l'appareil n'a pas encore été allumé",
 "per-key lighting": "éclairage par touche",
-"profiles in memory": "profils en mémoire"
+"profiles in memory": "profils en mémoire",
+"Headset": "Casque",
+"Headset charge, %": "Batterie du casque, %",
+"Headsets in PulseBar": "Casques dans PulseBar",
+"Look for headsets again and choose which one PulseBar shows": "Rechercher à nouveau les casques et choisir celui qu'affiche PulseBar",
+"No headset found": "Aucun casque trouvé",
+"Off: PulseBar does not look for headsets and shows no charge.": "Désactivé : PulseBar ne cherche pas de casques et n'affiche pas leur batterie.",
+"does not report its charge": "n'indique pas sa batterie",
+"last {0}%": "dernier {0}%",
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Casques Bluetooth : la batterie est celle qu'affiche Windows dans « Bluetooth et appareils » ; elle est lue environ une fois par minute. Un casque sans batterie affichée là-bas ne l'indique pas."
 }

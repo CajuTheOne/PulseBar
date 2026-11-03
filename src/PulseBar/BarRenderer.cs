@@ -125,6 +125,11 @@ internal sealed class BarRenderer : IDisposable
 
 	private Limit _batMouse = Settings.Defaults.MouseBattery;
 
+	private Limit _batHeadset = Settings.Defaults.HeadsetBattery;
+
+	// Что в блоке заряда (Readings.BatteryKinds): 1 — клавиатура, 2 — мышь, 4 — наушники; от этого — ширина блока.
+	public int Batteries = 3;
+
 	public BarRenderer()
 	{
 		_mg = Graphics.FromImage(_measureBmp);
@@ -234,9 +239,25 @@ internal sealed class BarRenderer : IDisposable
 			"chatgpt" => (_gptStyle == 2) ? (_wVLabelVram + 8f * _k + _wTag + BarWidth(_gptBarLength) + 6f * _k + _wClaudeText) : (two ? (_wVLabelVram + 7f * _k + _wTag + _wPct) : (_wGpt + (_gap2 + _wTag + 3f * _k + _wPct) * 2f)),
 			"grok" => two ? (_wVLabelVram + 7f * _k + _wPct) : (_wGrok + _gap2 + _wPct),
 			"deepseek" => two ? (_wVLabelVram + 7f * _k + _wBalance) : (_wDs + _gap2 + _wBalance),
-			"battery" => two ? (_wIcon + _gap1 + _wBatSmall) : ((_wIcon + _gap1 + _wBatPct) * 2f + _gap2 * 2f),
+			"battery" => BatteryWidth(two),
 			_ => 0f,
 		};
+	}
+
+	// Блок заряда: в одну строку — подряд; в две — по два друг над другом, нечётный последний — посередине.
+	private float BatteryWidth(bool two)
+	{
+		int n = System.Numerics.BitOperations.PopCount((uint)(Batteries & 7));
+		if (n == 0)
+		{
+			return 0f;
+		}
+		if (two)
+		{
+			int cols = (n + 1) / 2;
+			return (float)cols * (_wIcon + _gap1 + _wBatSmall) + (float)(cols - 1) * _gap2 * 2f;
+		}
+		return (float)n * (_wIcon + _gap1 + _wBatPct) + (float)(n - 1) * _gap2 * 2f;
 	}
 
 	// Ряд элементов подряд (для превью в окне настроек): ширина и отрисовка.
@@ -277,7 +298,7 @@ internal sealed class BarRenderer : IDisposable
 	public static int Signature(in Readings r, Settings s, bool light)
 	{
 		int ai = HashCode.Combine(Round(r.GptFirst), Round(r.GptSecond), r.GptStale, Round(r.GrokUsed), r.GrokStale, Round(r.DsBalance * 100f), r.DsCurrency, HashCode.Combine(r.DsStale, ShortLeft(r.GptFirstLeft), ShortLeft(r.GptSecondLeft)));
-		int value = HashCode.Combine(Round(r.KbBattery), Round(r.MouseBattery), r.KbCharging, r.MouseCharging, Round(r.ClaudeFiveHour), Round(r.ClaudeSevenDay), r.ClaudeStale, HashCode.Combine(r.ClaudeShown, ShortLeft(r.ClaudeFiveHourLeft), ShortLeft(r.ClaudeSevenDayLeft), ai));
+		int value = HashCode.Combine(Round(r.KbBattery), Round(r.MouseBattery), r.KbCharging, r.MouseCharging, Round(r.ClaudeFiveHour), Round(r.ClaudeSevenDay), r.ClaudeStale, HashCode.Combine(r.ClaudeShown, ShortLeft(r.ClaudeFiveHourLeft), ShortLeft(r.ClaudeSevenDayLeft), ai, Round(r.HeadsetBattery), r.HeadsetCharging, r.BatteryKinds));
 		return HashCode.Combine(HashCode.Combine(Round(r.CpuLoad), Round(r.CpuTemp), Round(r.GpuLoad), Round(r.GpuTemp), r.GpuAsleep), Round(r.VramLoad), Round(r.VramUsedGb * 10f), Round(r.RamLoad), Round(r.RamUsedGb * 10f), s.Version, light, value);
 	}
 
@@ -296,6 +317,7 @@ internal sealed class BarRenderer : IDisposable
 		g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 		_batKb = s.KbBattery;
 		_batMouse = s.MouseBattery;
+		_batHeadset = s.HeadsetBattery;
 		if (IsSeparator(id))
 		{
 			float num = MathF.Round(_h * 0.42f);
@@ -409,28 +431,78 @@ internal sealed class BarRenderer : IDisposable
 			return x + _wBalance;
 		}
 		case "battery":
-			if (two)
+		{
+			List<(int Kind, float Pct, bool Charging)> items = new List<(int, float, bool)>(3);
+			if ((Batteries & 1) != 0)
 			{
-				float num2 = 8f * _k;
-				Battery(g, x, keyboard: true, r.KbBattery, r.KbCharging, _small, _wBatSmall, _h / 2f - num2, p);
-				return Battery(g, x, keyboard: false, r.MouseBattery, r.MouseCharging, _small, _wBatSmall, _h / 2f + num2, p);
+				items.Add((0, r.KbBattery, r.KbCharging));
 			}
-			x = Battery(g, x, keyboard: true, r.KbBattery, r.KbCharging, _value, _wBatPct, _h / 2f, p) + _gap2 * 2f;
-			return Battery(g, x, keyboard: false, r.MouseBattery, r.MouseCharging, _value, _wBatPct, _h / 2f, p);
+			if ((Batteries & 2) != 0)
+			{
+				items.Add((1, r.MouseBattery, r.MouseCharging));
+			}
+			if ((Batteries & 4) != 0)
+			{
+				items.Add((2, r.HeadsetBattery, r.HeadsetCharging));
+			}
+			float num2 = 8f * _k;
+			for (int i = 0; i < items.Count; i++)
+			{
+				bool last = i == items.Count - 1;
+				if (two)
+				{
+					bool top = i % 2 == 0;
+					float cy = (top && last) ? (_h / 2f) : (top ? (_h / 2f - num2) : (_h / 2f + num2));
+					float end = Battery(g, x, items[i].Kind, items[i].Pct, items[i].Charging, _small, _wBatSmall, cy, p);
+					if (!top || last)
+					{
+						x = end + (last ? 0f : (_gap2 * 2f));
+					}
+				}
+				else
+				{
+					x = Battery(g, x, items[i].Kind, items[i].Pct, items[i].Charging, _value, _wBatPct, _h / 2f, p) + (last ? 0f : (_gap2 * 2f));
+				}
+			}
+			return x;
+		}
 		default:
 			return x;
 		}
 	}
 
-	private float Battery(Graphics g, float x, bool keyboard, float pct, bool charging, Font font, float col, float cy, Palette p)
+	// kind: 0 — клавиатура, 1 — мышь, 2 — наушники.
+	private float Battery(Graphics g, float x, int kind, float pct, bool charging, Font font, float col, float cy, Palette p)
 	{
-		Limit limit = (keyboard ? _batKb : _batMouse);
+		Limit limit = kind switch
+		{
+			0 => _batKb,
+			1 => _batMouse,
+			_ => _batHeadset
+		};
 		Color c = (float.IsNaN(pct) ? p.NoData : (charging ? p.Ok : ((pct <= (float)limit.Hot) ? p.Hot : ((pct <= (float)limit.Warn) ? p.Warn : p.Ok))));
 		SmoothingMode smoothingMode = g.SmoothingMode;
 		g.SmoothingMode = SmoothingMode.AntiAlias;
 		using (Pen pen = new Pen(p.Label, Math.Max(1f, 1.2f * _k)))
 		{
-			if (keyboard)
+			if (kind == 2)
+			{
+				// Наушники: дуга оголовья и две чашки.
+				float w = 13f * _k;
+				float h = 12f * _k;
+				float left = x + (_wIcon - w) / 2f;
+				float top = cy - h / 2f;
+				g.DrawArc(pen, left + 0.6f * _k, top, w - 1.2f * _k, h * 1.25f, 180f, 180f);
+				float cupW = 3.4f * _k;
+				float cupH = 5.6f * _k;
+				using (GraphicsPath cupL = RoundRect(left, top + h - cupH, cupW, cupH, 1.4f * _k))
+				{
+					g.DrawPath(pen, cupL);
+				}
+				using GraphicsPath cupR = RoundRect(left + w - cupW, top + h - cupH, cupW, cupH, 1.4f * _k);
+				g.DrawPath(pen, cupR);
+			}
+			else if (kind == 0)
 			{
 				float num = 15f * _k;
 				float num2 = 9f * _k;

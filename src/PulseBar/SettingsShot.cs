@@ -42,7 +42,7 @@ internal static class SettingsShot
 
 		public IReadOnlyList<GpuSensor.Adapter> Adapters { get; init; } = Array.Empty<GpuSensor.Adapter>();
 
-		public void Apply()
+		public void Apply(bool layout = false)
 		{
 		}
 
@@ -77,12 +77,14 @@ internal static class SettingsShot
 		{
 		}
 
-		public ISettingsHost.Logitech LogiStatus => new ISettingsHost.Logitech("G915 WIRELESS RGB MECHANICAL GAMING KEYBOARD", Online: true, 64, "host", GHub: false, "", new string[5] { "off", "static", "breathing", "cycle", "wave" }, new string[4] { "off", "static", "breathing", "cycle" }, Array.Empty<byte>(), "", new Logi.FoundDevice[3]
+		public ISettingsHost.Logitech LogiStatus => new ISettingsHost.Logitech("G915 WIRELESS RGB MECHANICAL GAMING KEYBOARD", Online: true, 64, "host", GHub: false, "", new string[5] { "off", "static", "breathing", "cycle", "wave" }, new string[4] { "off", "static", "breathing", "cycle" }, Array.Empty<byte>(), "", new Logi.FoundDevice[5]
 		{
-			new Logi.FoundDevice("logi:C547:01", Keyboard: true, "G915 WIRELESS RGB MECHANICAL GAMING KEYBOARD", "Logitech", Online: true, 64, Charging: false, "full", "hidpp,lighting,effects,brightness,gkeys,mkeys,macro,memory,battery"),
-			new Logi.FoundDevice("hid:1532:00E8", Keyboard: false, "Razer Naga V3 Pro", "Razer", Online: true, 82, Charging: false, "battery", "battery"),
-			new Logi.FoundDevice("hid:258A:002A", Keyboard: true, "USB Keyboard", "", Online: true, -1, Charging: false, "windows", "")
-		}, "logi:C547:01", "hid:1532:00E8", 1);
+			new Logi.FoundDevice("logi:C547:01", "keyboard", "G915 WIRELESS RGB MECHANICAL GAMING KEYBOARD", "Logitech", Online: true, 64, Charging: false, "full", "hidpp,lighting,effects,brightness,gkeys,mkeys,macro,memory,battery"),
+			new Logi.FoundDevice("hid:1532:00E8", "mouse", "Razer Naga V3 Pro", "Razer", Online: true, 82, Charging: false, "battery", "battery"),
+			new Logi.FoundDevice("hid:258A:002A", "keyboard", "USB Keyboard", "", Online: true, -1, Charging: false, "windows", ""),
+			new Logi.FoundDevice("bt:8099E74265A2", "headset", "WH-1000XM5", "Sony", Online: true, 80, Charging: false, "battery", "battery"),
+			new Logi.FoundDevice("bt:08EBEDDF38AC", "headset", "JBL TUNE215BT", "", Online: false, 70, Charging: false, "battery", "battery")
+		}, "logi:C547:01", "hid:1532:00E8", 1, "", "bt:8099E74265A2");
 
 		public void LogiReload()
 		{
@@ -145,6 +147,8 @@ internal static class SettingsShot
 				RamUsedGb = 33.9f,
 				KbBattery = 64f,
 				MouseBattery = float.NaN,
+				HeadsetBattery = 80f,
+				BatteryKinds = 7,
 				ClaudeFiveHour = claude.Current?.FiveHour ?? float.NaN,
 				ClaudeSevenDay = claude.Current?.SevenDay ?? float.NaN,
 				ClaudeStale = claude.Current?.Stale ?? false,

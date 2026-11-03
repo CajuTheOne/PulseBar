@@ -47,7 +47,7 @@
 "VRAM — video memory": "VRAM — Grafikspeicher",
 "RAM — memory": "RAM — Arbeitsspeicher",
 "Claude — 5-hour and 7-day limits": "Claude — 5-Stunden- und 7-Tage-Limits",
-"Keyboard and mouse battery": "Akku von Tastatur und Maus",
+"Keyboard, mouse and headset battery": "Akku von Tastatur, Maus und Headset",
 "Claude limits, %": "Claude-Limits, %",
 "Keyboard charge, %": "Tastatur-Akku, %",
 "Mouse charge, %": "Maus-Akku, %",
@@ -216,7 +216,7 @@
 "Thresholds and colours": "Schwellen und Farben",
 "Usage": "Verbrauch",
 "Warning": "Warnung",
-"keyboard, mouse": "Tastatur, Maus",
+"devices": "Geräte",
 "load and °C": "Last und °C",
 "memory": "Speicher",
 "no data yet": "noch keine Daten",
@@ -283,5 +283,14 @@
 "everything": "alles",
 "not known yet: it has not been on": "noch unbekannt: das Gerät war noch nicht eingeschaltet",
 "per-key lighting": "Beleuchtung pro Taste",
-"profiles in memory": "Profile im Speicher"
+"profiles in memory": "Profile im Speicher",
+"Headset": "Headset",
+"Headset charge, %": "Headset-Akku, %",
+"Headsets in PulseBar": "Headsets in PulseBar",
+"Look for headsets again and choose which one PulseBar shows": "Headsets erneut suchen und auswählen, welches PulseBar anzeigt",
+"No headset found": "Kein Headset gefunden",
+"Off: PulseBar does not look for headsets and shows no charge.": "Aus: PulseBar sucht keine Headsets und zeigt keinen Akkustand an.",
+"does not report its charge": "meldet keinen Akkustand",
+"last {0}%": "zuletzt {0}%",
+"Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.": "Bluetooth-Headsets: Der Akkustand ist der, den Windows unter „Bluetooth und Geräte“ anzeigt; er wird etwa einmal pro Minute gelesen. Ein Headset, das dort keinen Akkustand hat, meldet ihn nicht."
 }

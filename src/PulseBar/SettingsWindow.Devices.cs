@@ -9,15 +9,18 @@ using PulseBar.Logi;
 
 namespace PulseBar;
 
-// Верх вкладок «Клавиатура» и «Мышь» (2.4.0-beta.8, решения пользователя 02.11.2026): переключатель всего вида
-// устройств (выключено — вкладка пустая, строка их не ищет и не показывает заряд), найденное устройство и кнопка
-// «Определить» — список всех найденных клавиатур (мышей) с тем, что PulseBar с ними умеет, и выбор, каким управлять;
-// «Сохранить отчёт об устройствах» — для поддержки новых моделей. Название вкладки — марка и модель устройства.
+// Верх вкладок «Клавиатура», «Мышь» и «Наушники» (2.4.0-beta.8, наушники — beta.10; решения пользователя 02.11.2026):
+// переключатель всего вида устройств (выключено — вкладка пустая, строка их не ищет и не показывает заряд), найденное
+// устройство и кнопка «Определить» — список всех найденных устройств вида с тем, что PulseBar с ними умеет, и выбор,
+// каким управлять (чей заряд показывать); «Сохранить отчёт об устройствах» — для поддержки новых моделей. Название
+// вкладки — марка и модель устройства. Вид: keyboard, mouse, headset (FoundDevice.Kind).
 internal sealed partial class SettingsWindow
 {
 	private int _keyboardPage = -1;
 
 	private int _mousePage = -1;
+
+	private int _headsetPage = -1;
 
 	// Ждём конца «Определить»: число поисков до нажатия; -1 — не ждём.
 	private int _detectFrom = -1;
@@ -36,31 +39,59 @@ internal sealed partial class SettingsWindow
 		return _logi;
 	}
 
+	private static bool KindOn(LogiConfig c, string kind)
+	{
+		return kind switch
+		{
+			"keyboard" => c.KeyboardOn,
+			"mouse" => c.MouseOn,
+			_ => c.HeadsetOn
+		};
+	}
+
+	private static string KindWant(LogiConfig c, string kind)
+	{
+		return kind switch
+		{
+			"keyboard" => c.KeyboardDevice,
+			"mouse" => c.MouseDevice,
+			_ => c.HeadsetDevice
+		};
+	}
+
 	// Выбранное (или первое подходящее) устройство вида; null — не найдено или вид выключен.
-	private FoundDevice? Chosen(bool keyboard)
+	private FoundDevice? Chosen(string kind)
 	{
 		ISettingsHost.Logitech st = _host.LogiStatus;
-		string id = keyboard ? st.KeyboardId : st.MouseId;
+		string id = kind switch
+		{
+			"keyboard" => st.KeyboardId,
+			"mouse" => st.MouseId,
+			_ => st.HeadsetId
+		};
 		return (id.Length > 0) ? st.Devices?.FirstOrDefault((FoundDevice d) => d.Id == id) : null;
 	}
 
-	private string DeviceTitle(bool keyboard)
+	private string DeviceTitle(string kind)
 	{
-		LogiConfig c = LogiCfg();
-		FoundDevice? d = (keyboard ? c.KeyboardOn : c.MouseOn) ? Chosen(keyboard) : null;
-		return d?.Title ?? (keyboard ? L.T("Keyboard") : L.T("Mouse"));
+		FoundDevice? d = KindOn(LogiCfg(), kind) ? Chosen(kind) : null;
+		return d?.Title ?? kind switch
+		{
+			"keyboard" => L.T("Keyboard"),
+			"mouse" => L.T("Mouse"),
+			_ => L.T("Headset")
+		};
 	}
 
 	// Названия вкладок слева — по найденным устройствам (раз в секунду, вместе с остальным).
 	private void UpdateDeviceTitles()
 	{
-		if (_keyboardPage >= 0 && _nav.Items[_keyboardPage] is ListBoxItem k)
+		foreach (var (index, kind) in new (int, string)[3] { (_keyboardPage, "keyboard"), (_mousePage, "mouse"), (_headsetPage, "headset") })
 		{
-			k.Content = DeviceTitle(keyboard: true);
-		}
-		if (_mousePage >= 0 && _nav.Items[_mousePage] is ListBoxItem m)
-		{
-			m.Content = DeviceTitle(keyboard: false);
+			if (index >= 0 && _nav.Items[index] is ListBoxItem item)
+			{
+				item.Content = DeviceTitle(kind);
+			}
 		}
 	}
 
@@ -68,7 +99,8 @@ internal sealed partial class SettingsWindow
 	{
 		if (!d.Online)
 		{
-			return L.T("asleep or off");
+			// Наушники Bluetooth: Windows помнит последний заряд и после отключения.
+			return L.T("asleep or off") + ((d.Kind == "headset" && d.Battery >= 0) ? (" · " + L.F("last {0}%", d.Battery)) : "");
 		}
 		return (d.Battery >= 0) ? $"{d.Battery}%{(d.Charging ? " ⚡" : "")}" : L.T("connected");
 	}
@@ -100,41 +132,63 @@ internal sealed partial class SettingsWindow
 			return L.T("charge only");
 		case "windows":
 			return L.T("Windows settings only");
+		case "nobattery":
+			return L.T("does not report its charge");
 		default:
 			return L.T("not known yet: it has not been on");
 		}
 	}
 
 	// Переключатель вида, строка устройства с «Определить», список найденных и отчёт. refresh — раз в секунду.
-	private UIElement DeviceHeader(bool keyboard, TextBlock title, out Action refresh)
+	private UIElement DeviceHeader(string kind, TextBlock title, out Action refresh)
 	{
 		LogiConfig c = LogiCfg();
 		StackPanel root = new StackPanel
 		{
 			Margin = new Thickness(0.0, 0.0, 0.0, 6.0)
 		};
-		root.Children.Add(Check(keyboard ? L.T("Keyboards in PulseBar") : L.T("Mice in PulseBar"), () => keyboard ? c.KeyboardOn : c.MouseOn, delegate(bool v)
+		string toggle = kind switch
 		{
-			if (keyboard)
+			"keyboard" => L.T("Keyboards in PulseBar"),
+			"mouse" => L.T("Mice in PulseBar"),
+			_ => L.T("Headsets in PulseBar")
+		};
+		root.Children.Add(Check(toggle, () => KindOn(c, kind), delegate(bool v)
+		{
+			switch (kind)
 			{
+			case "keyboard":
 				c.KeyboardOn = v;
-			}
-			else
-			{
+				break;
+			case "mouse":
 				c.MouseOn = v;
+				break;
+			default:
+				c.HeadsetOn = v;
+				break;
 			}
 			LogiSaveNow();
 		}, apply: false));
-		bool on = keyboard ? c.KeyboardOn : c.MouseOn;
-		if (!on)
+		if (!KindOn(c, kind))
 		{
-			root.Children.Add(Note(keyboard ? L.T("Off: PulseBar does not look for keyboards, shows no charge and changes nothing on them; the keyboard works from its own memory.") : L.T("Off: PulseBar does not look for mice and shows no charge.")));
+			root.Children.Add(Note(kind switch
+			{
+				"keyboard" => L.T("Off: PulseBar does not look for keyboards, shows no charge and changes nothing on them; the keyboard works from its own memory."),
+				"mouse" => L.T("Off: PulseBar does not look for mice and shows no charge."),
+				_ => L.T("Off: PulseBar does not look for headsets and shows no charge.")
+			}));
 			refresh = delegate
 			{
-				title.Text = DeviceTitle(keyboard);
+				title.Text = DeviceTitle(kind);
 			};
 			return root;
 		}
+		string none = kind switch
+		{
+			"keyboard" => L.T("No keyboard found"),
+			"mouse" => L.T("No mouse found"),
+			_ => L.T("No headset found")
+		};
 		TextBlock line = new TextBlock
 		{
 			VerticalAlignment = VerticalAlignment.Center,
@@ -144,7 +198,12 @@ internal sealed partial class SettingsWindow
 		Button detect = new Button
 		{
 			Content = L.T("Detect"),
-			ToolTip = keyboard ? L.T("Look for keyboards again and choose which one PulseBar uses") : L.T("Look for mice again and choose which one PulseBar shows")
+			ToolTip = kind switch
+			{
+				"keyboard" => L.T("Look for keyboards again and choose which one PulseBar uses"),
+				"mouse" => L.T("Look for mice again and choose which one PulseBar shows"),
+				_ => L.T("Look for headsets again and choose which one PulseBar shows")
+			}
 		};
 		DockPanel row = new DockPanel
 		{
@@ -185,11 +244,11 @@ internal sealed partial class SettingsWindow
 		void Refresh()
 		{
 			ISettingsHost.Logitech st = _host.LogiStatus;
-			FoundDevice[] all = (st.Devices ?? Array.Empty<FoundDevice>()).Where((FoundDevice d) => d.Keyboard == keyboard).ToArray();
-			FoundDevice? cur = Chosen(keyboard);
-			title.Text = DeviceTitle(keyboard);
+			FoundDevice[] all = (st.Devices ?? Array.Empty<FoundDevice>()).Where((FoundDevice d) => d.Kind == kind).ToArray();
+			FoundDevice? cur = Chosen(kind);
+			title.Text = DeviceTitle(kind);
 			// Модель — в названии; здесь заряд или связь и что PulseBar умеет; полное имя — в подсказке.
-			line.Text = (cur != null) ? (State(cur) + " · " + SupportText(cur, brief: true)) : (keyboard ? L.T("No keyboard found") : L.T("No mouse found"));
+			line.Text = (cur != null) ? (State(cur) + " · " + SupportText(cur, brief: true)) : none;
 			line.ToolTip = cur?.Name;
 			bool searching = _detectFrom >= 0 && st.Scans == _detectFrom;
 			if (_detectFrom >= 0 && st.Scans != _detectFrom)
@@ -198,7 +257,7 @@ internal sealed partial class SettingsWindow
 			}
 			detect.IsEnabled = !searching;
 			// Перестраивать список, только когда он изменился: иначе выбор мышью сбрасывался бы раз в секунду.
-			string key = searching + "|" + c.KeyboardDevice + c.MouseDevice + "|" + st.Report + "|" + string.Join(";", all.Select((FoundDevice d) => d.Id + d.Online + d.Battery + d.Support));
+			string key = searching + "|" + KindWant(c, kind) + "|" + st.Report + "|" + string.Join(";", all.Select((FoundDevice d) => d.Id + d.Online + d.Battery + d.Support));
 			if (key == shown || box.Visibility != Visibility.Visible)
 			{
 				return;
@@ -212,17 +271,16 @@ internal sealed partial class SettingsWindow
 			}
 			if (all.Length == 0)
 			{
-				list.Children.Add(Note(keyboard ? L.T("No keyboard found") : L.T("No mouse found")));
+				list.Children.Add(Note(none));
 			}
 			else
 			{
-				string group = keyboard ? "kb" : "mouse";
-				string want = keyboard ? c.KeyboardDevice : c.MouseDevice;
-				list.Children.Add(Choice(group, L.T("Automatically: the first suitable one"), "", want.Length == 0, ""));
+				string want = KindWant(c, kind);
+				list.Children.Add(Choice(L.T("Automatically: the first suitable one"), "", want.Length == 0, ""));
 				foreach (FoundDevice d in all)
 				{
 					string sub = string.Join(" · ", new string[3] { d.Brand, State(d), SupportText(d) }.Where((string x) => x.Length > 0));
-					list.Children.Add(Choice(group, d.Name, sub, d.Id == want, d.Id));
+					list.Children.Add(Choice(d.Name, sub, d.Id == want, d.Id));
 				}
 			}
 			WrapPanel actions = new WrapPanel
@@ -260,7 +318,7 @@ internal sealed partial class SettingsWindow
 				ShowInExplorer(st.Report);
 			}
 		}
-		UIElement Choice(string group, string name, string sub, bool isChecked, string id)
+		UIElement Choice(string name, string sub, bool isChecked, string id)
 		{
 			StackPanel text = new StackPanel();
 			text.Children.Add(new TextBlock
@@ -274,25 +332,42 @@ internal sealed partial class SettingsWindow
 			}
 			RadioButton r = new RadioButton
 			{
-				GroupName = group,
+				GroupName = kind,
 				Content = text,
 				IsChecked = isChecked,
 				Margin = new Thickness(0.0, 3.0, 0.0, 3.0)
 			};
 			r.Checked += delegate
 			{
-				if (keyboard)
+				switch (kind)
 				{
+				case "keyboard":
 					c.KeyboardDevice = id;
-				}
-				else
-				{
+					break;
+				case "mouse":
 					c.MouseDevice = id;
+					break;
+				default:
+					c.HeadsetDevice = id;
+					break;
 				}
 				LogiChanged(200);
 			};
 			return r;
 		}
+	}
+
+	// Вкладка «Наушники»: переключатель, найденные наушники и «Определить». Заряд — тот, что видит Windows.
+	private UIElement HeadsetPage()
+	{
+		StackPanel p = Page(DeviceTitle("headset"));
+		p.Children.Add(DeviceHeader("headset", PageTitle(p), out Action device));
+		_refresh = device;
+		if (LogiCfg().HeadsetOn)
+		{
+			p.Children.Add(Note(L.T("Bluetooth headsets: the charge is the one Windows shows in Bluetooth & devices; it is read about once a minute. A headset that is not listed there with a charge does not report it.")));
+		}
+		return p;
 	}
 
 	private static void ShowInExplorer(string path)

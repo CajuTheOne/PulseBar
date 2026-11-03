@@ -31,6 +31,11 @@ internal sealed class LogiConfig
 
 	public bool MouseOn { get; set; } = true;
 
+	// Наушники (2.4.0-beta.10): заряд Bluetooth-гарнитур; HeadsetDevice — выбранные «Определить» ("bt:<адрес>").
+	public bool HeadsetOn { get; set; } = true;
+
+	public string HeadsetDevice { get; set; } = "";
+
 	// Выбранные кнопкой «Определить» (FoundDevice.Id); "" — первое подходящее.
 	public string KeyboardDevice { get; set; } = "";
 
