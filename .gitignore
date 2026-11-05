@@ -1,7 +1,8 @@
-# NAS-only folders (builds, old releases, per-PC settings and logs)
+# NAS-only folders (builds, old releases, per-PC settings and logs, testers' debug reports)
 /publish/
 /releases/
 /config/
+/reports/
 /artifacts/
 bin/
 obj/
