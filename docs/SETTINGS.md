@@ -7,7 +7,8 @@
 | Программа | `C:\Program Files\PulseBar\` (`PulseBar.exe` — строка, `PulseBar.Sensor.exe` — служба) |
 | Исходники | https://github.com/CajuTheOne/PulseBar, рабочая копия `N:\AI\Tools\PulseBar` |
 | Настройки | `%APPDATA%\PulseBar\settings.json` (с 2.1) |
-| Журналы | строка — `%LOCALAPPDATA%\PulseBar\pulsebar.log`, служба — `%ProgramData%\PulseBar\sensor.log` (очищаются при 64 КБ) |
+| Журналы | строка — `%LOCALAPPDATA%\PulseBar\pulsebar.log` (при 512 КБ уходит в `pulsebar.old.log`), служба — `%ProgramData%\PulseBar\sensor.log` (очищается при 64 КБ) |
+| Отчёты для отладки | при галочке «Собирать данные для отладки»: очередь `%LOCALAPPDATA%\PulseBar\reports\` (последние 20, `index.json`), на NAS — `\\192.168.1.61\Leo\AI\Tools\PulseBar\reports\<ID ПК>\`; чек-лист тестировщика — [TESTING.md](TESTING.md) |
 | Клавиатура и мышь | `%APPDATA%\PulseBar\logitech.json` (профили, переключатели `keyboardOn` / `mouseOn` / `headsetOn`, выбор `keyboardDevice` / `mouseDevice` / `headsetDevice`), `%APPDATA%\PulseBar\devices.json` (устройства Logitech, бывшие на связи: имя, вид, функции), отчёты «Сохранить отчёт об устройствах» — `%LOCALAPPDATA%\PulseBar\devices-report-*.txt` |
 | Автозапуск | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, значение `PulseBar` |
 | Служба | `PulseBarSensor` (LocalSystem, автоматически), канал `\\.\pipe\PulseBar.Sensor` |
@@ -82,6 +83,7 @@
 | `trayIcon` | `true` | значок в трее |
 | `embed` | `true` | внутри панели задач / поверх панели |
 | `beta` | `false` | получать бета-версии |
+| `debugReports` | `false` | собирать и отправлять отчёты для отладки (с 2.4.0-beta.12) |
 | `showCpu`, `showGpu`, `showVram`, `showRam`, `showBattery` | `true` | показ блоков |
 | `trayGap`, `groupGap`, `blocks`, `showClaude` | — | из 2.0–2.1 beta.2: используются только для расположения по умолчанию (`x`, `snapGap`, порядок) и переносятся сами |
 | `hoverTip` / `hoverChart` | `true` / `false` | подсказка при наведении / график за 60 с в ней |
@@ -99,6 +101,7 @@
 | `PulseBar.exe` | обычный запуск (второй экземпляр ждёт до 3 с и выходит, если первый не закрылся) |
 | `PulseBar.exe --dump` | одно измерение всех датчиков в `%TEMP%\PulseBar-dump.txt` (диагностика) |
 | `PulseBar.exe --autostart on` / `off` | включить/выключить автозапуск текущего пользователя |
+| `PulseBar.exe --debug-send ["описание"]` | отчёт для отладки от запущенной строки, как кнопка «Отправить» (нужна галочка «Собирать данные для отладки» или переменная `PULSEBAR_DEBUG_REPORTS=1` у строки) |
 | `PulseBar.exe --logi-diag [txt]` | диагностика клавиатуры Logitech: окно просит нажать M1–M3, MR, G1–G5, журнал пакетов в `%LOCALAPPDATA%\PulseBar\logi-diag-*.txt` (G HUB закрыт; строка на это время отпускает клавиатуру) |
 | `PulseBar.exe --logi-backup <json>` | копия встроенной памяти клавиатуры (только чтение) |
 | `PulseBar.exe --logi-call <функция hex> <fn> [аргументы hex]` | один запрос HID++ к клавиатуре (для разбора ошибок; можно при работающей строке), ответ — в `%LOCALAPPDATA%\PulseBar\logi-call.txt` |

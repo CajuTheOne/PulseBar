@@ -650,6 +650,30 @@ internal sealed class LogiService : IDisposable
 
 	public int Scans => Volatile.Read(ref _scans);
 
+	// Отчёт об устройствах текстом — для отчёта для отладки (ждёт поток службы до 5 с).
+	public string ReportNow()
+	{
+		string text = "(device report: timeout)";
+		using ManualResetEventSlim done = new ManualResetEventSlim();
+		Post(delegate
+		{
+			try
+			{
+				text = Report();
+			}
+			catch (Exception ex)
+			{
+				text = "(device report: " + ex.Message + ")";
+			}
+			finally
+			{
+				done.Set();
+			}
+		});
+		done.Wait(5000);
+		return text;
+	}
+
 	// «Сохранить отчёт об устройствах»: всё, что известно о клавиатурах и мышах, — для поддержки новых моделей. Без путей
 	// устройств и серийных номеров.
 	public void WriteReport()

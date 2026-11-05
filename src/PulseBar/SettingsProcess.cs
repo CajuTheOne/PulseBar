@@ -43,6 +43,9 @@ internal static class SettingsProcess
 
 	public static readonly uint MsgLogiReport = RegisterWindowMessageW("PulseBar.LogiReport");
 
+	// «Отправить» в «О программе»: описание — в DebugReports.RequestFile, отчёт собирает строка.
+	public static readonly uint MsgDebugSend = RegisterWindowMessageW("PulseBar.DebugSend");
+
 	public static string StatusPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "status.json");
 
 	private static nint _bar;
@@ -362,6 +365,19 @@ internal static class SettingsProcess
 		public void LogiReport()
 		{
 			Notify(MsgLogiReport);
+		}
+
+		public void DebugSend(string note)
+		{
+			try
+			{
+				Directory.CreateDirectory(Path.GetDirectoryName(DebugReports.RequestFile)!);
+				File.WriteAllText(DebugReports.RequestFile, note);
+			}
+			catch (Exception)
+			{
+			}
+			Notify(MsgDebugSend);
 		}
 
 		public Updater Updater { get; } = new Updater();

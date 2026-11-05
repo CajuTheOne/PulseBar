@@ -105,6 +105,10 @@ internal static class SettingsShot
 		public void LogiReport()
 		{
 		}
+
+		public void DebugSend(string note)
+		{
+		}
 	}
 
 	public static int Run(string png, int page, bool expand, string? language, int subTab = -1)
@@ -121,6 +125,11 @@ internal static class SettingsShot
 		{
 			s.ShowChatGpt = s.ShowGrok = s.ShowDeepSeek = true;
 			s.ClaudeStyle = 1;
+		}
+		// PULSEBAR_SHOT_DEBUG=1 — «О программе» с включёнными отчётами для отладки (только в памяти).
+		if (Environment.GetEnvironmentVariable("PULSEBAR_SHOT_DEBUG") == "1")
+		{
+			s.DebugReports = true;
 		}
 		if (subTab >= 0)
 		{

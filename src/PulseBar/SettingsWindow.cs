@@ -91,6 +91,9 @@ internal interface ISettingsHost
 	void LogiDetect();
 
 	void LogiReport();
+
+	// Отчёт для отладки с описанием (кнопка «Отправить» в «О программе»).
+	void DebugSend(string note);
 }
 
 // Окно настроек: вкладки слева, тема Fluent (как в Windows 11, светлая/тёмная — по системе).
@@ -1496,10 +1499,15 @@ internal sealed partial class SettingsWindow : Window
 		}
 		p.Children.Add(Link("github.com/CajuTheOne/PulseBar", "https://github.com/CajuTheOne/PulseBar"));
 		p.Children.Add(Link(L.T("Open the log folder"), Path.GetDirectoryName(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulseBar", "x"))!));
+		DebugSection(p, out Action refreshDebug);
 		TextBlock license = Note(L.T("MIT License. CPU temperature: PawnIO driver and its modules (LGPL-2.1)."));
 		license.Margin = new Thickness(0.0, 16.0, 0.0, 0.0);
 		p.Children.Add(license);
-		_refresh = Refresh;
+		_refresh = delegate
+		{
+			Refresh();
+			refreshDebug();
+		};
 		Refresh();
 		return p;
 		void Refresh()

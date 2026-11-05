@@ -12,7 +12,7 @@ using PulseBar.Logi;
 
 namespace PulseBar;
 
-internal sealed class Overlay : Form
+internal sealed partial class Overlay : Form
 {
 	private const int TimerId = 1;
 
@@ -212,6 +212,7 @@ internal sealed class Overlay : Form
 		BeginInvoke(Tick);
 		UpdateTrayIcon();
 		_logi.Start();
+		StartReports();
 		Guid display = DisplayStateGuid;
 		_powerNotify = RegisterPowerSettingNotification(base.Handle, ref display, 0);
 	}
@@ -323,6 +324,11 @@ internal sealed class Overlay : Form
 		if (m.Msg == SettingsProcess.MsgLogiReport)
 		{
 			_logi.WriteReport();
+			return;
+		}
+		if (m.Msg == SettingsProcess.MsgDebugSend)
+		{
+			SendManualReport();
 			return;
 		}
 		if (_msgTaskbarCreated != 0 && m.Msg == _msgTaskbarCreated)
@@ -942,6 +948,7 @@ internal sealed class Overlay : Form
 	protected override void OnFormClosed(FormClosedEventArgs e)
 	{
 		Log.Write($"exit ({e.CloseReason})");
+		StopReports();
 		Native.KillTimer(base.Handle, 1);
 		Native.KillTimer(base.Handle, 2);
 		if (_hook != IntPtr.Zero)
@@ -1048,6 +1055,7 @@ internal sealed class Overlay : Form
 		StartTimer();
 		_claude.IntervalMin = _s.ClaudeIntervalMin;
 		_claude.FollowApp = _s.ClaudeFollowApp;
+		DebugReports.Enabled = ReportsOn;
 		UpdateTrayIcon();
 		if (_bar.Exists && _bar.Embedded != _s.Embed)
 		{

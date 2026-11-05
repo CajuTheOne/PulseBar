@@ -46,6 +46,13 @@ internal static class Program
 		{
 			return LogiDiag.CallOnce(args[1], args[2], (args.Length > 3) ? args[3] : "");
 		}
+		// Отчёт для отладки с описанием от запущенной строки (как кнопка «Отправить» в «О программе»).
+		if (args != null && args.Length >= 1 && args[0] == "--debug-send")
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(DebugReports.RequestFile)!);
+			File.WriteAllText(DebugReports.RequestFile, (args.Length > 1) ? args[1] : "");
+			return Logi.LogiDiag.PostToBar(SettingsProcess.MsgDebugSend) ? 0 : 1;
+		}
 		if (args != null && args.Length >= 1 && args[0] == "--logi-diag")
 		{
 			return LogiDiag.Run((args.Length > 1) ? args[1] : null);
@@ -72,10 +79,13 @@ internal static class Program
 		Application.ThreadException += delegate(object _, ThreadExceptionEventArgs e)
 		{
 			Log.Write("error: " + e.Exception);
+			DebugReports.RecordError(e.Exception.ToString());
 		};
 		AppDomain.CurrentDomain.UnhandledException += delegate(object _, UnhandledExceptionEventArgs e)
 		{
 			Log.Write("fatal: " + e.ExceptionObject);
+			// Отчёт о падении соберётся при следующем запуске (галочка «Собирать данные для отладки»).
+			DebugReports.RecordCrash(e.ExceptionObject?.ToString() ?? "");
 		};
 		Native.EnableEcoQoS();
 		ApplicationConfiguration.Initialize();

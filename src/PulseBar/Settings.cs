@@ -69,6 +69,9 @@ internal sealed class Settings
 
 	public bool Beta;
 
+	// «Собирать данные для отладки» (2.4.0-beta.12, см. DebugReports): выключено — ничего не собирается и не уходит.
+	public bool DebugReports;
+
 	// Блок Claude: 0 — выключен, 1 — компактный (между блоками), 2 — большой (полосы 5h и 7d). Выключенный блок помнит
 	// свой вид (ClaudeOnStyle): плитка в «Виде» включает его таким, каким он был (пользователь, 02.11.2026).
 	public int ClaudeStyle
@@ -665,6 +668,9 @@ internal sealed class Settings
 		case "beta":
 			this.Beta = result != 0;
 			break;
+		case "debugReports":
+			this.DebugReports = result != 0;
+			break;
 		case "showClaude":
 			this.ShowClaude = result != 0;
 			break;
@@ -847,6 +853,7 @@ internal sealed class Settings
 			w.WriteBoolean("showBattery", ShowBattery);
 			w.WriteBoolean("embed", Embed);
 			w.WriteBoolean("beta", Beta);
+			w.WriteBoolean("debugReports", DebugReports);
 			w.WriteNumber("claudeStyle", ClaudeStyle);
 			w.WriteNumber("claudeOnStyle", ClaudeOnStyle);
 			w.WriteBoolean("claudeFollowApp", ClaudeFollowApp);
