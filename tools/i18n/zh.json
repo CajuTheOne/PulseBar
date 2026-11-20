@@ -317,5 +317,16 @@
 "waiting for the NAS": "等待 NAS",
 "Show": "查看",
 "The report is no longer on this PC.": "此报告已不在本机。",
-"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.": "PulseBar 上次因错误关闭。已生成调试报告——点击描述您当时在做什么。"
+"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.": "PulseBar 上次因错误关闭。已生成调试报告——点击描述您当时在做什么。",
+"Apply lighting": "应用",
+"Set up the keyboard again and send all the lighting of the current profile": "重新设置键盘并发送当前配置文件的全部灯光",
+"G HUB is running: close it, then press Apply.": "G HUB 正在运行：请关闭它，然后点击“应用”。",
+"The keyboard is not connected.": "键盘未连接。",
+"PulseBar does not control the keyboard now (see General).": "PulseBar 当前未控制键盘（见“常规”）。",
+"Sent to the keyboard.": "已发送 ✓",
+"Save profile to file…": "将配置文件保存到文件…",
+"Load profile from file…": "从文件加载配置文件…",
+"PulseBar profile": "PulseBar 配置文件",
+"This file is not a PulseBar profile.": "此文件不是 PulseBar 配置文件。",
+"Replace profile «{0}» with the one from the file?": "用文件中的配置文件替换“{0}”？"
 }

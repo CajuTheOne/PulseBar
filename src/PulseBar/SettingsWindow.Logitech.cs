@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -316,16 +317,63 @@ internal sealed partial class SettingsWindow
 			}
 		}, c.Profiles.Count > 1);
 		m.Items.Add(new Separator());
-		int self = c.Profiles.IndexOf(pr);
-		for (int s = 0; s < c.Slots.Length; s++)
+		// Пункты «На M1–M3» убраны в 2.4.0-beta.14 (пользователь путался: один профиль оказывался на двух кнопках).
+		// Слоты остаются в logitech.json: по умолчанию M1–M3 — первые три профиля списка.
+		// Сохранить и загрузить профиль — файл .json (тот же формат, что профиль в logitech.json).
+		Item(m.Items, L.T("Save profile to file…"), delegate
 		{
-			int slot = s;
-			Item(m.Items, L.F("On M{0}", s + 1), delegate
+			string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PulseBar", "profiles");
+			Directory.CreateDirectory(dir);
+			Microsoft.Win32.SaveFileDialog d = new Microsoft.Win32.SaveFileDialog
 			{
-				c.Slots[slot] = self;
-				LogiSaveNow();
-			}, c.Slots[s] != self, c.Slots[s] == self);
-		}
+				InitialDirectory = dir,
+				FileName = string.Concat(pr.Name.Split(Path.GetInvalidFileNameChars())) + ".json",
+				Filter = L.T("PulseBar profile") + " (*.json)|*.json",
+				DefaultExt = ".json"
+			};
+			if (d.ShowDialog(this) == true)
+			{
+				File.WriteAllText(d.FileName, System.Text.Json.JsonSerializer.Serialize(pr, LogiJson.Default.Profile));
+			}
+		});
+		Item(m.Items, L.T("Load profile from file…"), delegate
+		{
+			string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PulseBar", "profiles");
+			Microsoft.Win32.OpenFileDialog d = new Microsoft.Win32.OpenFileDialog
+			{
+				InitialDirectory = Directory.Exists(dir) ? dir : "",
+				Filter = L.T("PulseBar profile") + " (*.json)|*.json"
+			};
+			if (d.ShowDialog(this) != true)
+			{
+				return;
+			}
+			Profile? loaded;
+			try
+			{
+				loaded = System.Text.Json.JsonSerializer.Deserialize(File.ReadAllText(d.FileName), LogiJson.Default.Profile);
+			}
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+			{
+				loaded = null;
+			}
+			if (loaded?.Keyboard == null || loaded.Logo == null)
+			{
+				MessageBox.Show(this, L.T("This file is not a PulseBar profile."), "PulseBar", MessageBoxButton.OK, MessageBoxImage.Warning);
+				return;
+			}
+			if (MessageBox.Show(this, L.F("Replace profile «{0}» with the one from the file?", pr.Name), "PulseBar", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
+			{
+				return;
+			}
+			int at = c.Profiles.IndexOf(pr);
+			if (string.IsNullOrWhiteSpace(loaded.Name))
+			{
+				loaded.Name = pr.Name;
+			}
+			c.Profiles[at] = loaded;
+			LogiSaveNow();
+		});
 		Item(m.Items, L.T("Programs…"), delegate
 		{
 			string? apps = AskText(L.T("Programs for automatic switching"), L.T("For example: game.exe, obs64. When the program is in front this profile turns on; when it is not — the profile chosen last with M1–M3."), pr.Apps);
@@ -876,7 +924,47 @@ internal sealed partial class SettingsWindow
 		tools.Children.Add(all);
 		tools.Children.Add(clear);
 		tools.Children.Add(undo);
+		// «Применить»: изменения и так уходят на клавиатуру сами; кнопка — если подсветка сбилась (G HUB, сон, другая
+		// программа): сохранить и отправить всё заново. Успех — надпись на кнопке на 2 с, помеха — сообщение.
+		string applyText = L.T("Apply lighting");
+		Button apply = new Button
+		{
+			Content = applyText,
+			ToolTip = L.T("Set up the keyboard again and send all the lighting of the current profile"),
+			Padding = new Thickness(12.0, 2.0, 12.0, 2.0),
+			Margin = new Thickness(6.0, 0.0, 6.0, 0.0),
+			FontWeight = FontWeights.SemiBold
+		};
+		DispatcherTimer applyBack = new DispatcherTimer
+		{
+			Interval = TimeSpan.FromSeconds(2.0)
+		};
+		applyBack.Tick += delegate
+		{
+			applyBack.Stop();
+			apply.Content = applyText;
+		};
+		apply.Click += delegate
+		{
+			_logiSave?.Stop();
+			_logi?.Normalize();
+			_logi?.Save();
+			_logiStamp = LogiFileTime();
+			_host.LogiReload();
+			_host.LogiApply();
+			ISettingsHost.Logitech now = _host.LogiStatus;
+			string? problem = now.GHub ? L.T("G HUB is running: close it, then press Apply.") : !now.Online ? L.T("The keyboard is not connected.") : now.Mode != "host" ? L.T("PulseBar does not control the keyboard now (see General).") : null;
+			if (problem != null)
+			{
+				MessageBox.Show(this, problem, "PulseBar", MessageBoxButton.OK, MessageBoxImage.Information);
+				return;
+			}
+			apply.Content = L.T("Sent to the keyboard.");
+			applyBack.Stop();
+			applyBack.Start();
+		};
 		tools.Children.Add(redo);
+		tools.Children.Add(apply);
 		tools.Children.Add(recent);
 		p.Children.Add(tools);
 		Canvas canvas = new Canvas

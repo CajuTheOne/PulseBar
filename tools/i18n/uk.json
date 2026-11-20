@@ -317,5 +317,16 @@
 "waiting for the NAS": "чекає зв'язку з NAS",
 "Show": "Показати",
 "The report is no longer on this PC.": "Цього звіту на ПК вже немає.",
-"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.": "PulseBar минулого разу закрився з помилкою. Звіт для налагодження зібрано — натисніть, щоб описати, що ви робили."
+"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.": "PulseBar минулого разу закрився з помилкою. Звіт для налагодження зібрано — натисніть, щоб описати, що ви робили.",
+"Apply lighting": "Застосувати",
+"Set up the keyboard again and send all the lighting of the current profile": "Знову налаштувати клавіатуру й надіслати все підсвічування поточного профілю",
+"G HUB is running: close it, then press Apply.": "Працює G HUB: закрийте його й натисніть «Застосувати».",
+"The keyboard is not connected.": "Клавіатуру не підключено.",
+"PulseBar does not control the keyboard now (see General).": "PulseBar зараз не керує клавіатурою (див. «Загальні»).",
+"Sent to the keyboard.": "Надіслано ✓",
+"Save profile to file…": "Зберегти профіль у файл…",
+"Load profile from file…": "Завантажити профіль з файлу…",
+"PulseBar profile": "Профіль PulseBar",
+"This file is not a PulseBar profile.": "Цей файл — не профіль PulseBar.",
+"Replace profile «{0}» with the one from the file?": "Замінити профіль «{0}» профілем із файлу?"
 }

@@ -317,5 +317,16 @@
 "waiting for the NAS": "NAS 待ち",
 "Show": "表示",
 "The report is no longer on this PC.": "このレポートはもうこの PC にありません。",
-"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.": "前回 PulseBar はエラーで終了しました。デバッグレポートを作成しました。クリックして、何をしていたか教えてください。"
+"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.": "前回 PulseBar はエラーで終了しました。デバッグレポートを作成しました。クリックして、何をしていたか教えてください。",
+"Apply lighting": "適用",
+"Set up the keyboard again and send all the lighting of the current profile": "キーボードを再設定し、現在のプロファイルのライティングをすべて送信します",
+"G HUB is running: close it, then press Apply.": "G HUB が実行中です。終了してから「適用」を押してください。",
+"The keyboard is not connected.": "キーボードが接続されていません。",
+"PulseBar does not control the keyboard now (see General).": "PulseBar は現在キーボードを制御していません（「全般」を参照）。",
+"Sent to the keyboard.": "送信済み ✓",
+"Save profile to file…": "プロファイルをファイルに保存…",
+"Load profile from file…": "ファイルからプロファイルを読み込む…",
+"PulseBar profile": "PulseBar プロファイル",
+"This file is not a PulseBar profile.": "このファイルは PulseBar のプロファイルではありません。",
+"Replace profile «{0}» with the one from the file?": "プロファイル「{0}」をファイルのものに置き換えますか？"
 }

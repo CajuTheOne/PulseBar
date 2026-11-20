@@ -43,6 +43,8 @@ internal static class SettingsProcess
 
 	public static readonly uint MsgLogiReport = RegisterWindowMessageW("PulseBar.LogiReport");
 
+	public static readonly uint MsgLogiApply = RegisterWindowMessageW("PulseBar.LogiApply");
+
 	// «Отправить» в «О программе»: описание — в DebugReports.RequestFile, отчёт собирает строка.
 	public static readonly uint MsgDebugSend = RegisterWindowMessageW("PulseBar.DebugSend");
 
@@ -365,6 +367,11 @@ internal static class SettingsProcess
 		public void LogiReport()
 		{
 			Notify(MsgLogiReport);
+		}
+
+		public void LogiApply()
+		{
+			Notify(MsgLogiApply);
 		}
 
 		public void DebugSend(string note)

@@ -317,5 +317,16 @@
 "waiting for the NAS",
 "Show",
 "The report is no longer on this PC.",
-"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."
+"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.",
+"Apply lighting",
+"Set up the keyboard again and send all the lighting of the current profile",
+"G HUB is running: close it, then press Apply.",
+"The keyboard is not connected.",
+"PulseBar does not control the keyboard now (see General).",
+"Sent to the keyboard.",
+"Save profile to file…",
+"Load profile from file…",
+"PulseBar profile",
+"This file is not a PulseBar profile.",
+"Replace profile «{0}» with the one from the file?"
 ]

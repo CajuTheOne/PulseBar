@@ -317,5 +317,16 @@
 "waiting for the NAS": "wartet auf das NAS",
 "Show": "Anzeigen",
 "The report is no longer on this PC.": "Der Bericht ist nicht mehr auf diesem PC.",
-"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.": "PulseBar wurde zuletzt mit einem Fehler beendet. Ein Debug-Bericht wurde erstellt — klicken Sie, um zu beschreiben, was Sie getan haben."
+"PulseBar closed with an error last time. A debug report was made — click to tell what you were doing.": "PulseBar wurde zuletzt mit einem Fehler beendet. Ein Debug-Bericht wurde erstellt — klicken Sie, um zu beschreiben, was Sie getan haben.",
+"Apply lighting": "Anwenden",
+"Set up the keyboard again and send all the lighting of the current profile": "Tastatur neu einrichten und die gesamte Beleuchtung des aktuellen Profils senden",
+"G HUB is running: close it, then press Apply.": "G HUB läuft: schließen Sie es und klicken Sie dann auf „Anwenden“.",
+"The keyboard is not connected.": "Die Tastatur ist nicht verbunden.",
+"PulseBar does not control the keyboard now (see General).": "PulseBar steuert die Tastatur gerade nicht (siehe „Allgemein“).",
+"Sent to the keyboard.": "Gesendet ✓",
+"Save profile to file…": "Profil in Datei speichern…",
+"Load profile from file…": "Profil aus Datei laden…",
+"PulseBar profile": "PulseBar-Profil",
+"This file is not a PulseBar profile.": "Diese Datei ist kein PulseBar-Profil.",
+"Replace profile «{0}» with the one from the file?": "Profil „{0}“ durch das aus der Datei ersetzen?"
 }

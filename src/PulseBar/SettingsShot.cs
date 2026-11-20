@@ -106,6 +106,10 @@ internal static class SettingsShot
 		{
 		}
 
+		public void LogiApply()
+		{
+		}
+
 		public void DebugSend(string note)
 		{
 		}

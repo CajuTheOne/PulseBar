@@ -648,6 +648,26 @@ internal sealed class LogiService : IDisposable
 		});
 	}
 
+	// Кнопка «Применить»: настроить клавиатуру заново (режим PulseBar, программное управление подсветкой) и
+	// отправить весь кадр, а не только изменившиеся клавиши; память клавиатуры записать сразу. Окно настроек перед
+	// этим сохраняет logitech.json и шлёт ReloadConfig — сообщения идут в поток службы по порядку.
+	public void Reapply()
+	{
+		Post(delegate
+		{
+			LogiKeyboard? kb = _kb;
+			if (kb == null || !Controlling)
+			{
+				Log.Write($"logi: apply: nothing to do ({(_ghub ? "G HUB is running" : kb == null ? "no keyboard" : "not controlling")})");
+				return;
+			}
+			Log.Write("logi: apply: sending the lighting again");
+			kb.Invalidate();
+			_onboardDue = Environment.TickCount64;
+			Kick();
+		});
+	}
+
 	public int Scans => Volatile.Read(ref _scans);
 
 	// Отчёт об устройствах текстом — для отчёта для отладки (ждёт поток службы до 5 с).

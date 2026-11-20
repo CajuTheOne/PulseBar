@@ -92,6 +92,9 @@ internal interface ISettingsHost
 
 	void LogiReport();
 
+	// Заново настроить клавиатуру и отправить всю подсветку (кнопка «Применить» на вкладке «Подсветка»).
+	void LogiApply();
+
 	// Отчёт для отладки с описанием (кнопка «Отправить» в «О программе»).
 	void DebugSend(string note);
 }

@@ -328,7 +328,18 @@ internal static partial class L
 			["waiting for the NAS"] = "ждёт связи с NAS",
 			["Show"] = "Показать",
 			["The report is no longer on this PC."] = "Этого отчёта на ПК уже нет.",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar в прошлый раз закрылся с ошибкой. Отчёт для отладки собран — нажмите, чтобы описать, что вы делали."
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar в прошлый раз закрылся с ошибкой. Отчёт для отладки собран — нажмите, чтобы описать, что вы делали.",
+			["Apply lighting"] = "Применить",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "Заново настроить клавиатуру и отправить всю подсветку текущего профиля",
+			["G HUB is running: close it, then press Apply."] = "Работает G HUB: закройте его и нажмите «Применить».",
+			["The keyboard is not connected."] = "Клавиатура не подключена.",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar сейчас не управляет клавиатурой (см. «Общие»).",
+			["Sent to the keyboard."] = "Отправлено ✓",
+			["Save profile to file…"] = "Сохранить профиль в файл…",
+			["Load profile from file…"] = "Загрузить профиль из файла…",
+			["PulseBar profile"] = "Профиль PulseBar",
+			["This file is not a PulseBar profile."] = "Этот файл — не профиль PulseBar.",
+			["Replace profile «{0}» with the one from the file?"] = "Заменить профиль «{0}» профилем из файла?"
 		},
 		["uk"] = new Dictionary<string, string>
 		{
@@ -650,7 +661,18 @@ internal static partial class L
 			["waiting for the NAS"] = "чекає зв'язку з NAS",
 			["Show"] = "Показати",
 			["The report is no longer on this PC."] = "Цього звіту на ПК вже немає.",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar минулого разу закрився з помилкою. Звіт для налагодження зібрано — натисніть, щоб описати, що ви робили."
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar минулого разу закрився з помилкою. Звіт для налагодження зібрано — натисніть, щоб описати, що ви робили.",
+			["Apply lighting"] = "Застосувати",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "Знову налаштувати клавіатуру й надіслати все підсвічування поточного профілю",
+			["G HUB is running: close it, then press Apply."] = "Працює G HUB: закрийте його й натисніть «Застосувати».",
+			["The keyboard is not connected."] = "Клавіатуру не підключено.",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar зараз не керує клавіатурою (див. «Загальні»).",
+			["Sent to the keyboard."] = "Надіслано ✓",
+			["Save profile to file…"] = "Зберегти профіль у файл…",
+			["Load profile from file…"] = "Завантажити профіль з файлу…",
+			["PulseBar profile"] = "Профіль PulseBar",
+			["This file is not a PulseBar profile."] = "Цей файл — не профіль PulseBar.",
+			["Replace profile «{0}» with the one from the file?"] = "Замінити профіль «{0}» профілем із файлу?"
 		},
 		["de"] = new Dictionary<string, string>
 		{
@@ -972,7 +994,18 @@ internal static partial class L
 			["waiting for the NAS"] = "wartet auf das NAS",
 			["Show"] = "Anzeigen",
 			["The report is no longer on this PC."] = "Der Bericht ist nicht mehr auf diesem PC.",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar wurde zuletzt mit einem Fehler beendet. Ein Debug-Bericht wurde erstellt — klicken Sie, um zu beschreiben, was Sie getan haben."
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar wurde zuletzt mit einem Fehler beendet. Ein Debug-Bericht wurde erstellt — klicken Sie, um zu beschreiben, was Sie getan haben.",
+			["Apply lighting"] = "Anwenden",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "Tastatur neu einrichten und die gesamte Beleuchtung des aktuellen Profils senden",
+			["G HUB is running: close it, then press Apply."] = "G HUB läuft: schließen Sie es und klicken Sie dann auf „Anwenden“.",
+			["The keyboard is not connected."] = "Die Tastatur ist nicht verbunden.",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar steuert die Tastatur gerade nicht (siehe „Allgemein“).",
+			["Sent to the keyboard."] = "Gesendet ✓",
+			["Save profile to file…"] = "Profil in Datei speichern…",
+			["Load profile from file…"] = "Profil aus Datei laden…",
+			["PulseBar profile"] = "PulseBar-Profil",
+			["This file is not a PulseBar profile."] = "Diese Datei ist kein PulseBar-Profil.",
+			["Replace profile «{0}» with the one from the file?"] = "Profil „{0}“ durch das aus der Datei ersetzen?"
 		},
 		["fr"] = new Dictionary<string, string>
 		{
@@ -1294,7 +1327,18 @@ internal static partial class L
 			["waiting for the NAS"] = "en attente du NAS",
 			["Show"] = "Afficher",
 			["The report is no longer on this PC."] = "Le rapport n'est plus sur ce PC.",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar s'est fermé avec une erreur la dernière fois. Un rapport de débogage a été créé — cliquez pour décrire ce que vous faisiez."
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar s'est fermé avec une erreur la dernière fois. Un rapport de débogage a été créé — cliquez pour décrire ce que vous faisiez.",
+			["Apply lighting"] = "Appliquer",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "Reconfigurer le clavier et envoyer tout l'éclairage du profil actuel",
+			["G HUB is running: close it, then press Apply."] = "G HUB est en cours d'exécution : fermez-le, puis cliquez sur « Appliquer ».",
+			["The keyboard is not connected."] = "Le clavier n'est pas connecté.",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar ne contrôle pas le clavier pour le moment (voir « Général »).",
+			["Sent to the keyboard."] = "Envoyé ✓",
+			["Save profile to file…"] = "Enregistrer le profil dans un fichier…",
+			["Load profile from file…"] = "Charger un profil depuis un fichier…",
+			["PulseBar profile"] = "Profil PulseBar",
+			["This file is not a PulseBar profile."] = "Ce fichier n'est pas un profil PulseBar.",
+			["Replace profile «{0}» with the one from the file?"] = "Remplacer le profil « {0} » par celui du fichier ?"
 		},
 		["es"] = new Dictionary<string, string>
 		{
@@ -1616,7 +1660,18 @@ internal static partial class L
 			["waiting for the NAS"] = "esperando al NAS",
 			["Show"] = "Mostrar",
 			["The report is no longer on this PC."] = "El informe ya no está en este PC.",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar se cerró con un error la última vez. Se creó un informe de depuración: haz clic para contar qué estabas haciendo."
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar se cerró con un error la última vez. Se creó un informe de depuración: haz clic para contar qué estabas haciendo.",
+			["Apply lighting"] = "Aplicar",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "Volver a configurar el teclado y enviar toda la iluminación del perfil actual",
+			["G HUB is running: close it, then press Apply."] = "G HUB está en ejecución: ciérralo y pulsa «Aplicar».",
+			["The keyboard is not connected."] = "El teclado no está conectado.",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar no controla el teclado ahora (ver «General»).",
+			["Sent to the keyboard."] = "Enviado ✓",
+			["Save profile to file…"] = "Guardar perfil en archivo…",
+			["Load profile from file…"] = "Cargar perfil desde archivo…",
+			["PulseBar profile"] = "Perfil de PulseBar",
+			["This file is not a PulseBar profile."] = "Este archivo no es un perfil de PulseBar.",
+			["Replace profile «{0}» with the one from the file?"] = "¿Reemplazar el perfil «{0}» por el del archivo?"
 		},
 		["pt"] = new Dictionary<string, string>
 		{
@@ -1938,7 +1993,18 @@ internal static partial class L
 			["waiting for the NAS"] = "aguardando o NAS",
 			["Show"] = "Mostrar",
 			["The report is no longer on this PC."] = "O relatório não está mais neste PC.",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "O PulseBar fechou com um erro da última vez. Um relatório de depuração foi criado — clique para contar o que você estava fazendo."
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "O PulseBar fechou com um erro da última vez. Um relatório de depuração foi criado — clique para contar o que você estava fazendo.",
+			["Apply lighting"] = "Aplicar",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "Configurar o teclado novamente e enviar toda a iluminação do perfil atual",
+			["G HUB is running: close it, then press Apply."] = "O G HUB está em execução: feche-o e clique em “Aplicar”.",
+			["The keyboard is not connected."] = "O teclado não está conectado.",
+			["PulseBar does not control the keyboard now (see General)."] = "O PulseBar não controla o teclado agora (veja “Geral”).",
+			["Sent to the keyboard."] = "Enviado ✓",
+			["Save profile to file…"] = "Salvar perfil em arquivo…",
+			["Load profile from file…"] = "Carregar perfil de arquivo…",
+			["PulseBar profile"] = "Perfil do PulseBar",
+			["This file is not a PulseBar profile."] = "Este arquivo não é um perfil do PulseBar.",
+			["Replace profile «{0}» with the one from the file?"] = "Substituir o perfil “{0}” pelo do arquivo?"
 		},
 		["it"] = new Dictionary<string, string>
 		{
@@ -2260,7 +2326,18 @@ internal static partial class L
 			["waiting for the NAS"] = "in attesa del NAS",
 			["Show"] = "Mostra",
 			["The report is no longer on this PC."] = "Il rapporto non è più su questo PC.",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar si è chiuso con un errore l'ultima volta. È stato creato un rapporto di debug: fai clic per raccontare cosa stavi facendo."
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar si è chiuso con un errore l'ultima volta. È stato creato un rapporto di debug: fai clic per raccontare cosa stavi facendo.",
+			["Apply lighting"] = "Applica",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "Riconfigurare la tastiera e inviare tutta l'illuminazione del profilo attuale",
+			["G HUB is running: close it, then press Apply."] = "G HUB è in esecuzione: chiudilo, poi premi «Applica».",
+			["The keyboard is not connected."] = "La tastiera non è collegata.",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar ora non controlla la tastiera (vedi «Generale»).",
+			["Sent to the keyboard."] = "Inviato ✓",
+			["Save profile to file…"] = "Salva profilo su file…",
+			["Load profile from file…"] = "Carica profilo da file…",
+			["PulseBar profile"] = "Profilo PulseBar",
+			["This file is not a PulseBar profile."] = "Questo file non è un profilo PulseBar.",
+			["Replace profile «{0}» with the one from the file?"] = "Sostituire il profilo «{0}» con quello del file?"
 		},
 		["pl"] = new Dictionary<string, string>
 		{
@@ -2582,7 +2659,18 @@ internal static partial class L
 			["waiting for the NAS"] = "czeka na NAS",
 			["Show"] = "Pokaż",
 			["The report is no longer on this PC."] = "Raportu nie ma już na tym komputerze.",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar ostatnio zamknął się z błędem. Utworzono raport debugowania — kliknij, aby opisać, co robiłeś."
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar ostatnio zamknął się z błędem. Utworzono raport debugowania — kliknij, aby opisać, co robiłeś.",
+			["Apply lighting"] = "Zastosuj",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "Ponownie skonfiguruj klawiaturę i wyślij całe podświetlenie bieżącego profilu",
+			["G HUB is running: close it, then press Apply."] = "Działa G HUB: zamknij go, a potem kliknij „Zastosuj”.",
+			["The keyboard is not connected."] = "Klawiatura nie jest podłączona.",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar teraz nie steruje klawiaturą (zob. „Ogólne”).",
+			["Sent to the keyboard."] = "Wysłano ✓",
+			["Save profile to file…"] = "Zapisz profil do pliku…",
+			["Load profile from file…"] = "Wczytaj profil z pliku…",
+			["PulseBar profile"] = "Profil PulseBar",
+			["This file is not a PulseBar profile."] = "Ten plik nie jest profilem PulseBar.",
+			["Replace profile «{0}» with the one from the file?"] = "Zastąpić profil „{0}” profilem z pliku?"
 		},
 		["zh"] = new Dictionary<string, string>
 		{
@@ -2904,7 +2992,18 @@ internal static partial class L
 			["waiting for the NAS"] = "等待 NAS",
 			["Show"] = "查看",
 			["The report is no longer on this PC."] = "此报告已不在本机。",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar 上次因错误关闭。已生成调试报告——点击描述您当时在做什么。"
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "PulseBar 上次因错误关闭。已生成调试报告——点击描述您当时在做什么。",
+			["Apply lighting"] = "应用",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "重新设置键盘并发送当前配置文件的全部灯光",
+			["G HUB is running: close it, then press Apply."] = "G HUB 正在运行：请关闭它，然后点击“应用”。",
+			["The keyboard is not connected."] = "键盘未连接。",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar 当前未控制键盘（见“常规”）。",
+			["Sent to the keyboard."] = "已发送 ✓",
+			["Save profile to file…"] = "将配置文件保存到文件…",
+			["Load profile from file…"] = "从文件加载配置文件…",
+			["PulseBar profile"] = "PulseBar 配置文件",
+			["This file is not a PulseBar profile."] = "此文件不是 PulseBar 配置文件。",
+			["Replace profile «{0}» with the one from the file?"] = "用文件中的配置文件替换“{0}”？"
 		},
 		["ja"] = new Dictionary<string, string>
 		{
@@ -3226,7 +3325,18 @@ internal static partial class L
 			["waiting for the NAS"] = "NAS 待ち",
 			["Show"] = "表示",
 			["The report is no longer on this PC."] = "このレポートはもうこの PC にありません。",
-			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "前回 PulseBar はエラーで終了しました。デバッグレポートを作成しました。クリックして、何をしていたか教えてください。"
+			["PulseBar closed with an error last time. A debug report was made — click to tell what you were doing."] = "前回 PulseBar はエラーで終了しました。デバッグレポートを作成しました。クリックして、何をしていたか教えてください。",
+			["Apply lighting"] = "適用",
+			["Set up the keyboard again and send all the lighting of the current profile"] = "キーボードを再設定し、現在のプロファイルのライティングをすべて送信します",
+			["G HUB is running: close it, then press Apply."] = "G HUB が実行中です。終了してから「適用」を押してください。",
+			["The keyboard is not connected."] = "キーボードが接続されていません。",
+			["PulseBar does not control the keyboard now (see General)."] = "PulseBar は現在キーボードを制御していません（「全般」を参照）。",
+			["Sent to the keyboard."] = "送信済み ✓",
+			["Save profile to file…"] = "プロファイルをファイルに保存…",
+			["Load profile from file…"] = "ファイルからプロファイルを読み込む…",
+			["PulseBar profile"] = "PulseBar プロファイル",
+			["This file is not a PulseBar profile."] = "このファイルは PulseBar のプロファイルではありません。",
+			["Replace profile «{0}» with the one from the file?"] = "プロファイル「{0}」をファイルのものに置き換えますか？"
 		}
 	};
 }

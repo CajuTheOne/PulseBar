@@ -326,6 +326,11 @@ internal sealed partial class Overlay : Form
 			_logi.WriteReport();
 			return;
 		}
+		if (m.Msg == SettingsProcess.MsgLogiApply)
+		{
+			_logi.Reapply();
+			return;
+		}
 		if (m.Msg == SettingsProcess.MsgDebugSend)
 		{
 			SendManualReport();
